@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}个人账单管理{% endblock %}</title>
+    <style>
+      :root {
+        --bg: #f3f6fb;
+        --card-bg: #ffffff;
+        --line: #d9e2f2;
+        --text: #1f2a44;
+        --muted: #5f6b85;
+        --primary: #2f6df6;
+        --primary-dark: #2458ca;
+        --danger: #d34b4b;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft Yahei", Arial, sans-serif;
+        margin: 0;
+        background: linear-gradient(180deg, #f8faff 0%, var(--bg) 100%);
+        color: var(--text);
+        user-select: text;
+      }
+      * { user-select: text; }
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: linear-gradient(90deg, #2c64df 0%, #2f6df6 55%, #4688ff 100%);
+        color: #fff;
+        padding: 12px 20px;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        box-shadow: 0 6px 20px rgba(30, 70, 150, 0.24);
+      }
+      .nav a {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 6px 10px;
+        border-radius: 8px;
+      }
+      .nav a:hover { background: rgba(255, 255, 255, 0.18); }
+      .ver { margin-left: auto; font-size: 12px; opacity: 0.95; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 999px; }
+      .container { padding: 18px 22px 34px; max-width: 1600px; margin: 0 auto; }
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 14px rgba(23, 53, 107, 0.05);
+      }
+      h2 { margin: 0 0 10px; font-size: 19px; }
+      h3 { margin: 16px 0 8px; font-size: 16px; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+      input, textarea, select, button { font-size: 14px; }
+      input, textarea, select {
+        border: 1px solid #c8d3ea;
+        border-radius: 8px;
+        padding: 7px 9px;
+        background: #fff;
+      }
+      input:focus, textarea:focus, select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.14);
+      }
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--primary);
+        color: #fff;
+        cursor: pointer;
+        transition: .15s ease;
+      }
+      button:hover { background: var(--primary-dark); transform: translateY(-1px); }
+      .btn-secondary { background: #6b7280; }
+      .btn-secondary:hover { background: #535b69; }
+      table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+      th, td { border-right: 1px solid #e5ebf7; border-bottom: 1px solid #e5ebf7; padding: 7px 8px; vertical-align: top; }
+      th:first-child, td:first-child { border-left: 1px solid #e5ebf7; }
+      thead th { position: sticky; top: 0; z-index: 2; background: #f3f7ff; }
+      tbody tr:hover { background: #f9fbff; }
+      .table-wrap { max-height: 520px; overflow: auto; }
+      .flash { padding: 9px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid transparent; }
+      .flash.success { background: #eaf9f1; color: #17663a; border-color: #b9e5ca; }
+      .flash.error { background: #fff0f2; color: #9f1f33; border-color: #f6c5cf; }
+      .muted { color: var(--muted); font-size: 12px; }
+      .metric { min-width: 180px; background: #fbfcff; border: 1px solid #e2e8f8; border-radius: 10px; padding: 10px; }
+
+      /* modal */
+      .modal-mask { display:none; position:fixed; inset:0; background: rgba(12,18,28,.55); z-index: 200; }
+      .modal { display:none; position:fixed; inset: 0; z-index: 210; padding: 56px 18px 18px; overflow:auto; }
+      .modal-card { max-width: 980px; margin: 0 auto; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 60px rgba(0,0,0,.22); }
+      .modal-hd { display:flex; align-items:center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #eef2fb; }
+      .modal-bd { padding: 12px 14px; }
+      .modal-ft { padding: 12px 14px; border-top: 1px solid #eef2fb; display:flex; justify-content:flex-end; gap:10px; }
+      .chip { display:inline-flex; align-items:center; gap:6px; border: 1px solid #d9e2f2; background: #f6f9ff; padding: 4px 8px; border-radius: 999px; font-size: 12px; color: #35415c; }
+      .tree { display:grid; grid-template-columns: 220px 1fr; gap: 12px; }
+      .tree-col { border: 1px solid #e5ebf7; border-radius: 12px; padding: 10px; background: #fbfcff; min-height: 420px; }
+      .tree-title { font-weight: 700; margin-bottom: 8px; display:flex; align-items:center; justify-content: space-between; }
+      .tree-list { max-height: 380px; overflow:auto; padding-right: 6px; }
+      .tree-item { display:flex; align-items:center; gap:8px; padding: 6px 6px; border-radius: 10px; cursor:pointer; }
+      .tree-item:hover { background: #f0f6ff; }
+      .tree-item.active { background: #eaf1ff; border: 1px solid #cfe0ff; }
+      .tree-actions { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+      th.sortable-th { cursor: pointer; user-select: none; }
+      th.sortable-th::after { content: " ↕"; color: #9aa7bf; font-weight: 400; }
+      th.sortable-th[data-sort-order="asc"]::after { content: " ↑"; color: #2f6df6; font-weight: 700; }
+      th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: #2f6df6; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <div class="nav">
+      <a href="{{ url_for('import_page') }}">导入清洗</a>
+      <a href="{{ url_for('records_page') }}">数据库记录</a>
+      <a href="{{ url_for('analysis_page') }}">分析看板</a>
+      <a href="{{ url_for('travel_page') }}">旅游管理</a>
+      <a href="{{ url_for('types_page') }}">类型字典</a>
+      <a href="{{ url_for('download_offline_report_zip') }}">离线报告包</a>
+      <span class="ver">版本：2026-03-20-r10</span>
+    </div>
+    <div class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+
+    <div class="modal-mask" id="modal-mask"></div>
+    <div class="modal" id="date-modal">
+      <div class="modal-card">
+        <div class="modal-hd">
+          <div style="font-weight:800;">选择日期（年 / 月 / 日 多选）</div>
+          <button type="button" class="btn-secondary" onclick="DateTreePicker.close()">关闭</button>
+        </div>
+        <div class="modal-bd">
+          <div class="tree">
+            <div class="tree-col">
+              <div class="tree-title">
+                <span>年份</span>
+                <span class="tree-actions">
+                  <label class="chip"><input type="checkbox" id="dt-year-all" /> 全选</label>
+                </span>
+              </div>
+              <div class="tree-list" id="dt-years"></div>
+            </div>
+            <div class="tree-col">
+              <div class="tree-title">
+                <span id="dt-mid-title">月份 / 日期</span>
+                <span class="tree-actions">
+                  <label class="chip"><input type="checkbox" id="dt-mid-all" /> 全选</label>
+                </span>
+              </div>
+              <div class="tree-list" id="dt-mid"></div>
+            </div>
+          </div>
+          <div style="margin-top: 10px;" class="muted">
+            说明：勾选“年”会默认选中该年的全部日期；勾选“月”会选中该月全部日期；你也可只勾选具体“日”。多级勾选会自动去重合并。
+          </div>
+          <div style="margin-top: 8px;" id="dt-summary"></div>
+        </div>
+        <div class="modal-ft">
+          <button type="button" class="btn-secondary" onclick="DateTreePicker.clear()">清空</button>
+          <button type="button" onclick="DateTreePicker.apply()">应用所选日期</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        // 记住每个页面最后一次访问URL（含query），切页返回时恢复筛选状态
+        const currentUrl = window.location.pathname + window.location.search;
+        localStorage.setItem("bill:last-url:" + window.location.pathname, currentUrl);
+        document.querySelectorAll(".nav a").forEach((a) => {
+          try {
+            const p = new URL(a.href, window.location.origin).pathname;
+            const saved = localStorage.getItem("bill:last-url:" + p);
+            if (saved) a.href = saved;
+          } catch (e) {}
+        });
+
+        // 表单草稿缓存：切换页面再回来，不会把正在编辑的输入清空
+        // 注意：类型字典页存在大量重复字段名（l1/l2/pattern），草稿回填会因行增删导致序号错位，
+        // 从而把旧值“灌回”到别的行，造成“保存/删除偶发失效”的错觉，因此禁用该页草稿功能。
+        if (window.location.pathname === "/types") return;
+        const pageKey = "bill:form-draft:" + window.location.pathname;
+        let draft = {};
+        try { draft = JSON.parse(localStorage.getItem(pageKey) || "{}"); } catch (e) {}
+        const controls = document.querySelectorAll("input, textarea, select");
+        const skipDraftRestore = !!window.__skipDraftRestore;
+        controls.forEach((el, idx) => {
+          if (el.type === "password" || el.type === "file") return;
+          const k = (el.form ? Array.from(document.forms).indexOf(el.form) : "x") + ":" + (el.name || el.id || ("f" + idx));
+          if (!skipDraftRestore && Object.prototype.hasOwnProperty.call(draft, k)) {
+            if (el.type === "checkbox" || el.type === "radio") el.checked = !!draft[k];
+            else el.value = draft[k];
+          }
+          const save = function () {
+            if (el.type === "checkbox" || el.type === "radio") draft[k] = !!el.checked;
+            else draft[k] = el.value;
+            localStorage.setItem(pageKey, JSON.stringify(draft));
+          };
+          el.addEventListener("input", save);
+          el.addEventListener("change", save);
+        });
+      })();
+    </script>
+
+    <script>
+      (function () {
+        function cellValue(td) {
+          if (!td) return "";
+          const ctl = td.querySelector("input, select, textarea");
+          if (ctl) {
+            if (ctl.tagName === "SELECT") {
+              const op = ctl.options[ctl.selectedIndex];
+              return (op ? op.text : ctl.value || "").trim();
+            }
+            return String(ctl.value || "").trim();
+          }
+          return (td.textContent || "").replace(/\s+/g, " ").trim();
+        }
+        function toComparable(raw) {
+          const t = String(raw || "").trim();
+          if (!t) return { type: "empty", value: "" };
+          const n = Number(t.replace(/,/g, ""));
+          if (!Number.isNaN(n) && /^-?\d+(\.\d+)?$/.test(t.replace(/,/g, ""))) return { type: "num", value: n };
+          if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return { type: "date", value: t };
+          return { type: "text", value: t.toLowerCase() };
+        }
+        function bindSortableTable(table) {
+          if (!table || table.dataset.sortableBound === "1") return;
+          const thead = table.tHead;
+          const tbody = table.tBodies && table.tBodies[0];
+          if (!thead || !tbody || !thead.rows.length) return;
+          table.dataset.sortableBound = "1";
+          const headers = Array.from(thead.rows[0].cells || []);
+          headers.forEach((th, idx) => {
+            if (!th || th.hasAttribute("data-no-sort")) return;
+            th.classList.add("sortable-th");
+            th.addEventListener("click", function (e) {
+              const t = e.target;
+              if (t && t.closest("a,button,input,select,label,textarea")) return;
+              const prev = th.getAttribute("data-sort-order") || "";
+              const next = prev === "asc" ? "desc" : "asc";
+              headers.forEach((h) => h.removeAttribute("data-sort-order"));
+              th.setAttribute("data-sort-order", next);
+              const rows = Array.from(tbody.rows || []);
+              rows.sort((ra, rb) => {
+                const va = toComparable(cellValue(ra.cells[idx]));
+                const vb = toComparable(cellValue(rb.cells[idx]));
+                if (va.type === "empty" && vb.type !== "empty") return 1;
+                if (vb.type === "empty" && va.type !== "empty") return -1;
+                if (va.value < vb.value) return next === "asc" ? -1 : 1;
+                if (va.value > vb.value) return next === "asc" ? 1 : -1;
+                return 0;
+              });
+              rows.forEach((r) => tbody.appendChild(r));
+            });
+          });
+        }
+        document.querySelectorAll("table").forEach(bindSortableTable);
+      })();
+    </script>
+
+    <script>
+      // 可复用日期树选择器：输入 dates=["YYYY-MM-DD",...]
+      const DateTreePicker = (function () {
+        let allDates = [];
+        let tree = {}; // {year:{month:[days]}}
+        let selected = new Set();
+        let target = null; // {inputId,labelId}
+        let activeYear = "";
+        let activeMonth = "";
+
+        function buildTree(dates) {
+          const t = {};
+          (dates || []).forEach((ds) => {
+            if (!ds || ds.length < 10) return;
+            const y = ds.slice(0, 4);
+            const m = ds.slice(5, 7);
+            const d = ds.slice(8, 10);
+            if (!t[y]) t[y] = {};
+            if (!t[y][m]) t[y][m] = [];
+            if (!t[y][m].includes(d)) t[y][m].push(d);
+          });
+          Object.keys(t).forEach((y) => {
+            Object.keys(t[y]).forEach((m) => t[y][m].sort());
+          });
+          return t;
+        }
+
+        function open(dates, opts) {
+          allDates = (dates || []).slice();
+          tree = buildTree(allDates);
+          target = opts || null;
+          selected = new Set();
+          activeYear = "";
+          activeMonth = "";
+          renderYears();
+          renderMid();
+          updateSummary();
+          document.getElementById("modal-mask").style.display = "block";
+          document.getElementById("date-modal").style.display = "block";
+        }
+
+        function close() {
+          document.getElementById("modal-mask").style.display = "none";
+          document.getElementById("date-modal").style.display = "none";
+        }
+
+        function clear() {
+          selected = new Set();
+          renderYears();
+          renderMid();
+          updateSummary();
+        }
+
+        function yearDates(y) {
+          const out = [];
+          const months = tree[y] || {};
+          Object.keys(months).forEach((m) => {
+            (months[m] || []).forEach((d) => out.push(`${y}-${m}-${d}`));
+          });
+          return out;
+        }
+
+        function monthDates(y, m) {
+          const days = (tree[y] && tree[y][m]) ? tree[y][m] : [];
+          return (days || []).map((d) => `${y}-${m}-${d}`);
+        }
+
+        function toggleMany(ds, on) {
+          (ds || []).forEach((x) => {
+            if (on) selected.add(x);
+            else selected.delete(x);
+          });
+        }
+
+        function setYearActive(y) {
+          activeYear = y;
+          activeMonth = "";
+          renderYears();
+          renderMid();
+        }
+
+        function setMonthActive(m) {
+          activeMonth = m;
+          renderMid();
+        }
+
+        function isAllSelected(ds) {
+          if (!ds || ds.length === 0) return false;
+          for (const x of ds) if (!selected.has(x)) return false;
+          return true;
+        }
+
+        function renderYears() {
+          const wrap = document.getElementById("dt-years");
+          wrap.innerHTML = "";
+          const years = Object.keys(tree).sort().reverse();
+          years.forEach((y) => {
+            const row = document.createElement("div");
+            row.className = "tree-item" + (activeYear === y ? " active" : "");
+            const ck = document.createElement("input");
+            ck.type = "checkbox";
+            const ds = yearDates(y);
+            ck.checked = isAllSelected(ds);
+            ck.addEventListener("change", () => {
+              toggleMany(ds, ck.checked);
+              updateSummary();
+              renderYears();
+              renderMid();
+            });
+            const label = document.createElement("div");
+            label.textContent = y;
+            label.style.fontWeight = "700";
+            row.appendChild(ck);
+            row.appendChild(label);
+            row.addEventListener("click", (e) => {
+              if (e.target === ck) return;
+              const checked = isAllSelected(ds);
+              toggleMany(ds, !checked);
+              setYearActive(y);
+              updateSummary();
+            });
+            wrap.appendChild(row);
+          });
+
+          const yearAll = document.getElementById("dt-year-all");
+          yearAll.checked = years.length > 0 && isAllSelected(allDates);
+          yearAll.onchange = function () {
+            toggleMany(allDates, yearAll.checked);
+            updateSummary();
+            renderYears();
+            renderMid();
+          };
+        }
+
+        function renderMid() {
+          const wrap = document.getElementById("dt-mid");
+          wrap.innerHTML = "";
+          const title = document.getElementById("dt-mid-title");
+          if (!activeYear) {
+            title.textContent = "月份 / 日期（请先选年份）";
+            document.getElementById("dt-mid-all").checked = false;
+            document.getElementById("dt-mid-all").onchange = null;
+            return;
+          }
+          title.textContent = `${activeYear} 年：月份 / 日期`;
+          const months = Object.keys(tree[activeYear] || {}).sort();
+          // 月份列表
+          months.forEach((m) => {
+            const row = document.createElement("div");
+            row.className = "tree-item" + (activeMonth === m ? " active" : "");
+            const ck = document.createElement("input");
+            ck.type = "checkbox";
+            const ds = monthDates(activeYear, m);
+            ck.checked = isAllSelected(ds);
+            ck.addEventListener("change", () => {
+              toggleMany(ds, ck.checked);
+              updateSummary();
+              renderYears();
+              renderMid();
+            });
+            const label = document.createElement("div");
+            label.textContent = `${m} 月`;
+            label.style.fontWeight = "700";
+            row.appendChild(ck);
+            row.appendChild(label);
+            row.addEventListener("click", (e) => {
+              if (e.target === ck) return;
+              const checked = isAllSelected(ds);
+              toggleMany(ds, !checked);
+              setMonthActive(m);
+              updateSummary();
+            });
+            wrap.appendChild(row);
+
+            if (activeMonth === m) {
+              const days = (tree[activeYear][m] || []).slice();
+              const dayBox = document.createElement("div");
+              dayBox.style.padding = "6px 0 10px 30px";
+              dayBox.style.display = "grid";
+              dayBox.style.gridTemplateColumns = "repeat(8, minmax(64px, 1fr))";
+              dayBox.style.gap = "6px";
+              days.forEach((d) => {
+                const ds1 = `${activeYear}-${m}-${d}`;
+                const chip = document.createElement("label");
+                chip.className = "chip";
+                chip.style.justifyContent = "center";
+                const ck2 = document.createElement("input");
+                ck2.type = "checkbox";
+                ck2.checked = selected.has(ds1);
+                ck2.addEventListener("change", () => {
+                  toggleMany([ds1], ck2.checked);
+                  updateSummary();
+                  renderYears();
+                  renderMid();
+                });
+                const txt = document.createElement("span");
+                txt.textContent = `${d}日`;
+                chip.appendChild(ck2);
+                chip.appendChild(txt);
+                dayBox.appendChild(chip);
+              });
+              wrap.appendChild(dayBox);
+            }
+          });
+
+          const midAll = document.getElementById("dt-mid-all");
+          const scopeDates = activeMonth ? monthDates(activeYear, activeMonth) : yearDates(activeYear);
+          midAll.checked = scopeDates.length > 0 && isAllSelected(scopeDates);
+          midAll.onchange = function () {
+            toggleMany(scopeDates, midAll.checked);
+            updateSummary();
+            renderYears();
+            renderMid();
+          };
+        }
+
+        function updateSummary() {
+          const el = document.getElementById("dt-summary");
+          const arr = Array.from(selected).sort();
+          el.innerHTML = "";
+          const box = document.createElement("div");
+          box.className = "muted";
+          box.innerHTML = `已选择 <b>${arr.length}</b> 个日期` + (arr.length ? `（${arr[0]} ~ ${arr[arr.length-1]}）` : "");
+          el.appendChild(box);
+        }
+
+        function apply() {
+          const arr = Array.from(selected).sort();
+          if (target && target.inputId) {
+            const inp = document.getElementById(target.inputId);
+            if (inp) inp.value = arr.join(",");
+          }
+          if (target && target.labelId) {
+            const lab = document.getElementById(target.labelId);
+            if (lab) lab.textContent = arr.length ? `已选 ${arr.length} 天（${arr[0]} ~ ${arr[arr.length-1]}）` : "未选择";
+          }
+          close();
+        }
+
+        return { open, close, clear, apply };
+      })();
+    </script>
+  </body>
+</html>

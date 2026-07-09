@@ -1,0 +1,329 @@
+{% extends "layout.html" %}
+{% block title %}旅游管理{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>旅游打标维护（直接同步数据库）</h2>
+  <div class="muted">在这里按日期段打标或清除旅游标签，提交后会立即更新数据库中的记录。</div>
+  <style>
+    .date-cascader-wrap { position: relative; min-width: 220px; }
+    .date-cascader-trigger {
+      min-height: 34px; border: 1px solid #c8d3ea; border-radius: 10px; background: #fff;
+      padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      color: #1f2a44;
+    }
+    .date-cascader-panel {
+      position: absolute; top: 40px; left: 0; z-index: 90; width: 680px; max-width: 92vw;
+      background: #fff; border: 1px solid #d9e2f2; border-radius: 12px; box-shadow: 0 10px 28px rgba(30,56,110,.2);
+      display: none; overflow: hidden;
+    }
+    .date-cascader-panel.open { display: grid; grid-template-columns: 1fr 1fr 1.2fr; }
+    .dc-col { border-right: 1px solid #edf1fa; max-height: 320px; overflow: auto; }
+    .dc-col:last-child { border-right: 0; }
+    .dc-head {
+      position: sticky; top: 0; z-index: 2; background: #fbfdff; border-bottom: 1px solid #edf1fa;
+      padding: 8px 10px; font-size: 12px; color: #4b5a78; display: flex; align-items: center; justify-content: space-between;
+    }
+    .dc-item { padding: 8px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .dc-item:hover, .dc-item.active { background: #f3f7ff; }
+    .dc-foot { grid-column: 1 / span 3; padding: 8px 10px; border-top: 1px solid #edf1fa; display: flex; justify-content: space-between; }
+  </style>
+  <div class="row" style="margin-top: 8px;">
+    <form method="post" class="row">
+      <input type="hidden" name="action" value="set_tag" />
+      <div>
+        <div>选择日期</div>
+        <input type="hidden" name="dates" id="travel-set-dates" value="" />
+        <div class="date-cascader-wrap">
+          <div class="date-cascader-trigger" id="travel-set-trigger">
+            日期选择：<b id="travel-set-label">未选择</b>
+          </div>
+          <div class="date-cascader-panel" id="travel-set-panel"></div>
+        </div>
+      </div>
+      <div>
+        <div>旅游标签</div>
+        <input type="text" name="travel_tag" placeholder="如 青岛五一" required />
+      </div>
+      <div>
+        <div>同行人（可选）</div>
+        <input type="text" name="travel_companions" placeholder="如 张三、李四" />
+      </div>
+      <div><button type="submit">按日期段打标</button></div>
+    </form>
+    <form method="post" class="row">
+      <input type="hidden" name="action" value="clear_tag" />
+      <div>
+        <div>选择日期</div>
+        <input type="hidden" name="dates" id="travel-clear-dates" value="" />
+        <div class="date-cascader-wrap">
+          <div class="date-cascader-trigger" id="travel-clear-trigger">
+            日期选择：<b id="travel-clear-label">未选择</b>
+          </div>
+          <div class="date-cascader-panel" id="travel-clear-panel"></div>
+        </div>
+      </div>
+      <div><button type="submit" class="btn-secondary">清除日期段旅游标签</button></div>
+    </form>
+  </div>
+</div>
+
+<script id="bill-dates-json" type="application/json">{{ bill_dates_json|safe }}</script>
+<script>
+  (function(){
+    const allDates = JSON.parse(document.getElementById('bill-dates-json').textContent || "[]");
+    function buildTree(dates){
+      const t = {};
+      (dates || []).forEach((ds) => {
+        if (!ds || ds.length < 10) return;
+        const y = ds.slice(0,4), m = ds.slice(5,7), d = ds.slice(8,10);
+        t[y] = t[y] || {};
+        t[y][m] = t[y][m] || [];
+        if (!t[y][m].includes(d)) t[y][m].push(d);
+      });
+      Object.keys(t).forEach(y => Object.keys(t[y]).forEach(m => t[y][m].sort()));
+      return t;
+    }
+    const tree = buildTree(allDates);
+    const years = Object.keys(tree).sort().reverse();
+    function yearDates(y){
+      const out = [];
+      Object.keys(tree[y] || {}).forEach((m)=> (tree[y][m] || []).forEach((d)=> out.push(`${y}-${m}-${d}`)));
+      return out;
+    }
+    function monthDates(y,m){ return (tree[y] && tree[y][m] ? tree[y][m] : []).map((d)=>`${y}-${m}-${d}`); }
+    function isAllSelected(set, arr){ return arr.length > 0 && arr.every(x => set.has(x)); }
+    function parseSet(raw){ return new Set((raw || "").split(",").map(x=>x.trim()).filter(Boolean)); }
+    function setLabel(labelEl, set){
+      const arr = Array.from(set).sort();
+      labelEl.textContent = arr.length ? `已选 ${arr.length} 天（${arr[0]} ~ ${arr[arr.length-1]}）` : "未选择";
+    }
+
+    function mountDateCascader(opts){
+      const trigger = document.getElementById(opts.triggerId);
+      const panel = document.getElementById(opts.panelId);
+      const input = document.getElementById(opts.inputId);
+      const label = document.getElementById(opts.labelId);
+      if (!trigger || !panel || !input || !label) return;
+      let selected = parseSet(input.value || "");
+      let activeYear = years[0] || "";
+      let activeMonth = "";
+
+      function render(){
+        panel.innerHTML = "";
+        const colY = document.createElement("div"); colY.className = "dc-col";
+        const colM = document.createElement("div"); colM.className = "dc-col";
+        const colD = document.createElement("div"); colD.className = "dc-col";
+
+        const yh = document.createElement("div");
+        yh.className = "dc-head";
+        yh.innerHTML = `<span>年份</span><label><input type="checkbox" ${isAllSelected(selected, allDates) ? "checked" : ""} /> 全选</label>`;
+        yh.querySelector("input").addEventListener("change", function(e){
+          if (e.target.checked) allDates.forEach(x=>selected.add(x)); else allDates.forEach(x=>selected.delete(x));
+          render();
+        });
+        colY.appendChild(yh);
+        years.forEach((y)=>{
+          const row = document.createElement("div");
+          row.className = "dc-item" + (activeYear === y ? " active" : "");
+          const yd = yearDates(y);
+          row.innerHTML = `<input type="checkbox" ${isAllSelected(selected, yd) ? "checked" : ""} /><span>${y}</span>`;
+          row.querySelector("input").addEventListener("change", function(e){
+            e.stopPropagation();
+            if (e.target.checked) yd.forEach(x=>selected.add(x)); else yd.forEach(x=>selected.delete(x));
+            render();
+          });
+          row.addEventListener("click", (e)=>{
+            e.stopPropagation();
+            if (e.target && e.target.tagName === "INPUT") return;
+            const nowChecked = isAllSelected(selected, yd);
+            if (nowChecked) yd.forEach(x=>selected.delete(x)); else yd.forEach(x=>selected.add(x));
+            activeYear = y; activeMonth = ""; render();
+          });
+          colY.appendChild(row);
+        });
+
+        const months = Object.keys(tree[activeYear] || {}).sort();
+        const mh = document.createElement("div");
+        mh.className = "dc-head";
+        const yScope = yearDates(activeYear);
+        mh.innerHTML = `<span>${activeYear || "月份"}</span><label><input type="checkbox" ${isAllSelected(selected, yScope) ? "checked" : ""} /> 全选</label>`;
+        mh.querySelector("input").addEventListener("change", function(e){
+          if (e.target.checked) yScope.forEach(x=>selected.add(x)); else yScope.forEach(x=>selected.delete(x));
+          render();
+        });
+        colM.appendChild(mh);
+        months.forEach((m)=>{
+          const row = document.createElement("div");
+          row.className = "dc-item" + (activeMonth === m ? " active" : "");
+          const md = monthDates(activeYear, m);
+          row.innerHTML = `<input type="checkbox" ${isAllSelected(selected, md) ? "checked" : ""} /><span>${m} 月</span>`;
+          row.querySelector("input").addEventListener("change", function(e){
+            e.stopPropagation();
+            if (e.target.checked) md.forEach(x=>selected.add(x)); else md.forEach(x=>selected.delete(x));
+            render();
+          });
+          row.addEventListener("click", (e)=>{
+            e.stopPropagation();
+            if (e.target && e.target.tagName === "INPUT") return;
+            const nowChecked = isAllSelected(selected, md);
+            if (nowChecked) md.forEach(x=>selected.delete(x)); else md.forEach(x=>selected.add(x));
+            activeMonth = m; render();
+          });
+          colM.appendChild(row);
+        });
+
+        const dh = document.createElement("div");
+        dh.className = "dc-head";
+        const dScope = activeMonth ? monthDates(activeYear, activeMonth) : [];
+        dh.innerHTML = `<span>${activeMonth ? (activeMonth + " 月日期") : "日期"}</span><label><input type="checkbox" ${isAllSelected(selected, dScope) ? "checked" : ""} /> 全选</label>`;
+        dh.querySelector("input").addEventListener("change", function(e){
+          if (e.target.checked) dScope.forEach(x=>selected.add(x)); else dScope.forEach(x=>selected.delete(x));
+          render();
+        });
+        colD.appendChild(dh);
+        (tree[activeYear] && activeMonth ? (tree[activeYear][activeMonth] || []) : []).forEach((d)=>{
+          const ds = `${activeYear}-${activeMonth}-${d}`;
+          const row = document.createElement("div");
+          row.className = "dc-item";
+          row.innerHTML = `<input type="checkbox" ${selected.has(ds) ? "checked" : ""} /><span>${d} 日</span>`;
+          row.querySelector("input").addEventListener("change", function(e){
+            e.stopPropagation();
+            if (e.target.checked) selected.add(ds); else selected.delete(ds);
+            render();
+          });
+          row.addEventListener("click", function(e){
+            e.stopPropagation();
+            if (e.target && e.target.tagName === "INPUT") return;
+            if (selected.has(ds)) selected.delete(ds); else selected.add(ds);
+            render();
+          });
+          colD.appendChild(row);
+        });
+
+        const foot = document.createElement("div");
+        foot.className = "dc-foot";
+        foot.innerHTML = `<span class="muted">已选 ${selected.size} 天</span><span><button type="button" class="btn-secondary" id="dc-clear">清空</button> <button type="button" id="dc-apply">应用</button></span>`;
+        panel.appendChild(colY); panel.appendChild(colM); panel.appendChild(colD); panel.appendChild(foot);
+        foot.querySelector("#dc-clear").addEventListener("click", function(){
+          selected = new Set();
+          input.value = "";
+          setLabel(label, selected);
+          render();
+        });
+        foot.querySelector("#dc-apply").addEventListener("click", function(){
+          const arr = Array.from(selected).sort();
+          input.value = arr.join(",");
+          setLabel(label, selected);
+          panel.classList.remove("open");
+          if (typeof opts.onApply === "function") opts.onApply(arr);
+        });
+        setLabel(label, selected);
+      }
+
+      trigger.addEventListener("click", function(e){
+        e.stopPropagation();
+        panel.classList.toggle("open");
+        if (panel.classList.contains("open")) {
+          selected = parseSet(input.value || "");
+          setLabel(label, selected);
+          render();
+        }
+      });
+      document.addEventListener("click", function(e){
+        if (!e.target.closest(".date-cascader-wrap")) panel.classList.remove("open");
+      });
+      panel.addEventListener("click", function(e){ e.stopPropagation(); });
+      setLabel(label, selected);
+    }
+
+    mountDateCascader({
+      triggerId: "travel-set-trigger",
+      panelId: "travel-set-panel",
+      inputId: "travel-set-dates",
+      labelId: "travel-set-label",
+    });
+    mountDateCascader({
+      triggerId: "travel-clear-trigger",
+      panelId: "travel-clear-panel",
+      inputId: "travel-clear-dates",
+      labelId: "travel-clear-label",
+    });
+  })();
+</script>
+
+<div class="card">
+  <h2>已打标日期（最近365组）</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>日期</th><th>标签</th><th>同行人</th><th>记录数</th><th>旅游支出</th><th>旅游收入</th></tr></thead>
+      <tbody>
+        {% for r in tagged_rows %}
+        <tr>
+          <td>{{ r.bill_date }}</td>
+          <td>{{ r.travel_tag }}</td>
+          <td>{{ r.travel_companions or '' }}</td>
+          <td>{{ r.record_count }}</td>
+          <td>{{ r.expense }}</td>
+          <td>{{ r.income }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>旅游专题分析</h2>
+  <h3>按行程标签统计</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>行程标签</th><th>同行人</th><th>开始日期</th><th>结束日期</th><th>持续天数</th><th>旅游支出</th><th>旅游收入</th><th>记录数</th></tr></thead>
+      <tbody>
+        {% for r in travel.by_trip %}
+        <tr>
+          <td>{{ r.travel_tag }}</td>
+          <td>
+            <form method="post" class="row" style="gap:6px; align-items:center;">
+              <input type="hidden" name="action" value="update_trip_companions" />
+              <input type="hidden" name="trip_tag" value="{{ r.travel_tag }}" />
+              <input type="text" name="trip_companions" value="{{ r.travel_companions or '' }}" placeholder="输入同行人" style="width:150px;" />
+              <button type="submit" class="btn-secondary">保存</button>
+            </form>
+          </td>
+          <td>{{ r.start_date }}</td>
+          <td>{{ r.end_date }}</td>
+          <td>{{ r.duration_days }}</td>
+          <td>{{ r.expense }}</td>
+          <td>{{ r.income }}</td>
+          <td>{{ r.record_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h3>每月旅游/非旅游支出对比</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>月份</th><th>旅游支出</th><th>非旅游支出</th></tr></thead>
+      <tbody>
+        {% for r in travel.by_month %}
+        <tr><td>{{ r.month }}</td><td>{{ r.travel_expense }}</td><td>{{ r.normal_expense }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h3>旅游支出类型Top12</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>类型</th><th>旅游支出</th></tr></thead>
+      <tbody>
+        {% for r in travel.by_category %}
+        <tr><td>{{ r.category }}</td><td>{{ r.expense }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

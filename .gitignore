@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# Node
+node_modules/
+
+# IDE / 工具
+.cursor/
+.vscode/
+*.swp
+
+# 系统
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ===== 个人数据（不要上传到 GitHub）=====
+# 账单备份与原始导出
+个人账单整理项目/backup/
+个人账单整理项目/账单备份/
+个人账单整理项目/*.txt
+
+# 喝水记录本地数据
+喝水提醒/data/
+
+# 数据库本地配置（如有）
+**/connector.local.py
+
+# 生成图标缓存（可由脚本重新生成）
+喝水提醒/assets/

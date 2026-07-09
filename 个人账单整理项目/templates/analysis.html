@@ -1,0 +1,386 @@
+{% extends "layout.html" %}
+{% block title %}分析看板{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>年度日历热力图（{{ '支出' if metric == 'expense' else '收入' }}）</h2>
+  <form method="get" class="row" style="margin-bottom: 8px;">
+    <div>
+      <div>年份</div>
+      <select name="year">
+        {% for y in years %}
+          <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <div>金额方向</div>
+      <select name="metric">
+        <option value="expense" {% if metric == 'expense' %}selected{% endif %}>支出</option>
+        <option value="income" {% if metric == 'income' %}selected{% endif %}>收入</option>
+      </select>
+    </div>
+    <div><button type="submit">应用</button></div>
+  </form>
+  <div class="row" style="margin-bottom: 6px;">
+    <div class="metric">年度总{{ '支出' if metric == 'expense' else '收入' }}：<b>{{ '%.2f'|format(annual_total) }}</b></div>
+  </div>
+  <div class="muted">灰色表示无记录，颜色越深表示当日金额越高；每个月标题右侧显示当月汇总。</div>
+  <div id="heatmap-wrap" style="margin-top:10px;"></div>
+  <script>
+    (function () {
+      const data = {{ heatmap_map_json|safe }};
+      const monthTotals = {{ month_total_map_json|safe }};
+      const maxVal = Number("{{ heatmap_max }}") || 1;
+      const wrap = document.getElementById("heatmap-wrap");
+      const year = Number("{{ selected_year }}");
+      const metricLabel = "{{ '支出' if metric == 'expense' else '收入' }}";
+      const isExpense = "{{ metric }}" === "expense";
+      function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+      function color(v) {
+        if (!v || v <= 0) return "#e0e0e0";
+        const r = Math.min(1, v / maxVal);
+        const alpha = 0.2 + r * 0.8;
+        return isExpense
+          ? `rgba(47,109,246,${alpha.toFixed(3)})`
+          : `rgba(42,161,112,${alpha.toFixed(3)})`;
+      }
+      for (let month = 1; month <= 12; month++) {
+        const box = document.createElement("div");
+        box.style.marginBottom = "12px";
+        const title = document.createElement("div");
+        const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+        const monthSum = Number(monthTotals[monthKey] || 0).toFixed(2);
+        title.textContent = `${month}月  |  当月${metricLabel}: ${monthSum}`;
+        title.style.fontWeight = "600";
+        title.style.marginBottom = "4px";
+        box.appendChild(title);
+        const grid = document.createElement("div");
+        grid.style.display = "grid";
+        grid.style.gridTemplateColumns = "repeat(31, minmax(22px, 1fr))";
+        grid.style.gap = "3px";
+        const dm = daysInMonth(year, month);
+        for (let d = 1; d <= 31; d++) {
+          const el = document.createElement("div");
+          el.style.height = "26px";
+          el.style.borderRadius = "4px";
+          el.style.fontSize = "10px";
+          el.style.lineHeight = "12px";
+          el.style.padding = "1px";
+          el.style.overflow = "hidden";
+          el.style.textAlign = "center";
+          el.style.cursor = "pointer";
+          el.style.border = "1px solid rgba(0,0,0,0.04)";
+          el.addEventListener("mouseenter", function () { el.style.transform = "translateY(-1px)"; });
+          el.addEventListener("mouseleave", function () { el.style.transform = ""; });
+          if (d > dm) {
+            el.style.background = "#f3f3f3";
+            el.textContent = "";
+            el.style.cursor = "default";
+          } else {
+            const ds = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const v = Number(data[ds] || 0);
+            el.style.background = color(v);
+            el.title = `${ds} ${metricLabel}: ${v.toFixed(2)}（点击跳转查看记录）`;
+            el.textContent = v > 0 ? v.toFixed(0) : "";
+            el.addEventListener("click", function () {
+              const url = new URL("{{ url_for('records_page') }}", window.location.origin);
+              url.searchParams.set("dates", ds);
+              window.location.href = url.toString();
+            });
+          }
+          grid.appendChild(el);
+        }
+        box.appendChild(grid);
+        wrap.appendChild(box);
+      }
+    })();
+  </script>
+</div>
+
+<div class="card">
+  <h2>类型 - 方向 - 日期（月）汇总</h2>
+  <style>
+    .cascader-wrap { position: relative; min-width: 340px; }
+    .cascader-trigger {
+      min-height: 36px; border: 1px solid #c8d3ea; border-radius: 10px;
+      background:#fff; padding: 7px 10px; cursor: pointer; display:flex; align-items:center; gap:8px; flex-wrap: wrap;
+    }
+    .cascader-panel {
+      position: absolute; top: 42px; left: 0; z-index: 80; width: 520px; max-width: 88vw;
+      background: #fff; border: 1px solid #d9e2f2; border-radius: 12px; box-shadow: 0 10px 28px rgba(30,56,110,.2);
+      display: none; overflow: hidden;
+    }
+    .cascader-panel.open { display: flex; animation: fadeIn .14s ease; }
+    .cascader-col { width: 50%; max-height: 320px; overflow: auto; border-right: 1px solid #edf1fa; }
+    .cascader-col:last-child { border-right: 0; }
+    .cascader-head {
+      position: sticky; top: 0; z-index: 2; background: #fbfdff;
+      padding: 8px 10px; border-bottom: 1px solid #edf1fa; display:flex; align-items:center; justify-content: space-between;
+      font-size: 12px; color:#4b5a78;
+    }
+    .cascader-list { padding: 4px 0; }
+    .cascader-item {
+      padding: 8px 10px; display:flex; align-items:center; justify-content: space-between;
+      cursor: pointer; transition: background .12s ease;
+    }
+    .cascader-item:hover, .cascader-item.active { background: #f3f7ff; }
+    .chip-mini {
+      display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #d9e2f2; background:#f6f9ff; font-size:12px;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px);} to { opacity:1; transform: translateY(0);} }
+  </style>
+  <form method="get" class="row" style="margin-bottom: 8px;" id="summary-form">
+    <input type="hidden" name="year" value="{{ selected_year }}" />
+    <input type="hidden" name="metric" value="{{ metric }}" />
+    <div>
+      <div>交易方向</div>
+      <select name="direction">
+        <option value="" {% if direction_filter == '' %}selected{% endif %}>全部</option>
+        <option value="支出" {% if direction_filter == '支出' %}selected{% endif %}>支出</option>
+        <option value="收入" {% if direction_filter == '收入' %}selected{% endif %}>收入</option>
+      </select>
+    </div>
+    <div class="cascader-wrap">
+      <div>一级/二级类型（多选）</div>
+      <div class="cascader-trigger" id="cat-trigger">
+        <span id="cat-trigger-text" class="muted">未选择</span>
+      </div>
+      <div class="cascader-panel" id="cat-panel">
+        <div class="cascader-col" id="cat-l1-col"></div>
+        <div class="cascader-col" id="cat-l2-col"></div>
+      </div>
+      <div id="cat-hidden-box"></div>
+    </div>
+    <div><button type="submit">应用筛选</button></div>
+    <div><a href="{{ url_for('analysis_page', year=selected_year, metric=metric) }}">重置</a></div>
+  </form>
+  <div class="muted" style="margin-bottom: 6px;">提示：可勾选一级类型（自动包含其全部二级），也可单独勾选二级类型。</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>月份</th>
+          <th>方向</th>
+          {% if show_category_dim %}
+          <th>一级类型</th>
+          <th>二级类型</th>
+          {% endif %}
+          <th>金额</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in summary_rows %}
+        <tr>
+          <td>{{ r.month }}</td>
+          <td>{{ r.direction }}</td>
+          {% if show_category_dim %}
+          <td>{{ r.category_l1 }}</td>
+          <td>{{ r.category }}</td>
+          {% endif %}
+          <td>{{ r.total_amount }}</td>
+        </tr>
+        {% endfor %}
+        {% if summary_rows|length == 0 %}
+        <tr><td colspan="{{ 5 if show_category_dim else 3 }}" class="muted">无匹配数据</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const grouped = {{ category_grouped|tojson }};
+    const selectedL2 = new Set({{ category_filters|tojson }});
+    const selectedL1 = new Set();
+    const trigger = document.getElementById("cat-trigger");
+    const panel = document.getElementById("cat-panel");
+    const l1Col = document.getElementById("cat-l1-col");
+    const l2Col = document.getElementById("cat-l2-col");
+    const hiddenBox = document.getElementById("cat-hidden-box");
+    const triggerText = document.getElementById("cat-trigger-text");
+    const form = document.getElementById("summary-form");
+    let activeL1 = grouped.length ? grouped[0].l1 : "";
+
+    function allL2ByL1(l1) {
+      const g = grouped.find(x => x.l1 === l1);
+      return g ? (g.l2s || []) : [];
+    }
+    function isL1AllChecked(l1) {
+      const list = allL2ByL1(l1);
+      return list.length > 0 && list.every(x => selectedL2.has(x));
+    }
+    function refreshL1Active() {
+      l1Col.querySelectorAll(".cascader-item[data-l1]").forEach((row) => {
+        row.classList.toggle("active", row.getAttribute("data-l1") === activeL1);
+      });
+    }
+    function renderTrigger() {
+      const l1Count = selectedL1.size;
+      const l2Count = selectedL2.size;
+      if (!l1Count && !l2Count) {
+        triggerText.textContent = "未选择";
+        triggerText.className = "muted";
+        return;
+      }
+      triggerText.className = "";
+      triggerText.innerHTML = `<span class="chip-mini">一级 ${l1Count}</span> <span class="chip-mini">二级 ${l2Count}</span>`;
+    }
+    function renderL1() {
+      l1Col.innerHTML = "";
+      const allChecked = grouped.length > 0 && grouped.every(g => selectedL1.has(g.l1));
+      const head = document.createElement("div");
+      head.className = "cascader-head";
+      head.innerHTML = `<span>一级类型</span><label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="cat-l1-all" ${allChecked ? "checked" : ""} />全选</label>`;
+      l1Col.appendChild(head);
+      const listWrap = document.createElement("div");
+      listWrap.className = "cascader-list";
+      l1Col.appendChild(listWrap);
+      grouped.forEach(g => {
+        const row = document.createElement("div");
+        row.className = "cascader-item" + (g.l1 === activeL1 ? " active" : "");
+        row.setAttribute("data-l1", g.l1);
+        row.innerHTML = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;">
+          <input type="checkbox" ${selectedL1.has(g.l1) ? "checked" : ""} data-l1-check="${g.l1}" />
+          <span>${g.l1}</span>
+        </label><span class="muted">›</span>`;
+        row.addEventListener("mouseenter", () => {
+          if (activeL1 === g.l1) return;
+          activeL1 = g.l1;
+          refreshL1Active();
+          renderL2();
+        });
+        listWrap.appendChild(row);
+      });
+      const l1All = l1Col.querySelector("#cat-l1-all");
+      if (l1All) {
+        l1All.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (this.checked) {
+            grouped.forEach(g => {
+              selectedL1.add(g.l1);
+              (g.l2s || []).forEach(x => selectedL2.add(x));
+            });
+          } else {
+            grouped.forEach(g => {
+              selectedL1.delete(g.l1);
+              (g.l2s || []).forEach(x => selectedL2.delete(x));
+            });
+          }
+          renderL1();
+          renderL2();
+          renderTrigger();
+          syncHiddenInputs();
+        });
+      }
+      l1Col.querySelectorAll("input[data-l1-check]").forEach(cb => {
+        cb.addEventListener("change", function (e) {
+          e.stopPropagation();
+          const l1 = this.getAttribute("data-l1-check");
+          const l2s = allL2ByL1(l1);
+          if (this.checked) {
+            selectedL1.add(l1);
+            l2s.forEach(x => selectedL2.add(x));
+          } else {
+            selectedL1.delete(l1);
+            l2s.forEach(x => selectedL2.delete(x));
+          }
+          renderL1();
+          renderL2();
+          renderTrigger();
+          syncHiddenInputs();
+        });
+      });
+    }
+    function renderL2() {
+      const l2s = allL2ByL1(activeL1);
+      l2Col.innerHTML = "";
+      const allChecked = l2s.length > 0 && l2s.every(x => selectedL2.has(x));
+      const head = document.createElement("div");
+      head.className = "cascader-head";
+      head.innerHTML = `<span>${activeL1 || "二级类型"}</span><label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="cat-l2-all" ${allChecked ? "checked" : ""} />全选</label>`;
+      l2Col.appendChild(head);
+      const listWrap = document.createElement("div");
+      listWrap.className = "cascader-list";
+      l2Col.appendChild(listWrap);
+      if (!l2s.length) {
+        listWrap.innerHTML = '<div class="cascader-item muted">无二级类型</div>';
+        return;
+      }
+      const l2All = l2Col.querySelector("#cat-l2-all");
+      if (l2All) {
+        l2All.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (this.checked) l2s.forEach(x => selectedL2.add(x));
+          else l2s.forEach(x => selectedL2.delete(x));
+          if (isL1AllChecked(activeL1)) selectedL1.add(activeL1); else selectedL1.delete(activeL1);
+          renderL1();
+          renderL2();
+          renderTrigger();
+          syncHiddenInputs();
+        });
+      }
+      l2s.forEach(l2 => {
+        const row = document.createElement("div");
+        row.className = "cascader-item";
+        row.innerHTML = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;">
+          <input type="checkbox" ${selectedL2.has(l2) ? "checked" : ""} data-l2-check="${l2}" />
+          <span>${l2}</span>
+        </label>`;
+        listWrap.appendChild(row);
+      });
+      l2Col.querySelectorAll("input[data-l2-check]").forEach(cb => {
+        cb.addEventListener("change", function (e) {
+          e.stopPropagation();
+          const l2 = this.getAttribute("data-l2-check");
+          if (this.checked) selectedL2.add(l2); else selectedL2.delete(l2);
+          if (isL1AllChecked(activeL1)) selectedL1.add(activeL1); else selectedL1.delete(activeL1);
+          renderL1();
+          renderTrigger();
+          syncHiddenInputs();
+        });
+      });
+    }
+    function syncHiddenInputs() {
+      hiddenBox.innerHTML = "";
+      Array.from(selectedL2).sort().forEach(v => {
+        const inp = document.createElement("input");
+        inp.type = "hidden";
+        inp.name = "category";
+        inp.value = v;
+        hiddenBox.appendChild(inp);
+      });
+    }
+
+    // 初始根据已选 L2 自动勾选对应 L1
+    grouped.forEach(g => {
+      if ((g.l2s || []).every(x => selectedL2.has(x)) && (g.l2s || []).length > 0) {
+        selectedL1.add(g.l1);
+      }
+    });
+    if (selectedL2.size) {
+      const first = Array.from(selectedL2)[0];
+      const hit = grouped.find(g => (g.l2s || []).includes(first));
+      if (hit) activeL1 = hit.l1;
+    }
+
+    trigger.addEventListener("click", function () {
+      panel.classList.toggle("open");
+      if (panel.classList.contains("open")) {
+        renderL1();
+        renderL2();
+      }
+    });
+    document.addEventListener("click", function (e) {
+      if (!e.target.closest(".cascader-wrap")) panel.classList.remove("open");
+    });
+    form.addEventListener("submit", function () {
+      syncHiddenInputs();
+    });
+
+    renderTrigger();
+    syncHiddenInputs();
+  })();
+</script>
+
+{% endblock %}

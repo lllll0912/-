@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>每日诗句推荐</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #f5f5f7;
+        color: #111827;
+        padding: 16px;
+      }
+      .app {
+        max-width: 480px;
+        margin: 0 auto;
+      }
+      .card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 20px 18px 16px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        margin-bottom: 16px;
+      }
+      .title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .subtitle {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 12px;
+      }
+      .poem-content {
+        font-size: 18px;
+        line-height: 1.6;
+        color: #111827;
+        margin-bottom: 16px;
+      }
+      .meta-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #6b7280;
+      }
+      .btn-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      button {
+        flex: 1;
+        border: none;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        transition: all 0.15s ease;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #16a085, #059669);
+        color: #ffffff;
+      }
+      .btn-primary:active {
+        transform: scale(0.97);
+        opacity: 0.92;
+      }
+      .btn-outline {
+        background: #ffffff;
+        color: #059669;
+        border: 1px solid #d1fae5;
+      }
+      .btn-outline:active {
+        transform: scale(0.97);
+        background: #ecfdf5;
+      }
+      .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 12px 4px 8px;
+        color: #374151;
+      }
+      .history-list {
+        max-height: 280px;
+        overflow-y: auto;
+      }
+      .history-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #f3f4f6;
+      }
+      .history-line1 {
+        font-size: 14px;
+        color: #111827;
+        margin-bottom: 4px;
+      }
+      .history-line2 {
+        font-size: 11px;
+        color: #9ca3af;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .favorite-tag {
+        color: #f97316;
+        font-weight: 500;
+        margin-left: 4px;
+      }
+      .tab-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .tab {
+        flex: 1;
+        text-align: center;
+        padding: 8px 0;
+        border-radius: 999px;
+        font-size: 13px;
+        cursor: pointer;
+        background: #f3f4f6;
+        color: #6b7280;
+      }
+      .tab-active {
+        background: #111827;
+        color: #f9fafb;
+      }
+      .empty-text {
+        font-size: 12px;
+        color: #9ca3af;
+        text-align: center;
+        padding: 12px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="card" id="today-card">
+        <div class="title">今日诗句</div>
+        <div class="subtitle" id="today-date">加载中...</div>
+        <div class="poem-content" id="today-content">正在获取今日推荐...</div>
+        <div class="meta-row">
+          <div id="today-meta"></div>
+          <div id="favorite-status"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" id="btn-favorite">
+            <span id="favorite-text">收藏</span>
+          </button>
+          <button class="btn-outline" id="btn-toggle-history">
+            历史推送
+          </button>
+        </div>
+      </div>
+
+      <div class="card" id="history-card" style="display: none;">
+        <div class="tab-row">
+          <div class="tab tab-active" id="tab-history">历史推送</div>
+          <div class="tab" id="tab-favorites">我的收藏</div>
+        </div>
+        <div class="section-title" id="list-title">最近推送</div>
+        <div class="history-list" id="list-container"></div>
+      </div>
+    </div>
+
+    <script src="./main.js"></script>
+  </body>
+  </html>
+

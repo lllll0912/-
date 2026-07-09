@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% block title %}类型字典管理{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>类型字典管理（二级结构）</h2>
+  <div class="muted">每条规则包含 <b>一级类型</b>（大类）和 <b>二级类型</b>（细分），以及对应的关键词/正则匹配规则。</div>
+</div>
+
+<div class="card">
+  <h2>支出类型（CONSUME_MAP）</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>一级类型</th><th>二级类型</th><th>匹配规则（| 分隔）</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        {% set prev_l1 = [None] %}
+        {% for r in consume_rows %}
+        <tr{% if prev_l1[0] != r.l1 %} style="border-top: 2px solid #c0d2f0;"{% endif %}>
+          <form method="post">
+            <input type="hidden" name="target" value="consume" />
+            <td><input type="text" name="l1" value="{{ r.l1 }}" required style="width:120px;" /></td>
+            <td><input type="text" name="l2" value="{{ r.l2 }}" required style="width:120px;" /></td>
+            <td><input type="text" name="pattern" value="{{ r.pattern }}" style="width: 360px;" /></td>
+            <td class="row">
+              <button type="submit" name="action" value="update">保存</button>
+              <button type="submit" name="action" value="delete" class="btn-secondary">删除</button>
+            </td>
+          </form>
+        </tr>
+        {% if prev_l1.append(r.l1) %}{% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <h3 style="margin-top: 10px;">新增支出类型</h3>
+  <form method="post" class="row">
+    <input type="hidden" name="target" value="consume" />
+    <div>
+      <div>一级类型</div>
+      <input type="text" name="l1" required placeholder="如 生活支出" style="width:120px;" />
+    </div>
+    <div>
+      <div>二级类型</div>
+      <input type="text" name="l2" required placeholder="如 医药" style="width:120px;" />
+    </div>
+    <div>
+      <div>匹配规则</div>
+      <input type="text" name="pattern" style="width: 300px;" placeholder="例如 中药|买药|看病" />
+    </div>
+    <div><button type="submit" name="action" value="add">新增</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>收入类型（INCOME_MAP）</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>一级类型</th><th>二级类型</th><th>匹配规则（| 分隔）</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        {% set prev_l1_inc = [None] %}
+        {% for r in income_rows %}
+        <tr{% if prev_l1_inc[0] != r.l1 %} style="border-top: 2px solid #c0d2f0;"{% endif %}>
+          <form method="post">
+            <input type="hidden" name="target" value="income" />
+            <td><input type="text" name="l1" value="{{ r.l1 }}" required style="width:120px;" /></td>
+            <td><input type="text" name="l2" value="{{ r.l2 }}" required style="width:120px;" /></td>
+            <td><input type="text" name="pattern" value="{{ r.pattern }}" style="width: 360px;" /></td>
+            <td class="row">
+              <button type="submit" name="action" value="update">保存</button>
+              <button type="submit" name="action" value="delete" class="btn-secondary">删除</button>
+            </td>
+          </form>
+        </tr>
+        {% if prev_l1_inc.append(r.l1) %}{% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <h3 style="margin-top: 10px;">新增收入类型</h3>
+  <form method="post" class="row">
+    <input type="hidden" name="target" value="income" />
+    <div>
+      <div>一级类型</div>
+      <input type="text" name="l1" required placeholder="如 工资" style="width:120px;" />
+    </div>
+    <div>
+      <div>二级类型</div>
+      <input type="text" name="l2" required placeholder="如 奖金" style="width:120px;" />
+    </div>
+    <div>
+      <div>匹配规则</div>
+      <input type="text" name="pattern" style="width: 300px;" placeholder="例如 奖金|绩效" />
+    </div>
+    <div><button type="submit" name="action" value="add">新增</button></div>
+  </form>
+</div>
+{% endblock %}

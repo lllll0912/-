@@ -1,0 +1,533 @@
+{% extends "layout.html" %}
+{% block title %}导入清洗{% endblock %}
+{% block content %}
+{% if sample_loaded %}
+<script>window.__skipDraftRestore = true;</script>
+{% endif %}
+<div class="card">
+  <h2>Step 1：导入并解析预览</h2>
+  <div class="muted" style="margin-bottom: 8px;">
+    支持 <b>txt/csv/xlsx</b>。先解析预览并编辑记录，最后确认生成临时表并入库。
+    <br/>纯 <b>txt</b> 日期一般为 <code>月-日</code>，需在下方填写 <b>账单年份</b> 才能补全为完整日期；csv/xlsx 请用完整 <code>YYYY-MM-DD</code>。
+  </div>
+  <form method="post" enctype="multipart/form-data">
+    <div class="row">
+      <div>
+        <div>账单年份（txt 月-日 补全用）</div>
+        <input type="number" name="bill_year" value="{{ year }}" min="2000" max="2100" style="width: 120px;" />
+      </div>
+      <div>
+        <div>上传文件</div>
+        <input type="file" name="txt_file" accept=".txt,.csv,.xlsx" />
+      </div>
+    </div>
+    <div style="margin-top: 8px;">粘贴账单文本：</div>
+    <textarea name="raw_text" style="width: 100%; min-height: 220px;">{{ raw_text }}</textarea>
+    <div class="row" style="margin-top: 8px;">
+      <button type="submit" name="action" value="preview_parse">解析预览</button>
+      <button type="submit" name="action" value="load_sample" class="btn-secondary" onclick="try{localStorage.removeItem('bill:form-draft:/')}catch(e){}">使用2025样例</button>
+      <a href="{{ url_for('download_template_csv') }}">下载CSV模板</a>
+      <a href="{{ url_for('download_template_xlsx') }}">下载XLSX模板</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>csv/xlsx 导入字段规范</h2>
+  <div><b>必填字段：</b> {{ required_columns|join("、") }}</div>
+  <div><b>可选字段：</b> {{ optional_columns|join("、") }}</div>
+  <div class="muted" style="margin-top: 8px;">
+    <b>必填字段说明：</b><br/>
+    - 日期：必须为完整日期，建议 `YYYY-MM-DD`（例如 `2025-10-01`）<br/>
+    - 金额：必须是数值（例如 `34.22`）<br/>
+    - 类型明细：消费/收入事项文本（例如 `午餐`、`工资`）<br/>
+    - 交易方向：仅支持 `收入` 或 `支出`<br/>
+    <br/>
+    <b>可选字段类型：</b><br/>
+    - 日记：文本<br/>
+    - 类型：文本（默认按一级类型理解；若填写二级类型则按二级处理）<br/>
+    - 一级类型：文本<br/>
+    - 旅游标识：布尔（`1/0`、`是/否`）<br/>
+    - 旅游标签：文本
+  </div>
+</div>
+
+{% if preview_data %}
+{% if unknown_category_pairs|length > 0 %}
+<div class="card">
+  <h2>类型标准化映射（不在当前类型字典中的类型）</h2>
+  <style>
+    .map-cascader { position: relative; min-width: 300px; }
+    .map-trigger {
+      min-height: 36px; border: 1px solid #c8d3ea; border-radius: 10px; background:#fff;
+      padding: 7px 10px; cursor:pointer; display:flex; align-items:center; color:#1f2a44;
+    }
+    .map-trigger.placeholder { color:#6b7280; }
+    .map-panel {
+      display:none; position:absolute; top:40px; left:0; z-index:90; width:480px; max-width:85vw;
+      background:#fff; border:1px solid #d9e2f2; border-radius:12px; box-shadow:0 10px 28px rgba(30,56,110,.2);
+      overflow:hidden;
+    }
+    .map-panel.open { display:flex; }
+    .map-col { width:50%; max-height:280px; overflow:auto; border-right:1px solid #eef2fb; }
+    .map-col:last-child { border-right:0; }
+    .map-item { padding:8px 10px; cursor:pointer; transition:background .12s ease; }
+    .map-item:hover, .map-item.active { background:#f3f7ff; }
+    .map-hint { font-size:12px; color:#5f6b85; margin-top:4px; }
+  </style>
+  <div class="muted" style="margin-bottom: 10px;">
+    下列名称来自导入文本/表格中的「类型」字段，但<strong>不是</strong>当前类型字典里的标准类型名。可点击一级或二级类型，最后点到哪一项就映射到哪一项。
+  </div>
+  <form method="post" id="cat-map-form" onsubmit="return submitCategoryMap(this);">
+    <input type="hidden" name="action" value="preview_apply_category_map" />
+    <input type="hidden" name="preview_token" value="{{ preview_token }}" />
+    <input type="hidden" name="category_map_json" id="category_map_json" value="" />
+    {% for u in unknown_category_pairs %}
+    <div class="row" style="align-items: center; margin-bottom: 8px;">
+      <div style="min-width: 200px;"><b>{{ u.raw }}</b>（{{ u.direction }}）</div>
+      <div>
+        <div>映射为（可选一级或二级）</div>
+        <div class="map-cascader" data-direction="{{ u.direction }}">
+          <input type="hidden" class="map-target-input" data-map-key="{{ u.key }}" value="" />
+          <div class="map-trigger placeholder">请选择（点击一级或二级）</div>
+          <div class="map-panel">
+            <div class="map-col map-l1"></div>
+            <div class="map-col map-l2"></div>
+          </div>
+        </div>
+        <div class="map-hint">例如：可直接点“生活支出”（一级）或“医药”（二级）</div>
+      </div>
+    </div>
+    {% endfor %}
+    <div style="margin-top: 10px;"><button type="submit">应用映射</button></div>
+  </form>
+</div>
+{% endif %}
+<div class="card">
+  <h2>Step 2：预览批量处理（可逐行编辑/删除）</h2>
+  <div class="muted" style="margin-bottom: 8px;">
+    本次识别到 {{ detected_dates|length }} 个账单日期，日期范围：<b>{{ min_date or '-' }}</b> 至 <b>{{ max_date or '-' }}</b>。
+  </div>
+  <style>
+    .pending-row { background: #ffe9e9; }
+    .unknown-cat-row { background: #fff3e0; }
+    .toolbar-btn { margin-right: 8px; }
+  </style>
+  <div class="row" style="margin-bottom: 8px;">
+    <form method="post" class="row">
+      <input type="hidden" name="action" value="preview_delete_range" />
+      <input type="hidden" name="preview_token" value="{{ preview_token }}" />
+      <div>
+        <div>批量删除：开始日期</div>
+        <input type="date" name="delete_start_date" required />
+      </div>
+      <div>
+        <div>结束日期</div>
+        <input type="date" name="delete_end_date" required />
+      </div>
+      <div><button type="submit" class="btn-secondary">按日期段批量删除</button></div>
+    </form>
+  </div>
+  <div class="row" style="margin-bottom: 8px;">
+    <button type="button" id="btn-filter-pending" class="btn-secondary toolbar-btn">仅看待分类</button>
+    <button type="button" id="btn-filter-unknown" class="btn-secondary toolbar-btn">仅看待映射类型</button>
+    <button type="button" id="btn-show-all" class="btn-secondary toolbar-btn">显示全部</button>
+    <div class="muted">红色：待分类；橙色：文本里的类型不在字典，请映射或改类型。</div>
+  </div>
+
+  <form method="post" id="preview-edit-form">
+    <input type="hidden" name="action" value="preview_save_rows" />
+    <input type="hidden" name="preview_token" value="{{ preview_token }}" />
+    <input type="hidden" name="rows_json" id="rows_json" value="" />
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>行号</th><th>日期</th><th>金额</th><th>明细</th><th>方向</th><th>一级类型</th><th>二级类型</th><th>日记</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="preview-body">
+        {% for r in preview_data.rows %}
+        <tr class="preview-row{% if r.category_unknown %} unknown-cat-row{% endif %}" data-original-category="{{ r.category }}" data-original-l1="{{ r.category_l1 }}">
+          <td>
+            <input data-f="row_index" type="number" value="{{ r.row_index }}" style="width:60px;" />
+            <input type="hidden" data-f="category_unknown" value="{{ 1 if r.category_unknown else 0 }}" />
+            <input type="hidden" data-f="explicit_category_raw" value="{{ r.explicit_category_raw or '' }}" />
+          </td>
+          <td><input data-f="bill_date" type="date" value="{{ r.bill_date or '' }}" /></td>
+          <td><input data-f="amount" type="number" step="0.01" value="{{ r.amount }}" style="width:85px;" /></td>
+          <td><input data-f="detail" type="text" value="{{ r.detail }}" style="width:120px;" /></td>
+          <td>
+            <select data-f="direction">
+              <option value="支出" {% if r.direction == '支出' %}selected{% endif %}>支出</option>
+              <option value="收入" {% if r.direction == '收入' %}selected{% endif %}>收入</option>
+            </select>
+          </td>
+          <td><select data-f="category_l1" class="l1-select" style="width:100px;"></select></td>
+          <td><select data-f="category" class="category-select" style="width:110px;"></select></td>
+          <td><input data-f="note" type="text" value="{{ r.note }}" style="width:160px;" /></td>
+          <td><button type="button" class="btn-secondary row-del-btn">删除</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div class="row" style="margin-top: 8px;">
+      <button type="submit">保存所有修改</button>
+    </div>
+  </form>
+  <script>
+    function submitCategoryMap(form) {
+      const m = {};
+      document.querySelectorAll(".map-target-input").forEach(function (inp) {
+        const k = inp.getAttribute("data-map-key");
+        if (k && inp.value) m[k] = inp.value;
+      });
+      const el = document.getElementById("category_map_json");
+      if (el) el.value = JSON.stringify(m);
+      return true;
+    }
+    (function() {
+      const form = document.getElementById("preview-edit-form");
+      if (!form) return;
+      const body = document.getElementById("preview-body");
+
+      const consumeGrouped = {{ consume_grouped|tojson }};
+      const incomeGrouped = {{ income_grouped|tojson }};
+      const consumeL2s = []; consumeGrouped.forEach(g => g.l2s.forEach(c => consumeL2s.push(c)));
+      const incomeL2s = []; incomeGrouped.forEach(g => g.l2s.forEach(c => incomeL2s.push(c)));
+      consumeL2s.push("待分类");
+      incomeL2s.push("待分类收入");
+
+      // 类型标准化映射：多级展开（一级 hover 展开二级，点击一级/二级均可）
+      (function initMapCascaders(){
+        const nodes = document.querySelectorAll(".map-cascader");
+        if (!nodes || nodes.length === 0) return;
+        function groupsByDir(d){ return d === "收入" ? incomeGrouped : consumeGrouped; }
+        nodes.forEach((node) => {
+          const dir = node.getAttribute("data-direction") || "支出";
+          const groups = groupsByDir(dir);
+          const inp = node.querySelector(".map-target-input");
+          const trigger = node.querySelector(".map-trigger");
+          const panel = node.querySelector(".map-panel");
+          const l1Col = node.querySelector(".map-l1");
+          const l2Col = node.querySelector(".map-l2");
+          if (!inp || !trigger || !panel || !l1Col || !l2Col) return;
+          let activeL1 = groups.length ? groups[0].l1 : "";
+
+          function setPicked(token, label){
+            inp.value = token;
+            trigger.textContent = label;
+            trigger.classList.remove("placeholder");
+            panel.classList.remove("open");
+          }
+          function renderL2(l1){
+            l2Col.innerHTML = "";
+            const g = groups.find(x => x.l1 === l1);
+            if (!g) return;
+            (g.l2s || []).forEach((l2) => {
+              const it = document.createElement("div");
+              it.className = "map-item";
+              it.textContent = l2;
+              it.addEventListener("click", function(e){
+                e.stopPropagation();
+                setPicked("L2::" + l2, "二级：" + l1 + " / " + l2);
+              });
+              l2Col.appendChild(it);
+            });
+          }
+          function markActiveL1(){
+            l1Col.querySelectorAll(".map-item").forEach((el) => {
+              el.classList.toggle("active", el.getAttribute("data-l1") === activeL1);
+            });
+          }
+          function renderL1(){
+            l1Col.innerHTML = "";
+            groups.forEach((g) => {
+              const it = document.createElement("div");
+              it.className = "map-item" + (g.l1 === activeL1 ? " active" : "");
+              it.setAttribute("data-l1", g.l1);
+              it.textContent = g.l1;
+              it.addEventListener("mouseenter", function(){
+                activeL1 = g.l1;
+                // 只更新高亮与右侧二级，不重建左列，避免点击一级项事件被重绘吞掉
+                markActiveL1();
+                renderL2(activeL1);
+              });
+              it.addEventListener("click", function(e){
+                e.stopPropagation();
+                // 一级可直接作为映射目标：二级默认取一级同名值
+                setPicked("L1::" + g.l1, "一级：" + g.l1);
+              });
+              l1Col.appendChild(it);
+            });
+          }
+
+          trigger.addEventListener("click", function(e){
+            e.stopPropagation();
+            panel.classList.toggle("open");
+            if (panel.classList.contains("open")) {
+              renderL1();
+              renderL2(activeL1);
+            }
+          });
+        });
+        document.addEventListener("click", function(e){
+          if (!e.target.closest(".map-cascader")) {
+            document.querySelectorAll(".map-panel.open").forEach((p)=>p.classList.remove("open"));
+          }
+        });
+      })();
+
+      function l2ToL1(l2, isIncome) {
+        const groups = isIncome ? incomeGrouped : consumeGrouped;
+        for (const g of groups) {
+          if (g.l2s.indexOf(l2) >= 0) return g.l1;
+        }
+        return "";
+      }
+
+      function markPending(tr) {
+        const catEl = tr.querySelector('[data-f="category"]');
+        const val = catEl ? catEl.value : "";
+        if (val === "待分类" || val === "待分类收入") tr.classList.add("pending-row");
+        else tr.classList.remove("pending-row");
+      }
+      function markUnknown(tr) {
+        const uk = tr.querySelector('[data-f="category_unknown"]');
+        if (uk && uk.value === "1") tr.classList.add("unknown-cat-row");
+        else tr.classList.remove("unknown-cat-row");
+      }
+      function tryClearUnknownFlags(tr) {
+        const dirEl = tr.querySelector('[data-f="direction"]');
+        const l1El = tr.querySelector('[data-f="category_l1"]');
+        const catEl = tr.querySelector('[data-f="category"]');
+        const uk = tr.querySelector('[data-f="category_unknown"]');
+        const raw = tr.querySelector('[data-f="explicit_category_raw"]');
+        if (!dirEl || !catEl || !uk) return;
+        const isIncome = dirEl.value === "收入";
+        const list = isIncome ? incomeL2s : consumeL2s;
+        const l1Matched = l1El && l1El.value && catEl.value === l1El.value; // 允许“一级映射=二级值”
+        if (list.indexOf(catEl.value) >= 0 || l1Matched) {
+          uk.value = "0";
+          if (raw) raw.value = "";
+        }
+      }
+      function rebuildCategoryOptions(tr) {
+        const dirEl = tr.querySelector('[data-f="direction"]');
+        const l1El = tr.querySelector('[data-f="category_l1"]');
+        const catEl = tr.querySelector('[data-f="category"]');
+        if (!dirEl || !catEl || !l1El) return;
+        const isIncome = dirEl.value === "收入";
+        const groups = isIncome ? incomeGrouped : consumeGrouped;
+        const oldL1 = l1El.getAttribute("data-current") || tr.getAttribute("data-original-l1") || l1El.value || "";
+        const oldL2 = catEl.getAttribute("data-current") || tr.getAttribute("data-original-category") || catEl.value || "";
+
+        // L1 下拉
+        l1El.innerHTML = "";
+        groups.forEach(g => {
+          const op = document.createElement("option");
+          op.value = g.l1; op.textContent = g.l1;
+          l1El.appendChild(op);
+        });
+
+        // 若旧值不存在，尝试由 L2 反推 L1
+        let resolvedL1 = oldL1;
+        if (oldL2) {
+          const byL2 = l2ToL1(oldL2, isIncome);
+          if (byL2) resolvedL1 = byL2;
+        }
+        if (resolvedL1 && !Array.from(l1El.options).some(o => o.value === resolvedL1)) {
+          const op = document.createElement("option");
+          op.value = resolvedL1; op.textContent = resolvedL1;
+          l1El.appendChild(op);
+        }
+        l1El.value = resolvedL1 || (l1El.options.length ? l1El.options[0].value : "");
+
+        // L2 下拉（按所选 L1 收敛），并保证“一级可直接作为二级默认值”
+        catEl.innerHTML = "";
+        const selectedGroup = groups.find(g => g.l1 === l1El.value);
+        const l2Options = selectedGroup ? selectedGroup.l2s.slice() : [];
+        if (l1El.value && l2Options.indexOf(l1El.value) < 0) {
+          l2Options.unshift(l1El.value);
+        }
+        l2Options.forEach(c => {
+          const op = document.createElement("option");
+          op.value = c; op.textContent = c;
+          catEl.appendChild(op);
+        });
+        const pendingLabel = isIncome ? "待分类收入" : "待分类";
+        const pOp = document.createElement("option");
+        pOp.value = pendingLabel; pOp.textContent = pendingLabel;
+        catEl.appendChild(pOp);
+        if (oldL2 && !Array.from(catEl.options).some(o => o.value === oldL2)) {
+          const op = document.createElement("option");
+          op.value = oldL2; op.textContent = oldL2;
+          catEl.appendChild(op);
+        }
+        if (oldL2 && Array.from(catEl.options).some(o => o.value === oldL2)) {
+          catEl.value = oldL2;
+        } else if (l1El.value && Array.from(catEl.options).some(o => o.value === l1El.value)) {
+          // 业务规则：选一级后，二级默认=一级（可再手动改）
+          catEl.value = l1El.value;
+        } else {
+          catEl.value = catEl.options.length > 0 ? catEl.options[0].value : "";
+        }
+        l1El.setAttribute("data-current", l1El.value);
+        catEl.setAttribute("data-current", catEl.value);
+        tryClearUnknownFlags(tr);
+        markPending(tr);
+        markUnknown(tr);
+      }
+
+      body.querySelectorAll("tr.preview-row").forEach((tr) => {
+        const dirEl = tr.querySelector('[data-f="direction"]');
+        const catEl = tr.querySelector('[data-f="category"]');
+        const old = tr.getAttribute("data-original-category") || "";
+        if (catEl) catEl.setAttribute("data-current", old);
+        rebuildCategoryOptions(tr);
+        if (dirEl) {
+          dirEl.addEventListener("change", function () {
+            if (catEl) catEl.setAttribute("data-current", catEl.value);
+            rebuildCategoryOptions(tr);
+          });
+        }
+        const l1El = tr.querySelector('[data-f="category_l1"]');
+        if (l1El) {
+          l1El.addEventListener("change", function () {
+            const isIncome = (tr.querySelector('[data-f="direction"]').value === "收入");
+            const groups = isIncome ? incomeGrouped : consumeGrouped;
+            const catEl2 = tr.querySelector('[data-f="category"]');
+            const grp = groups.find(g => g.l1 === l1El.value);
+            if (catEl2) {
+              catEl2.innerHTML = "";
+              const l2s = (grp ? grp.l2s.slice() : []);
+              if (l1El.value && l2s.indexOf(l1El.value) < 0) {
+                l2s.unshift(l1El.value);
+              }
+              l2s.forEach(c => {
+                const op = document.createElement("option");
+                op.value = c; op.textContent = c;
+                catEl2.appendChild(op);
+              });
+              const pendingLabel = isIncome ? "待分类收入" : "待分类";
+              const pOp = document.createElement("option");
+              pOp.value = pendingLabel; pOp.textContent = pendingLabel;
+              catEl2.appendChild(pOp);
+              // 业务规则：用户手动切换一级后，二级强制默认=一级（除非后续再手动改二级）
+              if (l1El.value && Array.from(catEl2.options).some(o => o.value === l1El.value)) {
+                catEl2.value = l1El.value;
+              } else if (catEl2.options.length > 0) {
+                catEl2.value = catEl2.options[0].value;
+              }
+              catEl2.setAttribute("data-current", catEl2.value);
+            }
+            l1El.setAttribute("data-current", l1El.value);
+            tryClearUnknownFlags(tr);
+            markPending(tr);
+            markUnknown(tr);
+          });
+        }
+        if (catEl) {
+          catEl.addEventListener("change", function () {
+            catEl.setAttribute("data-current", catEl.value);
+            const l1Now = l2ToL1(catEl.value, tr.querySelector('[data-f="direction"]').value === "收入");
+            const l1Ctl = tr.querySelector('[data-f="category_l1"]');
+            if (l1Ctl && l1Now && Array.from(l1Ctl.options).some(o => o.value === l1Now)) {
+              l1Ctl.value = l1Now;
+              l1Ctl.setAttribute("data-current", l1Now);
+            }
+            tryClearUnknownFlags(tr);
+            markPending(tr);
+            markUnknown(tr);
+          });
+        }
+      });
+
+      body.addEventListener("click", function(e) {
+        if (e.target && e.target.classList.contains("row-del-btn")) {
+          const tr = e.target.closest("tr");
+          if (tr) tr.remove();
+        }
+      });
+
+      document.getElementById("btn-filter-pending").addEventListener("click", function () {
+        body.querySelectorAll("tr.preview-row").forEach((tr) => {
+          tr.style.display = tr.classList.contains("pending-row") ? "" : "none";
+        });
+      });
+      var btnUnk = document.getElementById("btn-filter-unknown");
+      if (btnUnk) {
+        btnUnk.addEventListener("click", function () {
+          body.querySelectorAll("tr.preview-row").forEach((tr) => {
+            tr.style.display = tr.classList.contains("unknown-cat-row") ? "" : "none";
+          });
+        });
+      }
+      document.getElementById("btn-show-all").addEventListener("click", function () {
+        body.querySelectorAll("tr.preview-row").forEach((tr) => (tr.style.display = ""));
+      });
+
+      form.addEventListener("submit", function(e) {
+        const rows = [];
+        body.querySelectorAll("tr.preview-row").forEach((tr) => {
+          const obj = {};
+          tr.querySelectorAll("[data-f]").forEach((el) => {
+            obj[el.getAttribute("data-f")] = el.value;
+          });
+          rows.push(obj);
+        });
+        document.getElementById("rows_json").value = JSON.stringify(rows);
+      });
+    })();
+  </script>
+</div>
+<div class="card">
+  <h2>Step 3：确认生成临时表并入库</h2>
+  <form method="post">
+    <input type="hidden" name="action" value="create_staging_and_confirm" />
+    <input type="hidden" name="preview_token" value="{{ preview_token }}" />
+    <div class="row" style="margin-bottom: 8px;">
+      <label><input type="radio" name="import_mode" value="replace" checked /> 覆盖模式（按本次导入日期先删后插）</label>
+      <label><input type="radio" name="import_mode" value="insert_only" /> 仅插入（不删除已有记录）</label>
+    </div>
+    <div class="muted" style="margin-bottom: 8px;">
+      说明：覆盖模式适合重导同日期账单；仅插入适合补录新增记录，可能产生同日期多条数据。
+    </div>
+    <button type="submit">确认生成临时表并入库</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>最近导入批次</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>来源</th>
+          <th>年份</th>
+          <th>状态</th>
+          <th>创建时间</th>
+          <th>确认时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in batches %}
+        <tr>
+          <td>{{ b.id }}</td>
+          <td>{{ b.source_name }}</td>
+          <td>{{ b.source_year }}</td>
+          <td>{{ b.status }}</td>
+          <td>{{ b.created_at }}</td>
+          <td>{{ b.confirmed_at or '' }}</td>
+          <td><a href="{{ url_for('staging_page', batch_id=b.id) }}">查看临时记录</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
