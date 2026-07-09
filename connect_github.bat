@@ -6,8 +6,22 @@ echo ========================================
 echo   连接 GitHub 远程仓库（首次使用）
 echo ========================================
 echo.
+
+git config user.name >nul 2>&1
+if errorlevel 1 (
+    echo [提示] 首次使用 Git 需设置身份（仅本仓库）：
+    set /p GIT_NAME=你的名字: 
+    set /p GIT_EMAIL=你的 GitHub 邮箱: 
+    git config user.name "%GIT_NAME%"
+    git config user.email "%GIT_EMAIL%"
+    echo.
+)
+
 echo 请先在浏览器创建空仓库: https://github.com/new
 echo 建议选 Private（私有），不要添加 README。
+echo.
+
+echo [说明] 这里填的是 GitHub 用户名，不是电脑登录名（白木/陈白木）！
 echo.
 
 set /p GITHUB_USER=请输入你的 GitHub 用户名: 
@@ -50,5 +64,6 @@ if errorlevel 1 (
 echo.
 echo [成功] 已连接并推送到 GitHub！
 echo 以后修改代码后，运行 sync_github.bat 即可备份。
+echo 详细教程见: GitHub连接教程.md
 echo.
 pause
