@@ -1,0 +1,24 @@
+{
+  "examples": [
+    {
+      "name": "杭州三日自由行",
+      "command": "python main.py guide 杭州 3 --origin 上海 --budget 2000 --print"
+    },
+    {
+      "name": "AI 行程规划",
+      "command": "python main.py ai \"五一去杭州玩三天，预算人均2000，想住西湖附近\""
+    },
+    {
+      "name": "西湖附近酒店",
+      "command": "python main.py hotel 杭州 --poi 西湖 --check-in 2026-05-01 --check-out 2026-05-03"
+    },
+    {
+      "name": "北京到上海航班",
+      "command": "python main.py flight 北京 上海 --dep-date 2026-05-01"
+    },
+    {
+      "name": "杭州景点",
+      "command": "python main.py poi 杭州 --keyword 西湖"
+    }
+  ]
+}

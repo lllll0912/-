@@ -1,0 +1,12 @@
+{
+  "name": "feizhu-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "飞猪 FlyAI MCP 本地 CLI 依赖",
+  "scripts": {
+    "flyai": "flyai"
+  },
+  "dependencies": {
+    "@fly-ai/flyai-cli": "latest"
+  }
+}

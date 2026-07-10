@@ -34,3 +34,7 @@ Desktop.ini
 
 # 生成图标缓存（可由脚本重新生成）
 喝水提醒/assets/
+
+# 飞猪MCP 查询结果与攻略
+飞猪MCP/output/*
+!飞猪MCP/output/.gitkeep

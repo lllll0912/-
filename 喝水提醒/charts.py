@@ -5,8 +5,12 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+
+plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
+plt.rcParams["axes.unicode_minus"] = False
 
 from data_store import DataStore
 from theme import COLORS, create_card, fade_in_window, setup_theme

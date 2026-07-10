@@ -1,0 +1,2 @@
+# 本项目主要依赖 Node.js 的 @fly-ai/flyai-cli
+# Python 仅用于封装调用与生成攻略，无额外第三方包

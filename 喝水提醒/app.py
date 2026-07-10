@@ -10,6 +10,7 @@ from data_store import DataStore
 from icon_util import apply_window_icon
 from reminder import ReminderScheduler
 from settings_window import SettingsWindow
+from charts import ChartWindow
 from theme import COLORS, FONT_BOLD, create_card, fade_in_window, setup_theme
 
 COMPACT_DEFAULT = (300, 268)
@@ -33,6 +34,7 @@ class WaterReminderApp:
         self.store = DataStore()
         self.scheduler = ReminderScheduler(self.root, self.store, self._on_timer_due)
         self._settings_window: SettingsWindow | None = None
+        self._chart_window: ChartWindow | None = None
         self._mode = self.MODE_COMPACT
         self._drag_offset = (0, 0)
         self._pending_next_slot: datetime | None = None
@@ -75,7 +77,13 @@ class WaterReminderApp:
             header, text="⚙", font=("Microsoft YaHei UI", 14),
             bg=COLORS["bg_soft"], fg=COLORS["text_muted"], cursor="hand2",
         )
-        settings_btn.pack(side=tk.RIGHT, padx=12, pady=4)
+        chart_btn = tk.Label(
+            header, text="📊", font=("Microsoft YaHei UI", 14),
+            bg=COLORS["bg_soft"], fg=COLORS["text_muted"], cursor="hand2",
+        )
+        chart_btn.pack(side=tk.RIGHT, padx=(0, 8), pady=4)
+        chart_btn.bind("<Button-1>", lambda _e: self._open_charts())
+        settings_btn.pack(side=tk.RIGHT, padx=(0, 12), pady=4)
         settings_btn.bind("<Button-1>", lambda _e: self._open_settings())
         header.bind("<Button-1>", self._start_drag)
         header.bind("<B1-Motion>", self._on_drag)
@@ -343,6 +351,14 @@ class WaterReminderApp:
             self._refresh_display()
 
         self._settings_window = SettingsWindow(self.root, self.store, _on_saved)
+
+    def _open_charts(self) -> None:
+        if self._chart_window is not None and self._chart_window.winfo_exists():
+            self._chart_window.lift()
+            self._chart_window.period_var.set("day")
+            self._chart_window._render_chart()
+            return
+        self._chart_window = ChartWindow(self.root, self.store)
 
     def _on_close(self) -> None:
         if self._mode == self.MODE_REMINDER:
