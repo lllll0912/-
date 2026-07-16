@@ -5,6 +5,16 @@ $Root = Split-Path -Parent $PSScriptRoot
 $Deploy = Join-Path $Root "deploy-repo"
 
 Set-Location $Root
+
+Write-Host ">> auto-generate missing stories"
+$envFile = Join-Path $Root ".env"
+if (Test-Path $envFile) {
+  python (Join-Path $Root "scripts\generate_stories.py") --only-missing
+} else {
+  python (Join-Path $Root "scripts\generate_stories.py") --only-missing --no-llm
+}
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host ">> build poems.json"
 python (Join-Path $Root "scripts\build_poems_json.py")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
