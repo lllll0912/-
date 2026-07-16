@@ -39,5 +39,6 @@ Desktop.ini
 飞猪MCP/output/*
 !飞猪MCP/output/.gitkeep
 
-# 每日一诗独立发布目录（自带 .git，勿并入 monorepo）
+# 每日一诗
 poem-20260313/deploy-repo/
+poem-20260313/.env
