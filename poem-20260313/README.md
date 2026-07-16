@@ -13,11 +13,13 @@ https://daily-poem.onrender.com
 
 （以你在 Render 后台看到的实际域名为准；部署后会写在下方「已发布链接」。）
 
-**已发布链接：**（推送并在 Render 创建静态站后填写）
+**已发布链接：**
 
 ```text
-（待部署）
+（本地已就绪；需 push 到 GitHub 后，按《部署到Render.md》创建静态站即可获得 https://….onrender.com）
 ```
+
+> 当前本机若暂时连不上 GitHub，可先双击 `预览本地.bat` 自测；网络恢复后用 `文档与工具\备份到GitHub.bat` 推送，再去 Render 点 Blueprint。
 
 > 不用 GitHub Pages 作为主链接，避免国内访问不稳定。
 
