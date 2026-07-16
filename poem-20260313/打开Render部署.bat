@@ -1,15 +1,25 @@
 @echo off
 chcp 65001 >nul
-echo 正在打开 Render Blueprint 部署页...
-echo 仓库: https://github.com/lllll0912/-
+echo ========================================
+echo  每日一诗 — 连接 Render（仓库 daily-poem）
+echo ========================================
 echo.
-start "" "https://dashboard.render.com/blueprint/new?repo=https%%3A%%2F%%2Fgithub.com%%2Flllll0912%%2F-&branch=main"
+echo 源码已推送到: https://github.com/lllll0912/daily-poem
 echo.
-echo 请在打开的网页中：
-echo   1. 用 GitHub 登录 Render（没有账号就注册免费版）
-echo   2. 确认仓库为 lllll0912/- 
-echo   3. 点击 Apply / Deploy Blueprint
-echo   4. 等 daily-poem 变成 Live，复制 https://….onrender.com 链接
+echo 正在打开 Render 新建静态站页面...
+start "" "https://dashboard.render.com/static/new"
 echo.
-echo 完成后把链接发回给我，我帮你写进 README。
+echo 在网页中按下面填写：
+echo   Repository     : lllll0912 / daily-poem
+echo   Branch         : main
+echo   Name           : daily-poem
+echo   Root Directory : （留空）
+echo   Build Command  : true
+echo   Publish Dir    : .
+echo.
+echo 若列表里没有 daily-poem：
+echo   https://github.com/settings/installations
+echo   → Render → Configure → 勾选 daily-poem → Save
+echo.
+echo 部署成功后把 https://….onrender.com 链接发给我。
 pause

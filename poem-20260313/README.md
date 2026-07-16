@@ -5,15 +5,15 @@
 
 ## 在线访问
 
-**已发布链接：**
+**GitHub 仓库（已就绪）：** https://github.com/lllll0912/daily-poem  
+
+**公网链接（Render 部署后填写）：**
 
 ```text
-（请用「换方式上线.bat」→ Netlify 拖拽；拿到链接后发我写入此处）
+（在 Render 选仓库 daily-poem → Static Site → Build: true → Publish: . → 复制 onrender.com 链接）
 ```
 
-源码目录：`site/`（开发） · 独立发布包：`deploy-repo/`（拖拽上线用）
-
-> 不用 GitHub Pages 作主链接。原 monorepo 仓库名是 `-`，Render 里经常选不到——见 [`选不到仓库时.md`](选不到仓库时.md)。
+双击 **`打开Render部署.bat`** 按提示在 Render 创建静态站。
 
 ## 本地预览
 
