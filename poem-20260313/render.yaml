@@ -1,0 +1,15 @@
+# 备用：若单独以本目录为仓库根时使用。
+# monorepo 请用仓库根目录的 render.yaml。
+services:
+  - type: web
+    name: daily-poem
+    runtime: static
+    buildCommand: "true"
+    staticPublishPath: site
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=300
+      - path: /poems.json
+        name: Cache-Control
+        value: public, max-age=120

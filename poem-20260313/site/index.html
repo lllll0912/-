@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="每日一诗 — 晚安诗句，静心一读" />
+    <title>每日一诗</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+
+    <main class="stage" id="stage">
+      <header class="brand">
+        <p class="brand-mark">每日一诗</p>
+        <p class="brand-sub">晚安 · 诗意</p>
+      </header>
+
+      <p class="date" id="poem-date">···</p>
+
+      <article class="poem" id="poem-card" aria-live="polite">
+        <p class="poem-text" id="poem-text">正在展开今日一句…</p>
+        <div class="story" id="poem-story" hidden>
+          <p class="story-label">缘起</p>
+          <p class="story-body" id="poem-story-body"></p>
+        </div>
+      </article>
+
+      <nav class="actions">
+        <button type="button" class="linkish" id="btn-history" aria-expanded="false">
+          往日
+        </button>
+      </nav>
+    </main>
+
+    <aside class="panel" id="history-panel" hidden>
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>往日诗句</h2>
+          <button type="button" class="linkish" id="btn-close-history">收起</button>
+        </div>
+        <ul class="history-list" id="history-list"></ul>
+      </div>
+    </aside>
+
+    <script src="./main.js"></script>
+  </body>
+</html>
