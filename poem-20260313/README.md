@@ -16,10 +16,11 @@ https://daily-poem.onrender.com
 **已发布链接：**
 
 ```text
-（本地已就绪；需 push 到 GitHub 后，按《部署到Render.md》创建静态站即可获得 https://….onrender.com）
+（代码已推送到 GitHub；请双击「打开Render部署.bat」或按《部署到Render.md》完成首次创建，把得到的 https://….onrender.com 发回即可写入此处）
 ```
 
-> 当前本机若暂时连不上 GitHub，可先双击 `预览本地.bat` 自测；网络恢复后用 `文档与工具\备份到GitHub.bat` 推送，再去 Render 点 Blueprint。
+> 源码：https://github.com/lllll0912/-/tree/main/poem-20260313  
+> 不用 GitHub Pages 作为主链接，避免国内访问不稳定。
 
 > 不用 GitHub Pages 作为主链接，避免国内访问不稳定。
 
