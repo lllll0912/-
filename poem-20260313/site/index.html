@@ -26,10 +26,10 @@
 
       <article class="poem" id="poem-card" aria-live="polite">
         <p class="poem-text" id="poem-text">正在展开今日一句…</p>
-        <div class="story" id="poem-story" hidden>
-          <p class="story-label">缘起</p>
-          <p class="story-body" id="poem-story-body"></p>
-        </div>
+        <button type="button" class="story-entry" id="btn-story" hidden>
+          <span class="story-entry-label">诗境</span>
+          <span class="story-entry-hint">读出处 · 全诗 · 背景</span>
+        </button>
       </article>
 
       <nav class="actions">
@@ -38,6 +38,20 @@
         </button>
       </nav>
     </main>
+
+    <aside class="panel panel-story" id="story-panel" hidden>
+      <div class="panel-inner panel-inner-story">
+        <div class="panel-head">
+          <h2>诗境</h2>
+          <button type="button" class="linkish" id="btn-close-story">返回</button>
+        </div>
+        <div class="story-scroll" id="story-scroll">
+          <p class="story-poem-line" id="story-poem-line"></p>
+          <div class="story-sections" id="story-sections"></div>
+          <p class="story-empty" id="story-empty" hidden>这首诗的故事尚在整理中，敬请期待。</p>
+        </div>
+      </div>
+    </aside>
 
     <aside class="panel" id="history-panel" hidden>
       <div class="panel-inner">

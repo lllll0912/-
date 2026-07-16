@@ -5,15 +5,21 @@
 
 ## 在线访问
 
-**GitHub 仓库（已就绪）：** https://github.com/lllll0912/daily-poem  
+**公网链接：** https://warm-tiramisu-0bfbb8.netlify.app/
 
-**公网链接（Render 部署后填写）：**
+**GitHub 仓库：** https://github.com/lllll0912/daily-poem
 
-```text
-（在 Render 选仓库 daily-poem → Static Site → Build: true → Publish: . → 复制 onrender.com 链接）
-```
+## 诗境功能
 
-双击 **`打开Render部署.bat`** 按提示在 Render 创建静态站。
+诗句下方有 **「诗境」** 按钮，可进入：
+
+- 出处
+- 全诗
+- 创作背景
+- 解读
+- 意在何处
+
+故事数据在 `stories.json`，构建时写入 `poems.json`。目前已为前 3 句写好示例，其余逐步补充。
 
 ## 本地预览
 
@@ -55,4 +61,18 @@ poem-20260313/
 
 ## 后续：诗句背后的故事
 
-在 `stories.json` 用 id 或诗句全文作键填写；有内容时页面显示「缘起」。
+在 `stories.json` 按诗句 `id` 填写：
+
+```json
+{
+  "1": {
+    "source": "宋 · 蒋捷《视夜》",
+    "full_poem": "全诗正文",
+    "background": "时代与创作环境",
+    "interpretation": "解读",
+    "meaning": "要表达什么"
+  }
+}
+```
+
+保存 → `python scripts/build_poems_json.py` → `同步并推送daily-poem.bat`（或 Netlify 重新部署）。

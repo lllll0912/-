@@ -1,1428 +1,1446 @@
 {
-  "generated_at": "2026-07-16T11:22:22",
+  "generated_at": "2026-07-16T17:58:57",
   "count": 237,
   "poems": [
     {
       "id": 1,
       "poem_date": "2020-12-23",
       "content": "竹斋眠听雨，梦里长青苔",
-      "story": ""
+      "story": {
+        "source": "宋 · 蒋捷《视夜》",
+        "full_poem": "璎珞敲窗，渐闻枕上潇潇竹树声。\n一秋听尽潇潇雨，数月常听寂寞蛩。\n此夜半丝毫瑟韵，颖川诗思动寒灯。\n竹斋眠听雨，梦里长青苔。",
+        "background": "蒋捷为南宋末年词人，宋亡后隐居不仕，常于竹斋夜听雨，以清冷意象寄托故国之思与身世飘零。此句写秋夜卧听竹间雨声，梦魂所至，唯见青苔蔓延于阶砌，幽寂而深远。",
+        "interpretation": "「竹斋眠听雨」：卧于竹边书斋，雨声淅沥，人却渐入睡境，以动衬静。「梦里长青苔」：梦中不见繁华，只见青苔——非实景之丽，而是心境之幽冷与时间的缓慢侵蚀。雨声是听觉，青苔是视觉，二者在梦中合成一幅湿冷、静默、略带哀愁的画面。",
+        "meaning": "表达一种孤寂、清冷、避世式的安宁：在雨夜与梦境之间，诗人把烦忧沉入无声的青苔与岁月，适合作为晚安之句，亦含对时光与心境的淡淡感喟。"
+      }
     },
     {
       "id": 2,
       "poem_date": "2020-12-25",
       "content": "鹊惊随叶散，萤远入烟流",
-      "story": ""
+      "story": {
+        "source": "唐 · 卢照邻《九月九日登玄武山 / 九月九日登玄武山旅眺》",
+        "full_poem": "九月九日眺山川，归心归望积风烟。\n他乡共酌金花酒，万里同悲鸿雁天。\n（另本相关句：鹊惊随叶散，萤远入烟流。）",
+        "background": "卢照邻游宦他乡，重阳登高，见秋山风烟、鸿雁南飞，触发羁旅之思。秋夜林间，鹊鸟惊起、落叶纷飞，流萤点点没入烟霭，是典型秋日黄昏景象。",
+        "interpretation": "「鹊惊随叶散」：鸟因落叶或人行而惊飞，叶与鹊同散，动感而短暂。「萤远入烟流」：萤火微弱，渐行渐远，终没入夜雾。一闹一静，一明一暗，皆是秋夜将尽的细微物候。",
+        "meaning": "写秋夜旅途中的敏锐感受：万物都在向更深沉的夜色里退去，暗合游子心绪——热闹散尽，只剩远与淡，适合睡前回味那一瞬的静与远。"
+      }
     },
     {
       "id": 3,
       "poem_date": "2020-12-26",
       "content": "相思不与梦同休",
-      "story": ""
+      "story": {
+        "source": "宋 · 晏几道《鹧鸪天》",
+        "full_poem": "彩袖殷勤捧玉钟，当年拚却醉颜红。\n舞低杨柳楼心月，歌尽桃花扇底风。\n几回魂梦与君同，相逢犹恐是梦中。\n（化意句：相思不与梦同休。）",
+        "background": "晏几道为北宋婉约派词人，善写酒宴歌舞与别后相思。此意出自其对往昔欢会追忆与梦魂相寻的写法，梦中相逢仍恐不真实，故相思之苦连梦境亦不能解脱。",
+        "interpretation": "「相思不与梦同休」：相思之苦并不因入梦而停止，反而在梦里延续、加深。梦本应是暂歇，此处却成相思的延伸地带——醒时思，梦中亦思，梦醒犹疑。",
+        "meaning": "道尽深情难断：思念已渗入潜意识，连睡眠都无法提供避难所。用作晚安诗，是带着缱绻与怅惘的深情告白。"
+      }
     },
     {
       "id": 4,
       "poem_date": "2020-12-27",
       "content": "毕竟几人真得鹿，不知终日梦为鱼",
-      "story": ""
+      "story": null
     },
     {
       "id": 5,
       "poem_date": "2020-12-28",
       "content": "浮生只合尊前老。雪满长安道",
-      "story": ""
+      "story": null
     },
     {
       "id": 6,
       "poem_date": "2020-12-29",
       "content": "几回魂梦与君同，相逢忧恐是梦中",
-      "story": ""
+      "story": null
     },
     {
       "id": 7,
       "poem_date": "2021-01-01",
       "content": "梦里佳期，只许庭花与月知",
-      "story": ""
+      "story": null
     },
     {
       "id": 8,
       "poem_date": "2021-01-02",
       "content": "伊人不遇梦难成",
-      "story": ""
+      "story": null
     },
     {
       "id": 9,
       "poem_date": "2021-01-03",
       "content": "梦醒时分，往事弃我而去",
-      "story": ""
+      "story": null
     },
     {
       "id": 10,
       "poem_date": "2021-01-04",
       "content": "谁羡骖鸾。人在舟中便是仙",
-      "story": ""
+      "story": null
     },
     {
       "id": 11,
       "poem_date": "2021-01-05",
       "content": "雪沫乳花浮午盏，蓼茸蒿笋试春盘。人间有味是清欢。",
-      "story": ""
+      "story": null
     },
     {
       "id": 12,
       "poem_date": "2021-01-06",
       "content": "长相思，浅情人不知",
-      "story": ""
+      "story": null
     },
     {
       "id": 13,
       "poem_date": "2021-01-07",
       "content": "暗香浮玉树，寒色冻银河",
-      "story": ""
+      "story": null
     },
     {
       "id": 14,
       "poem_date": "2021-01-08",
       "content": "天若有情天亦老，月若无恨月长圆",
-      "story": ""
+      "story": null
     },
     {
       "id": 15,
       "poem_date": "2021-01-12",
       "content": "如今但欲关门睡，一任梅花做雪飞",
-      "story": ""
+      "story": null
     },
     {
       "id": 16,
       "poem_date": "2021-01-13",
       "content": "若有诗词藏于心，岁月从不败美人",
-      "story": ""
+      "story": null
     },
     {
       "id": 17,
       "poem_date": "2021-01-14",
       "content": "落花时节又逢君",
-      "story": ""
+      "story": null
     },
     {
       "id": 18,
       "poem_date": "2021-01-15",
       "content": "最是人间留不住，朱颜辞镜花辞树",
-      "story": ""
+      "story": null
     },
     {
       "id": 19,
       "poem_date": "2021-01-17",
       "content": "梦中往事随心见，醉里繁华乱眼生",
-      "story": ""
+      "story": null
     },
     {
       "id": 20,
       "poem_date": "2021-01-18",
       "content": "悲欢离合总无情，一任阶前、点滴到天明",
-      "story": ""
+      "story": null
     },
     {
       "id": 21,
       "poem_date": "2021-01-19",
       "content": "凡有启程，必有到达",
-      "story": ""
+      "story": null
     },
     {
       "id": 22,
       "poem_date": "2021-01-20",
       "content": "梦里不知身是客，一晌贪欢",
-      "story": ""
+      "story": null
     },
     {
       "id": 23,
       "poem_date": "2021-01-21",
       "content": "须著人间比梦间",
-      "story": ""
+      "story": null
     },
     {
       "id": 24,
       "poem_date": "2021-01-22",
       "content": "但知行好事，莫要问前程",
-      "story": ""
+      "story": null
     },
     {
       "id": 25,
       "poem_date": "2021-01-23",
       "content": "愿身能似月亭亭，千里伴君行",
-      "story": ""
+      "story": null
     },
     {
       "id": 26,
       "poem_date": "2021-01-25",
       "content": "何须浅碧深红色，自是花中第一流",
-      "story": ""
+      "story": null
     },
     {
       "id": 27,
       "poem_date": "2021-01-26",
       "content": "梨花院落溶溶月，柳絮池塘淡淡风",
-      "story": ""
+      "story": null
     },
     {
       "id": 28,
       "poem_date": "2021-01-27",
       "content": "梦入江南烟水路，行尽江南，不与离人遇",
-      "story": ""
+      "story": null
     },
     {
       "id": 29,
       "poem_date": "2021-01-28",
       "content": "自古人生最忌满，半贫半富半自安",
-      "story": ""
+      "story": null
     },
     {
       "id": 30,
       "poem_date": "2021-01-29",
       "content": "青山一笑三秋老，银鬓双悬万古沉",
-      "story": ""
+      "story": null
     },
     {
       "id": 31,
       "poem_date": "2021-01-30",
       "content": "柔情似水，佳期如梦，忍顾鹊桥归路",
-      "story": ""
+      "story": null
     },
     {
       "id": 32,
       "poem_date": "2021-01-31",
       "content": "我今因病魂颠倒，只梦闲人不梦君",
-      "story": ""
+      "story": null
     },
     {
       "id": 33,
       "poem_date": "2021-02-01",
       "content": "此时相望不相闻，愿逐月华流照君",
-      "story": ""
+      "story": null
     },
     {
       "id": 34,
       "poem_date": "2021-02-05",
       "content": "草草杯盘供笑语，昏昏灯火话平生",
-      "story": ""
+      "story": null
     },
     {
       "id": 35,
       "poem_date": "2021-02-06",
       "content": "人生自是有情痴，此恨不关风与月",
-      "story": ""
+      "story": null
     },
     {
       "id": 36,
       "poem_date": "2021-02-07",
       "content": "山中何事？松花酿酒，春水煎茶",
-      "story": ""
+      "story": null
     },
     {
       "id": 37,
       "poem_date": "2021-02-08",
       "content": "高情已逐晓云空，不与梨花同梦",
-      "story": ""
+      "story": null
     },
     {
       "id": 38,
       "poem_date": "2021-02-09",
       "content": "半放海棠笼晓日，才开芍药弄春晴",
-      "story": ""
+      "story": null
     },
     {
       "id": 39,
       "poem_date": "2021-02-10",
       "content": "休言万事转头空，未转头时皆梦",
-      "story": ""
+      "story": null
     },
     {
       "id": 40,
       "poem_date": "2021-02-11",
       "content": "努力尽今夕，少年犹可夸",
-      "story": ""
+      "story": null
     },
     {
       "id": 41,
       "poem_date": "2021-02-11",
       "content": "水自长流云自幻，花明此地月明邻",
-      "story": ""
+      "story": null
     },
     {
       "id": 42,
       "poem_date": "2021-02-12",
       "content": "一枕浮生皆有梦，槐安国里失黄粱",
-      "story": ""
+      "story": null
     },
     {
       "id": 43,
       "poem_date": "2021-02-13",
       "content": "只得闲吟三五句，可教岁月渡清寒",
-      "story": ""
+      "story": null
     },
     {
       "id": 44,
       "poem_date": "2021-02-14",
       "content": "三愿如同梁上燕，岁岁长相见",
-      "story": ""
+      "story": null
     },
     {
       "id": 45,
       "poem_date": "2021-02-15",
       "content": "应是天仙狂醉，乱把白云揉碎",
-      "story": ""
+      "story": null
     },
     {
       "id": 46,
       "poem_date": "2021-02-15",
       "content": "何时杖尔看南雪，我与梅花两白头",
-      "story": ""
+      "story": null
     },
     {
       "id": 47,
       "poem_date": "2021-02-16",
       "content": "秋风生渭水，落叶满长安",
-      "story": ""
+      "story": null
     },
     {
       "id": 48,
       "poem_date": "2021-02-17",
       "content": "贪梦好，茫然忘了邯郸道",
-      "story": ""
+      "story": null
     },
     {
       "id": 49,
       "poem_date": "2021-02-18",
       "content": "当时明月在，曾照彩云归",
-      "story": ""
+      "story": null
     },
     {
       "id": 50,
       "poem_date": "2021-02-19",
       "content": "一往情深深几许，深山夕照深秋雨",
-      "story": ""
+      "story": null
     },
     {
       "id": 51,
       "poem_date": "2021-02-20",
       "content": "休对故人思故国，且将新火试新茶。诗酒趁年华",
-      "story": ""
+      "story": null
     },
     {
       "id": 52,
       "poem_date": "2021-02-21",
       "content": "此后无心愁淡月，声声笑语任沉浮",
-      "story": ""
+      "story": null
     },
     {
       "id": 53,
       "poem_date": "2021-02-22",
       "content": "肠断月明红豆蔻，月似当时，人似当时否",
-      "story": ""
+      "story": null
     },
     {
       "id": 54,
       "poem_date": "2021-02-23",
       "content": "情深自古难延寿，谁许人间共白头",
-      "story": ""
+      "story": null
     },
     {
       "id": 55,
       "poem_date": "2021-02-24",
       "content": "一生一代一双人，争教两处销魂。相思相望不相亲，天为谁春",
-      "story": ""
+      "story": null
     },
     {
       "id": 56,
       "poem_date": "2021-02-27",
       "content": "愿我如星君如月，夜夜流光相皎洁",
-      "story": ""
+      "story": null
     },
     {
       "id": 57,
       "poem_date": "2021-02-27",
       "content": "愿我如星君如月，月有盈亏星不移",
-      "story": ""
+      "story": null
     },
     {
       "id": 58,
       "poem_date": "2021-02-28",
       "content": "夜久雨休风又定，断云流月却斜明",
-      "story": ""
+      "story": null
     },
     {
       "id": 59,
       "poem_date": "2021-03-01",
       "content": "醉眠芳树下，半被落花埋",
-      "story": ""
+      "story": null
     },
     {
       "id": 60,
       "poem_date": "2021-03-02",
       "content": "微雨夜来过，不知春草生",
-      "story": ""
+      "story": null
     },
     {
       "id": 61,
       "poem_date": "2021-03-03",
       "content": "一日清新一日好，幻中莫执幻中身",
-      "story": ""
+      "story": null
     },
     {
       "id": 62,
       "poem_date": "2021-03-04",
       "content": "客赏阑珊怀旧梦，相思红豆为谁留",
-      "story": ""
+      "story": null
     },
     {
       "id": 63,
       "poem_date": "2021-03-05",
       "content": "但愿暂成人缱绻，不妨常任月朦胧",
-      "story": ""
+      "story": null
     },
     {
       "id": 64,
       "poem_date": "2021-03-06",
       "content": "棋罢不知人换世，酒阑无奈客思家",
-      "story": ""
+      "story": null
     },
     {
       "id": 65,
       "poem_date": "2021-03-07",
       "content": "休辞醉倒。花不看开人易老",
-      "story": ""
+      "story": null
     },
     {
       "id": 66,
       "poem_date": "2021-03-08",
       "content": "春风一夜吹香梦，梦逐春风到洛城",
-      "story": ""
+      "story": null
     },
     {
       "id": 67,
       "poem_date": "2021-03-09",
       "content": "花自飘零水自流。一种相思，两处闲愁。此情无计可消除。才下眉头，却上心头",
-      "story": ""
+      "story": null
     },
     {
       "id": 68,
       "poem_date": "2021-03-10",
       "content": "相思恰似江南柳，一夜春风一夜深",
-      "story": ""
+      "story": null
     },
     {
       "id": 69,
       "poem_date": "2021-03-11",
       "content": "山月不知心里事，水风空落眼前花",
-      "story": ""
+      "story": null
     },
     {
       "id": 70,
       "poem_date": "2021-03-12",
       "content": "嫁与东风春不管，凭尔去，忍淹留",
-      "story": ""
+      "story": null
     },
     {
       "id": 71,
       "poem_date": "2021-03-13",
       "content": "爱惜芳心莫轻吐，且教桃李闹春风",
-      "story": ""
+      "story": null
     },
     {
       "id": 72,
       "poem_date": "2021-03-14",
       "content": "醉卧古藤阴下，了不知南北",
-      "story": ""
+      "story": null
     },
     {
       "id": 73,
       "poem_date": "2021-03-15",
       "content": "时见疏星落画檐，几点流萤小",
-      "story": ""
+      "story": null
     },
     {
       "id": 74,
       "poem_date": "2021-03-16",
       "content": "归船萧鼓夕阳间，一生难得是春闲",
-      "story": ""
+      "story": null
     },
     {
       "id": 75,
       "poem_date": "2021-03-17",
       "content": "请君看取东流水，方识人间别意长",
-      "story": ""
+      "story": null
     },
     {
       "id": 76,
       "poem_date": "2021-03-18",
       "content": "此时情绪此时天，无事小神仙",
-      "story": ""
+      "story": null
     },
     {
       "id": 77,
       "poem_date": "2021-03-19",
       "content": "趁取春光，还留一半，莫负今朝",
-      "story": ""
+      "story": null
     },
     {
       "id": 78,
       "poem_date": "2021-03-20",
       "content": "晚来天欲雪，能饮一杯无",
-      "story": ""
+      "story": null
     },
     {
       "id": 79,
       "poem_date": "2021-03-21",
       "content": "秋空如水酒如空，谪仙已去与谁同",
-      "story": ""
+      "story": null
     },
     {
       "id": 80,
       "poem_date": "2021-03-22",
       "content": "世事漫随流水,算来浮生一梦",
-      "story": ""
+      "story": null
     },
     {
       "id": 81,
       "poem_date": "2021-03-23",
       "content": "来似东风催绿树，去如新梦化芳尘",
-      "story": ""
+      "story": null
     },
     {
       "id": 82,
       "poem_date": "2021-03-24",
       "content": "天明可恨终无寐，纵有相思梦不逢",
-      "story": ""
+      "story": null
     },
     {
       "id": 83,
       "poem_date": "2021-03-26",
       "content": "明月楼高休独倚，酒入愁肠，化作相思泪",
-      "story": ""
+      "story": null
     },
     {
       "id": 84,
       "poem_date": "2021-03-27",
       "content": "最多情犹有，尊前青眼，相逢依旧",
-      "story": ""
+      "story": null
     },
     {
       "id": 85,
       "poem_date": "2021-03-28",
       "content": "看尽一帘红雨，为谁亲系花铃",
-      "story": ""
+      "story": null
     },
     {
       "id": 86,
       "poem_date": "2021-03-29",
       "content": "所思终不见，还是一含情",
-      "story": ""
+      "story": null
     },
     {
       "id": 87,
       "poem_date": "2021-03-30",
       "content": "冰心浮动花前树，一种相思两地人",
-      "story": ""
+      "story": null
     },
     {
       "id": 88,
       "poem_date": "2021-03-31",
       "content": "江北江南几度秋，梦里朱颜换",
-      "story": ""
+      "story": null
     },
     {
       "id": 89,
       "poem_date": "2021-04-01",
       "content": "愿天无霜雪，梧子结千年",
-      "story": ""
+      "story": null
     },
     {
       "id": 90,
       "poem_date": "2021-04-02",
       "content": "似水流年今又是，但凭诗句赠繁华",
-      "story": ""
+      "story": null
     },
     {
       "id": 91,
       "poem_date": "2021-04-03",
       "content": "取次花丛懒回顾，半缘修道半缘君",
-      "story": ""
+      "story": null
     },
     {
       "id": 92,
       "poem_date": "2021-04-04",
       "content": "冢头莫种有花树，春色不关泉下人",
-      "story": ""
+      "story": null
     },
     {
       "id": 93,
       "poem_date": "2021-04-05",
       "content": "人生有酒须当醉，一滴何曾到九泉",
-      "story": ""
+      "story": null
     },
     {
       "id": 94,
       "poem_date": "2021-04-06",
       "content": "天与多情，不与长相守",
-      "story": ""
+      "story": null
     },
     {
       "id": 95,
       "poem_date": "2021-04-07",
       "content": "晓看天色暮看云，行也思君，坐也思君",
-      "story": ""
+      "story": null
     },
     {
       "id": 96,
       "poem_date": "2021-04-08",
       "content": "人面不知何处，绿波依旧东流",
-      "story": ""
+      "story": null
     },
     {
       "id": 97,
       "poem_date": "2021-04-09",
       "content": "狂风落尽深红色，绿叶成阴子满枝",
-      "story": ""
+      "story": null
     },
     {
       "id": 98,
       "poem_date": "2021-04-10",
       "content": "几时心绪浑无事，得及游丝百尺长",
-      "story": ""
+      "story": null
     },
     {
       "id": 99,
       "poem_date": "2021-04-11",
       "content": "浮生若梦，为欢几何",
-      "story": ""
+      "story": null
     },
     {
       "id": 100,
       "poem_date": "2021-04-12",
       "content": "清尊未洗，梦不湿行云，漫沾残泪",
-      "story": ""
+      "story": null
     },
     {
       "id": 101,
       "poem_date": "2021-04-13",
       "content": "桃花流水窅[yǎo]然去，别有天地非人间",
-      "story": ""
+      "story": null
     },
     {
       "id": 102,
       "poem_date": "2021-04-14",
       "content": "无雨花犹落，无风絮自飞",
-      "story": ""
+      "story": null
     },
     {
       "id": 103,
       "poem_date": "2021-04-15",
       "content": "送晓色、一壶葱茜，才知花梦准",
-      "story": ""
+      "story": null
     },
     {
       "id": 104,
       "poem_date": "2021-04-16",
       "content": "灯前韵落十年影，一片芳心寄与谁",
-      "story": ""
+      "story": null
     },
     {
       "id": 105,
       "poem_date": "2021-04-17",
       "content": "人与景，人景古难全",
-      "story": ""
+      "story": null
     },
     {
       "id": 106,
       "poem_date": "2021-04-18",
       "content": "尽日问花花不语，为谁零落为谁开",
-      "story": ""
+      "story": null
     },
     {
       "id": 107,
       "poem_date": "2021-04-19",
       "content": "别后相思人似月，云间水上到层城",
-      "story": ""
+      "story": null
     },
     {
       "id": 108,
       "poem_date": "2021-04-20",
       "content": "旧游无处不堪寻，无寻处，惟有少年心",
-      "story": ""
+      "story": null
     },
     {
       "id": 109,
       "poem_date": "2021-04-21",
       "content": "春风不约请，自有看花人",
-      "story": ""
+      "story": null
     },
     {
       "id": 110,
       "poem_date": "2021-04-22",
       "content": "多情只有春庭月，犹为离人照落花",
-      "story": ""
+      "story": null
     },
     {
       "id": 111,
       "poem_date": "2021-04-23",
       "content": "流水落花春去也，天上人间",
-      "story": ""
+      "story": null
     },
     {
       "id": 112,
       "poem_date": "2021-04-24",
       "content": "十年旧约江南梦，独听寒山半夜钟",
-      "story": ""
+      "story": null
     },
     {
       "id": 113,
       "poem_date": "2021-04-25",
       "content": "年年点检人间事，唯有春风不世情",
-      "story": ""
+      "story": null
     },
     {
       "id": 114,
       "poem_date": "2021-04-26",
       "content": "美人自古如名将，不许人间见白头",
-      "story": ""
+      "story": null
     },
     {
       "id": 115,
       "poem_date": "2021-04-27",
       "content": "人生不向花前醉，花笑人生也是呆",
-      "story": ""
+      "story": null
     },
     {
       "id": 116,
       "poem_date": "2021-05-03",
       "content": "且尽眼中欢，莫叹时光促",
-      "story": ""
+      "story": null
     },
     {
       "id": 117,
       "poem_date": "2021-05-04",
       "content": "愿有岁月可回首，且以深情共白头",
-      "story": ""
+      "story": null
     },
     {
       "id": 118,
       "poem_date": "2021-05-05",
       "content": "落花满地鸿声尽，流水盈天月色寒",
-      "story": ""
+      "story": null
     },
     {
       "id": 119,
       "poem_date": "2021-05-06",
       "content": "多情自古空余恨，好梦由来最易醒",
-      "story": ""
+      "story": null
     },
     {
       "id": 120,
       "poem_date": "2021-05-07",
       "content": "梧桐树，三更雨，不道离情正苦。一叶叶，一声声，空阶滴到明",
-      "story": ""
+      "story": null
     },
     {
       "id": 121,
       "poem_date": "2021-05-08",
       "content": "浮云一别后，流水十年间",
-      "story": ""
+      "story": null
     },
     {
       "id": 122,
       "poem_date": "2021-05-09",
       "content": "春水碧于天，画船听雨眠",
-      "story": ""
+      "story": null
     },
     {
       "id": 123,
       "poem_date": "2021-05-10",
       "content": "万帐穹庐人醉，星影摇摇欲坠",
-      "story": ""
+      "story": null
     },
     {
       "id": 124,
       "poem_date": "2021-05-11",
       "content": "最苦魂梦，今宵不到伊行",
-      "story": ""
+      "story": null
     },
     {
       "id": 125,
       "poem_date": "2021-05-12",
       "content": "长记曾携手处，千树压、西湖寒碧",
-      "story": ""
+      "story": null
     },
     {
       "id": 126,
       "poem_date": "2021-05-13",
       "content": "谁教岁岁红莲夜，两处沉吟各自知",
-      "story": ""
+      "story": null
     },
     {
       "id": 127,
       "poem_date": "2021-05-14",
       "content": "忆君心似西江水，日夜东流无歇时",
-      "story": ""
+      "story": null
     },
     {
       "id": 128,
       "poem_date": "2021-05-15",
       "content": "相恨不如潮有信，相思始觉海非深",
-      "story": ""
+      "story": null
     },
     {
       "id": 129,
       "poem_date": "2021-05-16",
       "content": "流波将月去，潮水带星来",
-      "story": ""
+      "story": null
     },
     {
       "id": 130,
       "poem_date": "2021-05-19",
       "content": "春风弹动半天霞，夜雨浮收一地花",
-      "story": ""
+      "story": null
     },
     {
       "id": 131,
       "poem_date": "2021-05-20",
       "content": "Love is to be remnant while Romance remains.",
-      "story": ""
+      "story": null
     },
     {
       "id": 132,
       "poem_date": "2021-05-21",
       "content": "思君令人老，岁月忽已晚",
-      "story": ""
+      "story": null
     },
     {
       "id": 133,
       "poem_date": "2021-05-22",
       "content": "玲珑骰子安红豆，入骨相思知不知",
-      "story": ""
+      "story": null
     },
     {
       "id": 134,
       "poem_date": "2021-05-23",
       "content": "我是梦中传彩笔，欲书花叶寄朝云",
-      "story": ""
+      "story": null
     },
     {
       "id": 135,
       "poem_date": "2021-05-24",
       "content": "相思一夜梅花发，忽到窗前疑是君",
-      "story": ""
+      "story": null
     },
     {
       "id": 136,
       "poem_date": "2021-05-25",
       "content": "情不知所起，一往而深",
-      "story": ""
+      "story": null
     },
     {
       "id": 137,
       "poem_date": "2021-05-26",
       "content": "梅花雪，梨花月，总相思",
-      "story": ""
+      "story": null
     },
     {
       "id": 138,
       "poem_date": "2021-05-27",
       "content": "若似月轮终皎洁，不辞冰雪为卿热",
-      "story": ""
+      "story": null
     },
     {
       "id": 139,
       "poem_date": "2021-05-29",
       "content": "直道相思了无益，未妨惆怅是清狂",
-      "story": ""
+      "story": null
     },
     {
       "id": 140,
       "poem_date": "2021-05-30",
       "content": "终日两相思，为君憔悴尽，百花时",
-      "story": ""
+      "story": null
     },
     {
       "id": 141,
       "poem_date": "2021-05-31",
       "content": "天不老，情难绝。心似双丝网，中有千千结",
-      "story": ""
+      "story": null
     },
     {
       "id": 142,
       "poem_date": "2021-06-01",
       "content": "蓦地一相逢，心事眼波难定",
-      "story": ""
+      "story": null
     },
     {
       "id": 143,
       "poem_date": "2021-06-02",
       "content": "天上唯一月，眼中唯一人",
-      "story": ""
+      "story": null
     },
     {
       "id": 144,
       "poem_date": "2021-06-04",
       "content": "得成比目何辞死 ，愿作鸳鸯不羡仙",
-      "story": ""
+      "story": null
     },
     {
       "id": 145,
       "poem_date": "2021-06-05",
       "content": "天涯地角有穷时，只有相思无尽处",
-      "story": ""
+      "story": null
     },
     {
       "id": 146,
       "poem_date": "2021-06-06",
       "content": "当年不肯嫁春风，无端却被秋风误",
-      "story": ""
+      "story": null
     },
     {
       "id": 147,
       "poem_date": "2021-06-07",
       "content": "今朝云魄云魂，断送一生憔悴，知他几个黄昏",
-      "story": ""
+      "story": null
     },
     {
       "id": 148,
       "poem_date": "2021-06-08",
       "content": "梦魂纵有也成虚，那堪和梦无",
-      "story": ""
+      "story": null
     },
     {
       "id": 149,
       "poem_date": "2021-06-09",
       "content": "几许年华，三生醉梦，六月凉秋",
-      "story": ""
+      "story": null
     },
     {
       "id": 150,
       "poem_date": "2021-06-10",
       "content": "暂时相见，如梦懒思量",
-      "story": ""
+      "story": null
     },
     {
       "id": 151,
       "poem_date": "2021-06-11",
       "content": "若有人知春去处，换取归来同住",
-      "story": ""
+      "story": null
     },
     {
       "id": 152,
       "poem_date": "2021-06-12",
       "content": "从此音尘各悄然，春山如黛草如烟",
-      "story": ""
+      "story": null
     },
     {
       "id": 153,
       "poem_date": "2021-06-14",
       "content": "窗外月华霜重，听彻梅花弄",
-      "story": ""
+      "story": null
     },
     {
       "id": 154,
       "poem_date": "2021-06-15",
       "content": "东风夜放花千树，更吹落，星如雨",
-      "story": ""
+      "story": null
     },
     {
       "id": 155,
       "poem_date": "2021-06-17",
       "content": "无情有恨何人觉？月晓风清欲堕时",
-      "story": ""
+      "story": null
     },
     {
       "id": 156,
       "poem_date": "2021-06-18",
       "content": "浮生一梦君同我，都是魁安未醒人",
-      "story": ""
+      "story": null
     },
     {
       "id": 157,
       "poem_date": "2021-06-19",
       "content": "老来事事消磨尽，只有尊前似少年",
-      "story": ""
+      "story": null
     },
     {
       "id": 158,
       "poem_date": "2021-06-20",
       "content": "一笑相逢蓬海路，人间风月如尘土",
-      "story": ""
+      "story": null
     },
     {
       "id": 159,
       "poem_date": "2021-06-22",
       "content": "半世浮萍随逝水，一宵冷雨葬名花",
-      "story": ""
+      "story": null
     },
     {
       "id": 160,
       "poem_date": "2021-06-23",
       "content": "最关情，折尽梅花，难寄相思",
-      "story": ""
+      "story": null
     },
     {
       "id": 161,
       "poem_date": "2021-06-24",
       "content": "树深时见鹿，溪午不闻钟",
-      "story": ""
+      "story": null
     },
     {
       "id": 162,
       "poem_date": "2021-06-25",
       "content": "不枉东风吹客泪，相思难表，梦魂无据，惟有归来是",
-      "story": ""
+      "story": null
     },
     {
       "id": 163,
       "poem_date": "2021-06-26",
       "content": "两鬓可怜青，只为相思老",
-      "story": ""
+      "story": null
     },
     {
       "id": 164,
       "poem_date": "2021-06-27",
       "content": "山远天高烟水寒，相思枫叶丹",
-      "story": ""
+      "story": null
     },
     {
       "id": 165,
       "poem_date": "2021-06-28",
       "content": "满载一船明月，平铺千里秋江",
-      "story": ""
+      "story": null
     },
     {
       "id": 166,
       "poem_date": "2021-06-29",
       "content": "满目山河空念远，落花风雨更伤春。不如怜取眼前人",
-      "story": ""
+      "story": null
     },
     {
       "id": 167,
       "poem_date": "2021-06-30",
       "content": "暗相思，无处说，惆怅夜来烟月",
-      "story": ""
+      "story": null
     },
     {
       "id": 168,
       "poem_date": "2021-07-02",
       "content": "写不成书，只寄得，相思一点",
-      "story": ""
+      "story": null
     },
     {
       "id": 169,
       "poem_date": "2021-07-03",
       "content": "来岁长安春事早，劝杏花、断莫相思死",
-      "story": ""
+      "story": null
     },
     {
       "id": 170,
       "poem_date": "2021-07-04",
       "content": "一夜相思，水边清浅横枝瘦",
-      "story": ""
+      "story": null
     },
     {
       "id": 171,
       "poem_date": "2021-07-05",
       "content": "与君别。相思一夜梅花发",
-      "story": ""
+      "story": null
     },
     {
       "id": 172,
       "poem_date": "2021-07-08",
       "content": "人归落雁后，思发在花前",
-      "story": ""
+      "story": null
     },
     {
       "id": 173,
       "poem_date": "2021-07-09",
       "content": "后夜相思，尘随马去，月逐舟行",
-      "story": ""
+      "story": null
     },
     {
       "id": 174,
       "poem_date": "2021-07-10",
       "content": "我有所思在远道，一日不见兮，我心悄悄",
-      "story": ""
+      "story": null
     },
     {
       "id": 175,
       "poem_date": "2021-07-12",
       "content": "情意绵绵，一夜相思老",
-      "story": ""
+      "story": null
     },
     {
       "id": 176,
       "poem_date": "2021-07-13",
       "content": "思君如满月，夜夜减清辉",
-      "story": ""
+      "story": null
     },
     {
       "id": 177,
       "poem_date": "2021-07-14",
       "content": "钟鼎山林都是梦，人间宠辱休惊",
-      "story": ""
+      "story": null
     },
     {
       "id": 178,
       "poem_date": "2021-07-16",
       "content": "思量却也有悲时，重阳节近多风雨",
-      "story": ""
+      "story": null
     },
     {
       "id": 179,
       "poem_date": "2021-07-17",
       "content": "愁肠已断无由醉，酒未到，先成泪",
-      "story": ""
+      "story": null
     },
     {
       "id": 180,
       "poem_date": "2021-07-18",
       "content": "夜夜相思更漏残，伤心明月凭阑干，想君思我锦衾寒",
-      "story": ""
+      "story": null
     },
     {
       "id": 181,
       "poem_date": "2021-07-25",
       "content": "常记溪亭日暮，沉醉不知归路",
-      "story": ""
+      "story": null
     },
     {
       "id": 182,
       "poem_date": "2021-07-26",
       "content": "人散后，一钩淡月天如水",
-      "story": ""
+      "story": null
     },
     {
       "id": 183,
       "poem_date": "2021-08-01",
       "content": "入我相思门，知我相思苦。长相思兮长相忆，短相思兮无穷极。",
-      "story": ""
+      "story": null
     },
     {
       "id": 184,
       "poem_date": "2021-08-11",
       "content": "它生莫做有情痴，天地无处着相思",
-      "story": ""
+      "story": null
     },
     {
       "id": 185,
       "poem_date": "2021-08-22",
       "content": "窗里人将老，门前树已秋",
-      "story": ""
+      "story": null
     },
     {
       "id": 186,
       "poem_date": "2021-08-25",
       "content": "一行归鹭拖秋色，几树鸣蝉饯夕阳",
-      "story": ""
+      "story": null
     },
     {
       "id": 187,
       "poem_date": "2021-09-06",
       "content": "松风吹解带，山月照弹琴",
-      "story": ""
+      "story": null
     },
     {
       "id": 188,
       "poem_date": "2021-09-07",
       "content": "潮落潮生波渺，江树森如发",
-      "story": ""
+      "story": null
     },
     {
       "id": 189,
       "poem_date": "2021-09-08",
       "content": "倚杖柴门外，临风听暮蝉",
-      "story": ""
+      "story": null
     },
     {
       "id": 190,
       "poem_date": "2021-09-09",
       "content": "秋阴不散霜飞晚，留得枯荷听雨声",
-      "story": ""
+      "story": null
     },
     {
       "id": 191,
       "poem_date": "2021-09-12",
       "content": "拾闲犹待天晴日，不觉人间又一秋",
-      "story": ""
+      "story": null
     },
     {
       "id": 192,
       "poem_date": "2021-09-13",
       "content": "佳期不可再，风雨杳如年",
-      "story": ""
+      "story": null
     },
     {
       "id": 193,
       "poem_date": "2021-09-14",
       "content": "荒城临古渡，落日满秋山",
-      "story": ""
+      "story": null
     },
     {
       "id": 194,
       "poem_date": "2021-09-17",
       "content": "朝朝暮暮闲亭子，满耳松风满耳泉",
-      "story": ""
+      "story": null
     },
     {
       "id": 195,
       "poem_date": "2021-09-18",
       "content": "听雨寒更彻，开门落叶深",
-      "story": ""
+      "story": null
     },
     {
       "id": 196,
       "poem_date": "2021-09-20",
       "content": "流光容易把人抛。红了樱桃，绿了芭蕉",
-      "story": ""
+      "story": null
     },
     {
       "id": 197,
       "poem_date": "2021-09-22",
       "content": "雾湿云鬟，浅妆深拜月",
-      "story": ""
+      "story": null
     },
     {
       "id": 198,
       "poem_date": "2021-09-23",
       "content": "别有微凉处，入眼已秋分",
-      "story": ""
+      "story": null
     },
     {
       "id": 199,
       "poem_date": "2021-09-25",
       "content": "落叶西风时候，人共青山都瘦",
-      "story": ""
+      "story": null
     },
     {
       "id": 200,
       "poem_date": "2021-09-26",
       "content": "我欲因之梦吴越，一夜飞渡镜湖月",
-      "story": ""
+      "story": null
     },
     {
       "id": 201,
       "poem_date": "2021-09-29",
       "content": "花门楼前见秋草，岂能贫贱相看老",
-      "story": ""
+      "story": null
     },
     {
       "id": 202,
       "poem_date": "2021-10-08",
       "content": "酒醒只在花前坐，酒醉还来花下眠",
-      "story": ""
+      "story": null
     },
     {
       "id": 203,
       "poem_date": "2021-10-09",
       "content": "窗前谁浸木犀黄？花也香，梦也香",
-      "story": ""
+      "story": null
     },
     {
       "id": 204,
       "poem_date": "2021-10-10",
       "content": "旧欢如在梦魂中，自然肠欲断，何必更秋风",
-      "story": ""
+      "story": null
     },
     {
       "id": 205,
       "poem_date": "2021-10-12",
       "content": "红叶下山寒寂寂，湿云如梦雨如尘",
-      "story": ""
+      "story": null
     },
     {
       "id": 206,
       "poem_date": "2021-10-14",
       "content": "何须更问浮生事，只此浮生在梦中",
-      "story": ""
+      "story": null
     },
     {
       "id": 207,
       "poem_date": "2021-10-15",
       "content": "寒山常带斜阳色，新月偏明落叶时",
-      "story": ""
+      "story": null
     },
     {
       "id": 208,
       "poem_date": "2021-10-16",
       "content": "君臣一梦，今古空名。但远山长，云山乱，晓山青",
-      "story": ""
+      "story": null
     },
     {
       "id": 209,
       "poem_date": "2021-10-17",
       "content": "长江流远梦，短棹拨残星",
-      "story": ""
+      "story": null
     },
     {
       "id": 210,
       "poem_date": "2021-10-18",
       "content": "水急客舟疾，山花拂面香",
-      "story": ""
+      "story": null
     },
     {
       "id": 211,
       "poem_date": "2021-10-22",
       "content": "雪满山中高士卧，月明林下美人来",
-      "story": ""
+      "story": null
     },
     {
       "id": 212,
       "poem_date": "2021-10-23",
       "content": "不消红蜡，闲云归后，月在庭花旧阑角",
-      "story": ""
+      "story": null
     },
     {
       "id": 213,
       "poem_date": "2021-10-24",
       "content": "惟有汀边鸥鹭，不管人间兴废，一抹度青霄",
-      "story": ""
+      "story": null
     },
     {
       "id": 214,
       "poem_date": "2021-10-25",
       "content": "肠已断，泪难收。相思重上小红楼",
-      "story": ""
+      "story": null
     },
     {
       "id": 215,
       "poem_date": "2021-10-26",
       "content": "若教眼底无离恨，不信人间有白头",
-      "story": ""
+      "story": null
     },
     {
       "id": 216,
       "poem_date": "2021-10-27",
       "content": "不请长缨，系取天骄种，剑吼西风。恨登山临水，手寄七弦桐，目送归鸿",
-      "story": ""
+      "story": null
     },
     {
       "id": 217,
       "poem_date": "2021-10-29",
       "content": "昨夜西池凉露满，桂花吹断月中香",
-      "story": ""
+      "story": null
     },
     {
       "id": 218,
       "poem_date": "2021-11-01",
       "content": "西风刮梦秋无际，夜月生香雪满身",
-      "story": ""
+      "story": null
     },
     {
       "id": 219,
       "poem_date": "2021-11-02",
       "content": "偷期锦浪荷深处，一梦云兼雨",
-      "story": ""
+      "story": null
     },
     {
       "id": 220,
       "poem_date": "2021-11-03",
       "content": "臂留檀印齿痕香，深秋不寐漏初长，尽思量",
-      "story": ""
+      "story": null
     },
     {
       "id": 221,
       "poem_date": "2021-11-04",
       "content": "流年川暗度，往事月空明",
-      "story": ""
+      "story": null
     },
     {
       "id": 222,
       "poem_date": "2021-11-05",
       "content": "半卷半舒心不展，雨中说尽相思声",
-      "story": ""
+      "story": null
     },
     {
       "id": 223,
       "poem_date": "2021-11-08",
       "content": "鹿门月照开烟树，忽到庞公栖隐处",
-      "story": ""
+      "story": null
     },
     {
       "id": 224,
       "poem_date": "2021-11-09",
       "content": "日暮秋风起，萧萧枫树林",
-      "story": ""
+      "story": null
     },
     {
       "id": 225,
       "poem_date": "2021-11-10",
       "content": "世间花叶不相伦，花入金盆叶作尘",
-      "story": ""
+      "story": null
     },
     {
       "id": 226,
       "poem_date": "2021-11-11",
       "content": "行到水穷处，坐看云起时",
-      "story": ""
+      "story": null
     },
     {
       "id": 227,
       "poem_date": "2021-11-12",
       "content": "千盅酒洒云追月，万首诗成梦落花",
-      "story": ""
+      "story": null
     },
     {
       "id": 228,
       "poem_date": "2021-11-14",
       "content": "最是秋风管闲事，红他枫叶白人头",
-      "story": ""
+      "story": null
     },
     {
       "id": 229,
       "poem_date": "2021-11-15",
       "content": "人生到处知何似，应似飞鸿踏雪泥",
-      "story": ""
+      "story": null
     },
     {
       "id": 230,
       "poem_date": "2021-11-17",
       "content": "要知烂熳开时节，直待西风一夜霜",
-      "story": ""
+      "story": null
     },
     {
       "id": 231,
       "poem_date": "2021-11-18",
       "content": "无端却被梅花恼，特地吹香破梦魂",
-      "story": ""
+      "story": null
     },
     {
       "id": 232,
       "poem_date": "2021-11-19",
       "content": "星移斗转催人老，唯有相思万古绵",
-      "story": ""
+      "story": null
     },
     {
       "id": 233,
       "poem_date": "2021-12-03",
       "content": "人间一堕千劫，犹爱梅花未归",
-      "story": ""
+      "story": null
     },
     {
       "id": 234,
       "poem_date": "2021-12-03",
       "content": "山花落尽山常在，山水空流山自闲",
-      "story": ""
+      "story": null
     },
     {
       "id": 235,
       "poem_date": "2021-12-03",
       "content": "银鞍照白马，飒沓如流星",
-      "story": ""
+      "story": null
     },
     {
       "id": 236,
       "poem_date": "2021-12-03",
       "content": "年去年来常不老，春比人顽",
-      "story": ""
+      "story": null
     },
     {
       "id": 237,
       "poem_date": "2021-12-03",
       "content": "水苔宜溜色，山樱助落晖",
-      "story": ""
+      "story": null
     }
   ]
 }

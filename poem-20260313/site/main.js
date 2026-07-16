@@ -1,8 +1,17 @@
 /**
- * 每日一诗 — 按日期确定性选取同一首，全球同日同句。
+ * 每日一诗 — 按日期确定性选取；诗境面板展示出处、全诗、背景与解读。
  */
 
-const EPOCH = Date.UTC(2020, 11, 23); // 与诗库起始大致对齐
+const EPOCH = Date.UTC(2020, 11, 23);
+const STORY_SECTIONS = [
+  { key: "source", label: "出处" },
+  { key: "full_poem", label: "全诗" },
+  { key: "background", label: "创作背景" },
+  { key: "interpretation", label: "解读" },
+  { key: "meaning", label: "意在何处" },
+];
+
+let currentPoem = null;
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -16,7 +25,6 @@ function formatDateCN(d) {
   return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
 }
 
-/** 将 YYYY-MM-DD 映射为稳定整数哈希 */
 function dateHash(dateStr) {
   let h = 2166136261;
   for (let i = 0; i < dateStr.length; i++) {
@@ -31,19 +39,14 @@ function indexForDate(dateStr, count) {
   return dateHash(dateStr) % count;
 }
 
-function daysBetweenUTC(a, b) {
-  return Math.floor((a - b) / 86400000);
-}
-
-function dateFromOffset(offsetDays) {
-  const t = EPOCH + offsetDays * 86400000;
-  const d = new Date(t);
-  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-}
-
 function parseLocalDate(dateStr) {
   const [y, m, day] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, day);
+}
+
+function hasStory(story) {
+  if (!story || typeof story !== "object") return false;
+  return STORY_SECTIONS.some(({ key }) => story[key] && String(story[key]).trim());
 }
 
 async function loadPoems() {
@@ -54,28 +57,67 @@ async function loadPoems() {
 }
 
 function showPoem(poem, when) {
+  currentPoem = poem;
   const textEl = document.getElementById("poem-text");
   const dateEl = document.getElementById("poem-date");
-  const storyWrap = document.getElementById("poem-story");
-  const storyBody = document.getElementById("poem-story-body");
+  const storyBtn = document.getElementById("btn-story");
 
   dateEl.textContent = formatDateCN(when);
   textEl.textContent = poem.content || "（暂无）";
 
-  // 重触发淡入
   const card = document.getElementById("poem-card");
   card.style.animation = "none";
-  // eslint-disable-next-line no-unused-expressions
   card.offsetHeight;
   card.style.animation = "";
 
-  if (poem.story && String(poem.story).trim()) {
-    storyBody.textContent = poem.story;
-    storyWrap.hidden = false;
-  } else {
-    storyWrap.hidden = true;
-    storyBody.textContent = "";
+  storyBtn.hidden = false;
+  storyBtn.classList.toggle("story-entry--ready", hasStory(poem.story));
+  storyBtn.querySelector(".story-entry-hint").textContent = hasStory(poem.story)
+    ? "读出处 · 全诗 · 背景"
+    : "故事整理中";
+}
+
+function renderStorySections(story) {
+  const container = document.getElementById("story-sections");
+  const empty = document.getElementById("story-empty");
+  container.innerHTML = "";
+
+  if (!hasStory(story)) {
+    empty.hidden = false;
+    return;
   }
+  empty.hidden = true;
+
+  STORY_SECTIONS.forEach(({ key, label }) => {
+    const text = story[key];
+    if (!text || !String(text).trim()) return;
+    const section = document.createElement("section");
+    section.className = "story-block";
+    section.innerHTML = `<h3>${label}</h3>`;
+    const body = document.createElement("p");
+    body.className = key === "full_poem" ? "story-full-poem" : "story-block-text";
+    body.textContent = text;
+    section.appendChild(body);
+    container.appendChild(section);
+  });
+}
+
+function openStory() {
+  if (!currentPoem) return;
+  closeHistory();
+
+  document.getElementById("story-poem-line").textContent = currentPoem.content || "";
+  renderStorySections(currentPoem.story);
+
+  const panel = document.getElementById("story-panel");
+  panel.hidden = false;
+  document.getElementById("story-scroll").scrollTop = 0;
+  document.body.classList.add("panel-open");
+}
+
+function closeStory() {
+  document.getElementById("story-panel").hidden = true;
+  document.body.classList.remove("panel-open");
 }
 
 function buildHistory(poems, today) {
@@ -83,37 +125,31 @@ function buildHistory(poems, today) {
   list.innerHTML = "";
   const count = poems.length;
   const todayStr = formatDate(today);
-  const todayOffset = daysBetweenUTC(
-    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()),
-    EPOCH
-  );
 
-  const items = [];
-  for (let back = 0; back < 45 && back <= todayOffset + 365; back++) {
+  for (let back = 0; back < 45; back++) {
     const d = new Date(today);
     d.setDate(d.getDate() - back);
     const ds = formatDate(d);
-    const idx = indexForDate(ds, count);
-    items.push({ date: d, dateStr: ds, poem: poems[idx], isToday: ds === todayStr });
-  }
+    const poem = poems[indexForDate(ds, count)];
+    const isToday = ds === todayStr;
 
-  items.forEach(({ date, dateStr, poem, isToday }) => {
     const li = document.createElement("li");
     li.innerHTML = `
-      <div class="h-date">${formatDateCN(date)}${isToday ? " · 今日" : ""}</div>
+      <div class="h-date">${formatDateCN(d)}${isToday ? " · 今日" : ""}${hasStory(poem.story) ? " · 有诗境" : ""}</div>
       <div class="h-text"></div>
     `;
     li.querySelector(".h-text").textContent = poem.content;
     li.addEventListener("click", () => {
-      showPoem(poem, parseLocalDate(dateStr));
+      showPoem(poem, parseLocalDate(ds));
       closeHistory();
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
     list.appendChild(li);
-  });
+  }
 }
 
 function openHistory() {
+  closeStory();
   const panel = document.getElementById("history-panel");
   const btn = document.getElementById("btn-history");
   panel.hidden = false;
@@ -147,10 +183,23 @@ async function main() {
     document.getElementById("poem-date").textContent = "";
   }
 
+  document.getElementById("btn-story").addEventListener("click", openStory);
+  document.getElementById("btn-close-story").addEventListener("click", closeStory);
+  document.getElementById("story-panel").addEventListener("click", (e) => {
+    if (e.target.id === "story-panel") closeStory();
+  });
+
   document.getElementById("btn-history").addEventListener("click", openHistory);
   document.getElementById("btn-close-history").addEventListener("click", closeHistory);
   document.getElementById("history-panel").addEventListener("click", (e) => {
     if (e.target.id === "history-panel") closeHistory();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeStory();
+      closeHistory();
+    }
   });
 }
 

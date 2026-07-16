@@ -94,14 +94,32 @@ def load_poems_from_text() -> List[Tuple[Optional[str], str]]:
     return items
 
 
-def load_stories() -> dict[str, str]:
-    """可选 stories.json：按 id 或 content 匹配创作故事。"""
+def load_stories() -> dict[str, Any]:
+    """stories.json：键为 id 或诗句全文，值为结构化故事对象或旧版字符串。"""
     if not STORIES_FILE.exists():
         return {}
     data = json.loads(STORIES_FILE.read_text(encoding="utf-8"))
-    if isinstance(data, dict):
-        return {str(k): str(v) for k, v in data.items() if v}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): v for k, v in data.items() if v}
+
+
+def normalize_story(raw: Any) -> dict[str, str]:
+    if isinstance(raw, dict):
+        return {
+            "source": str(raw.get("source") or "").strip(),
+            "full_poem": str(raw.get("full_poem") or "").strip(),
+            "background": str(raw.get("background") or "").strip(),
+            "interpretation": str(raw.get("interpretation") or "").strip(),
+            "meaning": str(raw.get("meaning") or "").strip(),
+        }
+    if isinstance(raw, str) and raw.strip():
+        return {"interpretation": raw.strip()}
     return {}
+
+
+def story_has_content(story: dict[str, str]) -> bool:
+    return any(story.get(k) for k in ("source", "full_poem", "background", "interpretation", "meaning"))
 
 
 def build() -> list[dict[str, Any]]:
@@ -110,13 +128,14 @@ def build() -> list[dict[str, Any]]:
     poems: list[dict[str, Any]] = []
 
     for i, (poem_date, content) in enumerate(items, start=1):
-        story = stories.get(str(i), "") or stories.get(content, "")
+        raw = stories.get(str(i)) or stories.get(content)
+        story = normalize_story(raw) if raw else {}
         poems.append(
             {
                 "id": i,
                 "poem_date": poem_date,
                 "content": content,
-                "story": story,
+                "story": story if story_has_content(story) else None,
             }
         )
 
