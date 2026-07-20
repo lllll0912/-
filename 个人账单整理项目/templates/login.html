@@ -4,77 +4,99 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>登录 · 个人账单</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
     <style>
       body {
-        margin: 0;
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: "PingFang SC", "Microsoft Yahei", sans-serif;
-        background: linear-gradient(165deg, #e8eefc 0%, #f3f6fb 50%, #eef6f0 100%);
-        color: #1f2a44;
+        padding: 24px;
       }
-      .box {
-        width: min(360px, 92vw);
-        background: #fff;
-        border-radius: 14px;
-        padding: 28px 24px 24px;
-        box-shadow: 0 12px 40px rgba(30, 60, 120, 0.12);
-        border: 1px solid #d9e2f2;
+      body::before { opacity: 1; }
+      .login-shell {
+        width: min(420px, 100%);
+        position: relative;
+        z-index: 1;
       }
-      h1 { margin: 0 0 6px; font-size: 1.35rem; }
-      .sub { color: #5f6b85; font-size: 0.9rem; margin-bottom: 1.25rem; }
-      label { display: block; font-size: 0.85rem; margin-bottom: 0.35rem; color: #5f6b85; }
-      input[type="password"] {
-        width: 100%;
-        box-sizing: border-box;
-        border: 1px solid #c8d3ea;
-        border-radius: 8px;
-        padding: 10px 12px;
-        font-size: 1rem;
-        margin-bottom: 0.85rem;
+      .login-brand {
+        text-align: center;
+        margin-bottom: 28px;
       }
-      input:focus {
-        outline: none;
-        border-color: #2f6df6;
-        box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.14);
+      .login-brand .brand-mark {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 14px;
+        font-size: 24px;
+        border-radius: 16px;
       }
-      button {
-        width: 100%;
-        border: 0;
-        border-radius: 8px;
-        padding: 10px;
-        background: #2f6df6;
-        color: #fff;
-        font-size: 1rem;
+      .login-brand h1 {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: var(--text);
+      }
+      .login-brand p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .login-card {
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius-lg);
+        padding: 28px 26px 26px;
+        box-shadow: var(--card-shadow);
+        backdrop-filter: blur(12px);
+      }
+      .login-card label {
+        display: block;
+        font-size: 13px;
         font-weight: 600;
-        cursor: pointer;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
       }
-      button:hover { background: #2458ca; }
-      .err {
-        background: #fdecea;
-        color: #b42318;
-        padding: 8px 10px;
-        border-radius: 8px;
-        font-size: 0.88rem;
-        margin-bottom: 0.85rem;
+      .login-card input[type="password"] {
+        width: 100%;
+        margin-bottom: 18px;
+        padding: 12px 14px;
+        font-size: 15px;
+      }
+      .login-card button {
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+      }
+      .login-err {
+        background: var(--danger-bg);
+        color: #991b1b;
+        border: 1px solid var(--danger-border);
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        margin-bottom: 16px;
       }
     </style>
   </head>
   <body>
-    <div class="box">
-      <h1>个人账单</h1>
-      <p class="sub">请输入访问密码后继续</p>
-      {% if error %}
-      <div class="err">{{ error }}</div>
-      {% endif %}
-      <form method="post">
-        <input type="hidden" name="next" value="{{ next }}" />
-        <label for="password">密码</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" autofocus required />
-        <button type="submit">登录</button>
-      </form>
+    <div class="login-shell">
+      <div class="login-brand">
+        <div class="brand-mark">账</div>
+        <h1>个人账单</h1>
+        <p>请输入访问密码以继续</p>
+      </div>
+      <div class="login-card">
+        {% if error %}
+        <div class="login-err">{{ error }}</div>
+        {% endif %}
+        <form method="post">
+          <input type="hidden" name="next" value="{{ next }}" />
+          <label for="password">访问密码</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" autofocus required />
+          <button type="submit">登录</button>
+        </form>
+      </div>
     </div>
   </body>
 </html>
