@@ -2,14 +2,25 @@ import csv
 import json
 import os
 from datetime import datetime
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import List, Dict, Any, Tuple
 
 from db.connector import get_cursor
 from rule_manager import load_rules
 
 
-BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backup")
 BACKUP_PREFIX = "records_backup_"
+
+
+def get_backup_dir() -> str:
+    """本机用项目下 backup/；Fly 用 Volume 上 /data/backup（持久）。"""
+    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
+    if data_dir:
+        return str(Path(data_dir) / "backup")
+    return str(Path(__file__).resolve().parent.parent / "backup")
+
+
+BACKUP_DIR = get_backup_dir()  # 兼容旧引用；运行时请用 get_backup_dir()
 
 
 def _query_all_records() -> List[Dict[str, Any]]:
@@ -30,10 +41,10 @@ def _query_travel_profiles() -> List[Dict[str, Any]]:
         cur.execute(
             """
             SELECT COALESCE(NULLIF(travel_tag,''),'未命名行程') AS travel_tag,
-                   GROUP_CONCAT(DISTINCT NULLIF(travel_companions,'') ORDER BY travel_companions SEPARATOR '、') AS travel_companions,
+                   GROUP_CONCAT(CASE WHEN travel_companions='' THEN NULL ELSE travel_companions END, '、') AS travel_companions,
                    MIN(bill_date) AS start_date,
                    MAX(bill_date) AS end_date,
-                   DATEDIFF(MAX(bill_date), MIN(bill_date)) + 1 AS duration_days,
+                   CAST(julianday(MAX(bill_date)) - julianday(MIN(bill_date)) AS INTEGER) + 1 AS duration_days,
                    COUNT(*) AS record_count,
                    ROUND(SUM(CASE WHEN direction='支出' THEN amount ELSE 0 END), 2) AS expense,
                    ROUND(SUM(CASE WHEN direction='收入' THEN amount ELSE 0 END), 2) AS income
@@ -46,17 +57,28 @@ def _query_travel_profiles() -> List[Dict[str, Any]]:
         return cur.fetchall()
 
 
-def write_latest_backup_csv() -> str:
-    os.makedirs(BACKUP_DIR, exist_ok=True)
-    for name in os.listdir(BACKUP_DIR):
-        if name.startswith(BACKUP_PREFIX) and (name.endswith(".csv") or name.endswith(".txt") or name.endswith(".json")):
-            try:
-                os.remove(os.path.join(BACKUP_DIR, name))
-            except Exception:
-                pass
+def write_latest_backup_csv(clear_old: bool = True) -> str:
+    """
+    按现有命名写入 backup/：
+      records_backup_YYYYMMDD_HHMMSS.csv / .txt
+      records_backup_..._types.json/.csv
+      records_backup_..._travel.json/.csv
+    返回主 csv 路径。
+    """
+    backup_dir = get_backup_dir()
+    os.makedirs(backup_dir, exist_ok=True)
+    if clear_old:
+        for name in os.listdir(backup_dir):
+            if name.startswith(BACKUP_PREFIX) and (
+                name.endswith(".csv") or name.endswith(".txt") or name.endswith(".json")
+            ):
+                try:
+                    os.remove(os.path.join(backup_dir, name))
+                except Exception:
+                    pass
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_file = os.path.join(BACKUP_DIR, "{}{}.csv".format(BACKUP_PREFIX, ts))
+    backup_file = os.path.join(backup_dir, "{}{}.csv".format(BACKUP_PREFIX, ts))
     rows = _query_all_records()
     headers = [
         "id",
@@ -108,7 +130,6 @@ def write_latest_backup_csv() -> str:
     with open(travel_file, "w", encoding="utf-8") as f:
         json.dump({"travel_profiles": _query_travel_profiles()}, f, ensure_ascii=False, indent=2, default=str)
 
-    # 同步输出 CSV，便于人工查阅
     types_csv = base_no_ext + "_types.csv"
     with open(types_csv, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=["map", "category_l1", "category_l2", "pattern"])
@@ -131,9 +152,38 @@ def write_latest_backup_csv() -> str:
     with open(travel_csv, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(
             f,
-            fieldnames=["travel_tag", "travel_companions", "start_date", "end_date", "duration_days", "record_count", "expense", "income"],
+            fieldnames=[
+                "travel_tag",
+                "travel_companions",
+                "start_date",
+                "end_date",
+                "duration_days",
+                "record_count",
+                "expense",
+                "income",
+            ],
         )
         w.writeheader()
         for row in _query_travel_profiles():
             w.writerow(row)
     return backup_file
+
+
+def list_backup_bundle_files(main_csv_path: str) -> List[str]:
+    """同一时间戳的一套备份文件。"""
+    base = main_csv_path[:-4]
+    candidates = [
+        main_csv_path,
+        base + ".txt",
+        base + "_types.json",
+        base + "_types.csv",
+        base + "_travel.json",
+        base + "_travel.csv",
+    ]
+    return [p for p in candidates if os.path.isfile(p)]
+
+
+def create_backup_bundle(clear_old: bool = True) -> Tuple[str, List[str]]:
+    main_csv = write_latest_backup_csv(clear_old=clear_old)
+    files = list_backup_bundle_files(main_csv)
+    return main_csv, files

@@ -27,6 +27,10 @@ Desktop.ini
 个人账单整理项目/backup/
 个人账单整理项目/账单备份/
 个人账单整理项目/deploy-repo/
+个人账单整理项目/deploy/fly/_token_once.txt
+个人账单整理项目/deploy/fly/*token*
+个人账单整理项目/tunnel_*.log
+个人账单整理项目/.pytest_cache/
 个人账单整理项目/.venv/
 个人账单整理项目/__pycache__/
 个人账单整理项目/**/__pycache__/

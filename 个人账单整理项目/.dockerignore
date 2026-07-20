@@ -6,11 +6,12 @@ data/
 backup/
 账单备份/
 deploy-repo/
-site/
+tools/
 tests/
 *.md
 *.bat
-*.txt
+*.ps1
 *.xlsx
 *.docx
 .git
+tunnel_*.log

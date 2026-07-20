@@ -1,0 +1,27 @@
+name: Deploy bill app to Fly
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "个人账单整理项目/**"
+      - ".github/workflows/deploy-bill-fly.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 个人账单整理项目
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only --app bill-private-lllll0912
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

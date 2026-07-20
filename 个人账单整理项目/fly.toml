@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/fly-apps/flyctl/master/api/schemas/fly.v1.json
-app = "bill-private-YOURNAME"
+app = "bill-private-lllll0912"
 primary_region = "nrt"
 
 [build]

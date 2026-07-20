@@ -529,13 +529,13 @@ def travel_summary() -> Dict[str, List[Dict[str, Any]]]:
         cur.execute(
             """
             SELECT COALESCE(NULLIF(travel_tag,''),'未命名行程') AS travel_tag,
-                   GROUP_CONCAT(DISTINCT NULLIF(travel_companions,'') ORDER BY travel_companions SEPARATOR '、') AS travel_companions,
+                   GROUP_CONCAT(CASE WHEN travel_companions='' THEN NULL ELSE travel_companions END, '、') AS travel_companions,
                    ROUND(SUM(CASE WHEN direction='支出' THEN amount ELSE 0 END), 2) AS expense,
                    ROUND(SUM(CASE WHEN direction='收入' THEN amount ELSE 0 END), 2) AS income,
                    COUNT(*) AS record_count,
                    MIN(bill_date) AS start_date,
                    MAX(bill_date) AS end_date,
-                   DATEDIFF(MAX(bill_date), MIN(bill_date)) + 1 AS duration_days
+                   CAST(julianday(MAX(bill_date)) - julianday(MIN(bill_date)) AS INTEGER) + 1 AS duration_days
             FROM records
             WHERE is_travel=1
             GROUP BY COALESCE(NULLIF(travel_tag,''),'未命名行程')
@@ -546,11 +546,11 @@ def travel_summary() -> Dict[str, List[Dict[str, Any]]]:
 
         cur.execute(
             """
-            SELECT DATE_FORMAT(bill_date, '%Y-%m') AS month,
+            SELECT strftime('%Y-%m', bill_date) AS month,
                    ROUND(SUM(CASE WHEN is_travel=1 AND direction='支出' THEN amount ELSE 0 END), 2) AS travel_expense,
                    ROUND(SUM(CASE WHEN is_travel=0 AND direction='支出' THEN amount ELSE 0 END), 2) AS normal_expense
             FROM records
-            GROUP BY DATE_FORMAT(bill_date, '%Y-%m')
+            GROUP BY strftime('%Y-%m', bill_date)
             ORDER BY month DESC
             """
         )

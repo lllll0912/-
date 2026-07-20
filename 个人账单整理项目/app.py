@@ -7,7 +7,7 @@ from flask import Flask, redirect, render_template, request, url_for, flash
 from flask import Response, session
 
 from auth import auth_bp, auth_enabled, is_logged_in
-from db.backup import write_latest_backup_csv
+from db.backup import write_latest_backup_csv, create_backup_bundle
 from offline_report import collect_payload, render_report_html
 from db.repository import (
     backfill_category_l1,
@@ -68,7 +68,7 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("BILL_COOKIE_SECURE", "").s
 app.register_blueprint(auth_bp)
 
 BASE_DIR = Path(__file__).resolve().parent
-SAMPLE_PATH = BASE_DIR / "Transfer Dock_Text_20260318112028.txt"
+SAMPLE_PATH = BASE_DIR / "tools" / "Transfer Dock_Text_20260318112028.txt"
 if not SAMPLE_PATH.exists():
     SAMPLE_PATH = BASE_DIR / "1.待规则化年份账单" / "2025账单.txt"
 db_ready = False
@@ -892,6 +892,30 @@ def travel_page():
         travel=travel,
         tagged_rows=tagged_rows,
         bill_dates_json=json.dumps(list_bill_dates(), ensure_ascii=False),
+    )
+
+
+@app.route("/download/backup.zip")
+def download_backup_zip():
+    """一键导出备份：写入 backup/（Fly 上为 /data/backup），并下载同名 zip 到浏览器本地。"""
+    ensure_db()
+    from io import BytesIO
+    import zipfile
+    from pathlib import Path
+
+    main_csv, files = create_backup_bundle(clear_old=True)
+    ts = Path(main_csv).stem.replace("records_backup_", "", 1)
+    bio = BytesIO()
+    with zipfile.ZipFile(bio, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for fp in files:
+            z.write(fp, arcname=Path(fp).name)
+    bio.seek(0)
+    return Response(
+        bio.getvalue(),
+        mimetype="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename=records_backup_{ts}.zip",
+        },
     )
 
 

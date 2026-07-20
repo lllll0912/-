@@ -121,11 +121,12 @@
       <a href="{{ url_for('analysis_page') }}">分析看板</a>
       <a href="{{ url_for('travel_page') }}">旅游管理</a>
       <a href="{{ url_for('types_page') }}">类型字典</a>
+      <a href="{{ url_for('download_backup_zip') }}">导出备份</a>
       <a href="{{ url_for('download_offline_report_zip') }}">离线报告包</a>
       {% if auth_enabled %}
       <a href="{{ url_for('auth.logout') }}">退出</a>
       {% endif %}
-      <span class="ver">版本：2026-07-20-r11</span>
+      <span class="ver">版本：2026-07-20-r12</span>
     </div>
     <div class="container">
       {% with messages = get_flashed_messages(with_categories=true) %}
