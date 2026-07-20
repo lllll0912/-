@@ -14,23 +14,26 @@
 
 ### 公网演示站
 
-演示页只展示虚构样例，说明产品能力。  
+仓库：https://github.com/lllll0912/bill-demo  
 
-部署后链接写在下方（Netlify / 与「每日一诗」同方式）：
+**线上链接：**
 
 ```text
-（首次部署后填写）
+（Netlify 连接 bill-demo 并 Deploy 后填写）
 ```
 
-本地预览演示站：
+Netlify 设置（与每日一诗相同方式）：
 
-```bash
-cd site
-python -m http.server 8502
-```
+| 项 | 填什么 |
+|----|--------|
+| Repository | `lllll0912/bill-demo` |
+| Branch | `main` |
+| Build command | 留空 |
+| Publish directory | 留空（或 `.`） |
 
-打开 http://127.0.0.1:8502
+本地预览演示站：双击 `预览演示站.bat` → http://127.0.0.1:8502  
 
+以后更新演示页：改 `site/` → 同步到 `deploy-repo/` → push `bill-demo` → Netlify 自动部署。
 ---
 
 ## 功能摘要
