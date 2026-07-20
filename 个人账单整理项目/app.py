@@ -1,6 +1,9 @@
 from pathlib import Path
+from collections import OrderedDict
+import hashlib
 import json
 import os
+import secrets
 from datetime import datetime, timedelta
 
 from flask import Flask, redirect, render_template, request, url_for, flash
@@ -26,6 +29,7 @@ from db.repository import (
     list_batches,
     list_bill_dates,
     list_categories,
+    list_journal_records,
     list_l1_categories,
     list_records,
     list_staging_records,
@@ -43,6 +47,7 @@ from db.repository import (
 from db.schema import init_db
 from importers import OPTIONAL_COLUMNS, REQUIRED_COLUMNS, parse_input_to_staging
 from parser import ImportOptions
+from poem_admin import delete_poem, get_poem, load_poems, pick_poem_for_date, sort_poems_desc, upsert_poem
 from preview_store import create_preview, get_preview, pop_preview, update_preview
 from rule_manager import (
     category_options,
@@ -116,6 +121,69 @@ def _migrate_l1():
             backfill_category_l1(l2map)
     except Exception:
         pass
+
+
+def _journal_groups(rows):
+    groups = OrderedDict()
+    for row in rows:
+        day = str(row.get("bill_date") or "")
+        if not day:
+            continue
+        bucket = groups.setdefault(
+            day,
+            {
+                "bill_date": day,
+                "records": [],
+                "notes": [],
+                "expense_total": 0.0,
+                "income_total": 0.0,
+            },
+        )
+        bucket["records"].append(row)
+        note = str(row.get("note") or "").strip()
+        if note and note not in bucket["notes"]:
+            bucket["notes"].append(note)
+        amount = float(row.get("amount") or 0)
+        if str(row.get("direction") or "") == "收入":
+            bucket["income_total"] += amount
+        else:
+            bucket["expense_total"] += amount
+
+    out = list(groups.values())
+    for group in out:
+        group["record_count"] = len(group["records"])
+        group["note_count"] = len(group["notes"])
+        group["expense_total"] = round(group["expense_total"], 2)
+        group["income_total"] = round(group["income_total"], 2)
+    return out
+
+
+def _poem_form_payload(src=None):
+    src = src or {}
+    story = src.get("story") or {}
+    return {
+        "poem_date": str(src.get("poem_date") or "").strip(),
+        "content": str(src.get("content") or "").strip(),
+        "source": str(story.get("source") or "").strip(),
+        "full_poem": str(story.get("full_poem") or "").strip(),
+        "background": str(story.get("background") or "").strip(),
+        "interpretation": str(story.get("interpretation") or "").strip(),
+        "meaning": str(story.get("meaning") or "").strip(),
+    }
+
+
+def _poem_payload_from_form():
+    return {
+        "poem_date": (request.form.get("poem_date") or "").strip(),
+        "content": (request.form.get("content") or "").strip(),
+        "story": {
+            "source": (request.form.get("source") or "").strip(),
+            "full_poem": (request.form.get("full_poem") or "").strip(),
+            "background": (request.form.get("background") or "").strip(),
+            "interpretation": (request.form.get("interpretation") or "").strip(),
+            "meaning": (request.form.get("meaning") or "").strip(),
+        },
+    }
 
 
 def _parse_id_list(raw: str):
@@ -751,6 +819,32 @@ def records_page():
     )
 
 
+@app.route("/journal")
+def journal_page():
+    ensure_db()
+    month = request.args.get("month", "").strip()
+    keyword = request.args.get("keyword", "").strip()
+    rows = list_journal_records(month=month, keyword=keyword)
+    groups = _journal_groups(rows)
+    all_months = sorted({str(r.get("bill_date") or "")[:7] for r in rows if str(r.get("bill_date") or "")[:7]}, reverse=True)
+
+    total_expense = round(sum(float(g["expense_total"]) for g in groups), 2)
+    total_income = round(sum(float(g["income_total"]) for g in groups), 2)
+    note_count = sum(int(g["note_count"]) for g in groups)
+    latest_day = groups[0]["bill_date"] if groups else ""
+    return render_template(
+        "journal.html",
+        filters={"month": month, "keyword": keyword},
+        groups=groups,
+        all_months=all_months,
+        total_days=len(groups),
+        total_notes=note_count,
+        total_expense=total_expense,
+        total_income=total_income,
+        latest_day=latest_day,
+    )
+
+
 @app.route("/analysis")
 def analysis_page():
     ensure_db()
@@ -893,6 +987,134 @@ def travel_page():
         tagged_rows=tagged_rows,
         bill_dates_json=json.dumps(list_bill_dates(), ensure_ascii=False),
     )
+
+
+def _poem_admin_password() -> str:
+    return (os.environ.get("POEM_ADMIN_PASSWORD") or os.environ.get("BILL_ACCESS_PASSWORD") or "").strip()
+
+
+def _is_poem_admin() -> bool:
+    if not _poem_admin_password():
+        return True
+    return bool(session.get("poem_admin_ok"))
+
+
+def _require_poem_admin():
+    """未通过维护密码时跳到维护入口。返回 None 表示已放行。"""
+    if _is_poem_admin():
+        return None
+    flash("请输入维护密码后再管理诗库", "error")
+    return redirect(url_for("poem_admin_page"))
+
+
+@app.route("/poems")
+def poems_page():
+    ensure_db()
+    keyword = request.args.get("keyword", "").strip()
+    month = request.args.get("month", "").strip()
+    all_poems = load_poems()
+    poems = all_poems
+    if keyword:
+        low = keyword.lower()
+        poems = [p for p in poems if low in str(p.get("content", "")).lower() or low in json.dumps(p.get("story") or {}, ensure_ascii=False).lower()]
+    if month:
+        poems = [p for p in poems if str(p.get("poem_date") or "").startswith(month)]
+    poems = sort_poems_desc(poems)
+    all_months = sorted({str(p.get("poem_date") or "")[:7] for p in all_poems if str(p.get("poem_date") or "")[:7]}, reverse=True)
+    today_poem = pick_poem_for_date(datetime.now().strftime("%Y-%m-%d"), all_poems)
+    return render_template(
+        "poems.html",
+        poems=poems,
+        today_poem=today_poem,
+        today_label="{} 年 {} 月 {} 日".format(datetime.now().year, datetime.now().month, datetime.now().day),
+        filters={"keyword": keyword, "month": month},
+        all_months=all_months,
+        poem_total=len(all_poems),
+        is_poem_admin=_is_poem_admin(),
+    )
+
+
+@app.route("/poems/admin", methods=["GET", "POST"])
+def poem_admin_page():
+    ensure_db()
+    if request.method == "POST" and not _is_poem_admin():
+        pwd = (request.form.get("password") or "").strip()
+        if pwd and secrets.compare_digest(
+            hashlib.sha256(pwd.encode("utf-8")).digest(),
+            hashlib.sha256(_poem_admin_password().encode("utf-8")).digest(),
+        ):
+            session["poem_admin_ok"] = True
+            session.permanent = True
+            flash("已进入诗库维护模式", "success")
+            return redirect(url_for("poem_admin_page"))
+        flash("维护密码错误", "error")
+        return redirect(url_for("poem_admin_page"))
+
+    if not _is_poem_admin():
+        return render_template("poem_admin.html", is_admin=False, poems=[])
+
+    poems = sort_poems_desc(load_poems())
+    return render_template("poem_admin.html", is_admin=True, poems=poems)
+
+
+@app.route("/poems/admin/logout")
+def poem_admin_logout():
+    session.pop("poem_admin_ok", None)
+    flash("已退出诗库维护模式", "success")
+    return redirect(url_for("poems_page"))
+
+
+@app.route("/poems/new", methods=["GET", "POST"])
+def poem_create_page():
+    ensure_db()
+    guard = _require_poem_admin()
+    if guard:
+        return guard
+    form = _poem_form_payload({"poem_date": datetime.now().strftime("%Y-%m-%d")})
+    if request.method == "POST":
+        form = _poem_form_payload(_poem_payload_from_form())
+        if not form["poem_date"] or not form["content"]:
+            flash("日期和诗句内容不能为空", "error")
+        else:
+            poem_id = upsert_poem(None, _poem_payload_from_form())
+            flash("已新增诗词，并同步更新诗库页面", "success")
+            return redirect(url_for("poem_edit_page", poem_id=poem_id))
+    return render_template("poem_edit.html", form=form, poem_id=None)
+
+
+@app.route("/poems/<int:poem_id>/edit", methods=["GET", "POST"])
+def poem_edit_page(poem_id: int):
+    ensure_db()
+    guard = _require_poem_admin()
+    if guard:
+        return guard
+    poem = get_poem(poem_id)
+    if not poem:
+        flash("这条诗词不存在或已被删除", "error")
+        return redirect(url_for("poem_admin_page"))
+    form = _poem_form_payload(poem)
+    if request.method == "POST":
+        form = _poem_form_payload(_poem_payload_from_form())
+        if not form["poem_date"] or not form["content"]:
+            flash("日期和诗句内容不能为空", "error")
+        else:
+            new_id = upsert_poem(poem_id, _poem_payload_from_form())
+            flash("已保存诗词，并重建展示页", "success")
+            return redirect(url_for("poem_edit_page", poem_id=new_id))
+    return render_template("poem_edit.html", form=form, poem_id=poem_id)
+
+
+@app.route("/poems/<int:poem_id>/delete", methods=["POST"])
+def poem_delete_page(poem_id: int):
+    ensure_db()
+    guard = _require_poem_admin()
+    if guard:
+        return guard
+    if delete_poem(poem_id):
+        flash("已删除诗词，并同步重建诗库", "success")
+    else:
+        flash("未找到要删除的诗词", "error")
+    return redirect(url_for("poem_admin_page"))
 
 
 @app.route("/download/backup.zip")

@@ -1,0 +1,253 @@
+{% extends "layout.html" %}
+{% block title %}每日诗词{% endblock %}
+{% block content %}
+<section class="poem-stage">
+  <div class="poem-stage-inner" id="poem-stage">
+    <p class="poem-stage-label" id="poem-stage-label">今日一诗</p>
+    <p class="poem-stage-date" id="poem-stage-date">{{ today_label }}</p>
+    <blockquote class="poem-stage-text" id="poem-stage-text">{% if today_poem %}{{ today_poem.content }}{% else %}诗库还是空的，静候第一句诗。{% endif %}</blockquote>
+    <p class="poem-stage-source" id="poem-stage-source"{% if not today_poem or not today_poem.story.source %} hidden{% endif %}>{% if today_poem and today_poem.story.source %}—— {{ today_poem.story.source }}{% endif %}</p>
+    <div id="poem-story-wrap">
+      {% if today_poem and (today_poem.story.full_poem or today_poem.story.interpretation or today_poem.story.meaning or today_poem.story.background) %}
+      <details class="poem-story-panel" id="poem-story-panel">
+        <summary>展开诗境 · 出处与解读</summary>
+        <div class="poem-story-body" id="poem-story-body"></div>
+      </details>
+      {% endif %}
+    </div>
+    <button type="button" class="poem-back-today" id="poem-back-today" hidden>↩ 回到今日</button>
+  </div>
+</section>
+
+<div class="card poem-browse-toolbar">
+  <form method="get" class="row">
+    <div>
+      <label class="field-label">月份</label>
+      <select name="month">
+        <option value="">全部月份</option>
+        {% for m in all_months %}
+          <option value="{{ m }}" {% if filters.month == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="flex: 1; min-width: 200px;">
+      <label class="field-label">寻一句诗</label>
+      <input type="text" name="keyword" value="{{ filters.keyword }}" placeholder="例如：听雨、相思、长安" />
+    </div>
+    <div>
+      <label class="field-label">&nbsp;</label>
+      <button type="submit">查找</button>
+    </div>
+    {% if filters.month or filters.keyword %}
+    <div>
+      <label class="field-label">&nbsp;</label>
+      <a class="btn-secondary pill-link" href="{{ url_for('poems_page') }}">清空</a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+{% if poems %}
+<div class="card poem-history-card">
+  <button type="button" class="poem-history-toggle" id="poem-history-toggle" aria-expanded="false">
+    <span class="poem-history-toggle-title">往日列表</span>
+    <span class="muted">共 {{ poems|length }} 首 · 按日期降序</span>
+    <span class="poem-history-chevron" id="poem-history-chevron">▼</span>
+  </button>
+  <div class="poem-history-panel" id="poem-history-panel">
+    <ul class="poem-history-list" id="poem-history-list">
+      {% for poem in poems %}
+      <li class="poem-history-item{% if today_poem and poem.id == today_poem.id %} is-today{% endif %}"
+          data-poem-id="{{ poem.id }}" tabindex="0" role="button">
+        <div class="poem-history-item-head">
+          <span class="poem-history-date">{% if poem.poem_date %}{{ poem.poem_date }}{% else %}未标注日期{% endif %}</span>
+          {% if today_poem and poem.id == today_poem.id %}
+          <span class="chip chip-today">今日</span>
+          {% elif poem.story.source or poem.story.interpretation %}
+          <span class="chip chip-story">有诗境</span>
+          {% endif %}
+        </div>
+        <div class="poem-history-text">{{ poem.content }}</div>
+        {% if poem.story.source %}
+        <div class="poem-history-source">{{ poem.story.source }}</div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% else %}
+<div class="card journal-empty">
+  <h3>没有找到符合条件的诗句</h3>
+  <p class="muted">换个关键词，或清空筛选再看看。</p>
+</div>
+{% endif %}
+
+<footer class="poem-foot">
+  {% if is_poem_admin %}
+    <a href="{{ url_for('poem_admin_page') }}">进入诗库维护</a>
+    <span class="poem-foot-dot">·</span>
+    <a href="{{ url_for('poem_admin_logout') }}">退出维护模式</a>
+  {% else %}
+    <a href="{{ url_for('poem_admin_page') }}" class="poem-foot-admin">维护者入口</a>
+  {% endif %}
+</footer>
+
+<script id="poems-data" type="application/json">{{ poems|tojson }}</script>
+<script id="today-poem-data" type="application/json">{{ today_poem|tojson if today_poem else 'null' }}</script>
+<script id="today-label-data" type="application/json">{{ today_label|tojson }}</script>
+<script>
+(function () {
+  const poems = JSON.parse(document.getElementById("poems-data").textContent || "[]");
+  const todayPoem = JSON.parse(document.getElementById("today-poem-data").textContent || "null");
+  const todayLabel = JSON.parse(document.getElementById("today-label-data").textContent || '""');
+  const todayPoemId = todayPoem ? Number(todayPoem.id) : null;
+
+  const poemsById = Object.fromEntries(poems.map((p) => [Number(p.id), p]));
+  let activePoemId = todayPoemId;
+
+  const els = {
+    label: document.getElementById("poem-stage-label"),
+    date: document.getElementById("poem-stage-date"),
+    text: document.getElementById("poem-stage-text"),
+    source: document.getElementById("poem-stage-source"),
+    storyWrap: document.getElementById("poem-story-wrap"),
+    backToday: document.getElementById("poem-back-today"),
+    toggle: document.getElementById("poem-history-toggle"),
+    panel: document.getElementById("poem-history-panel"),
+    chevron: document.getElementById("poem-history-chevron"),
+    list: document.getElementById("poem-history-list"),
+  };
+
+  function formatDateLabel(dateStr) {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    return `${parts[0]} 年 ${Number(parts[1])} 月 ${Number(parts[2])} 日`;
+  }
+
+  function storySections(story) {
+    story = story || {};
+    const sections = [];
+    if (story.full_poem) sections.push(["全诗", story.full_poem, true]);
+    if (story.background) sections.push(["创作背景", story.background, false]);
+    if (story.interpretation) sections.push(["解读", story.interpretation, false]);
+    if (story.meaning) sections.push(["意在何处", story.meaning, false]);
+    return sections;
+  }
+
+  function renderStory(story) {
+    const sections = storySections(story);
+    if (!sections.length) {
+      els.storyWrap.innerHTML = "";
+      return;
+    }
+    const body = sections.map(([label, text, isPre]) => {
+      const inner = isPre ? `<pre>${escapeHtml(text)}</pre>` : `<p>${escapeHtml(text)}</p>`;
+      return `<div class="poem-story-sec"><span>${label}</span>${inner}</div>`;
+    }).join("");
+    els.storyWrap.innerHTML =
+      `<details class="poem-story-panel" id="poem-story-panel" open>` +
+      `<summary>展开诗境 · 出处与解读</summary>` +
+      `<div class="poem-story-body">${body}</div></details>`;
+  }
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function setActiveItem(poemId) {
+    activePoemId = poemId;
+    document.querySelectorAll(".poem-history-item").forEach((li) => {
+      li.classList.toggle("active", Number(li.dataset.poemId) === poemId);
+    });
+  }
+
+  function showPoem(poem, opts) {
+    if (!poem) return;
+    const scrollTop = !(opts && opts.noScroll);
+    const isToday = Number(poem.id) === todayPoemId;
+    els.label.textContent = isToday ? "今日一诗" : "往日一诗";
+    els.date.textContent = isToday ? todayLabel : formatDateLabel(poem.poem_date);
+    els.backToday.hidden = isToday;
+    els.text.textContent = poem.content || "（暂无）";
+    const story = poem.story || {};
+    if (story.source) {
+      els.source.textContent = "—— " + story.source;
+      els.source.hidden = false;
+    } else {
+      els.source.textContent = "";
+      els.source.hidden = true;
+    }
+    renderStory(story);
+    setActiveItem(Number(poem.id));
+
+    const stage = document.getElementById("poem-stage");
+    stage.classList.remove("is-swapping");
+    stage.offsetHeight;
+    stage.classList.add("is-swapping");
+
+    if (scrollTop) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    if (opts && opts.closeHistory) {
+      closeHistory();
+    }
+  }
+
+  function openHistory() {
+    if (!els.panel) return;
+    els.panel.classList.add("is-open");
+    els.toggle.setAttribute("aria-expanded", "true");
+  }
+
+  function closeHistory() {
+    if (!els.panel) return;
+    els.panel.classList.remove("is-open");
+    els.toggle.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleHistory() {
+    if (!els.panel) return;
+    if (!els.panel.classList.contains("is-open")) openHistory();
+    else closeHistory();
+  }
+
+  if (todayPoem) {
+    renderStory(todayPoem.story || {});
+    setActiveItem(Number(todayPoem.id));
+  }
+
+  if (els.toggle) {
+    els.toggle.addEventListener("click", toggleHistory);
+  }
+
+  if (els.list) {
+    els.list.addEventListener("click", (e) => {
+      const li = e.target.closest(".poem-history-item");
+      if (!li) return;
+      const poem = poemsById[Number(li.dataset.poemId)];
+      showPoem(poem, { closeHistory: true });
+    });
+    els.list.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const li = e.target.closest(".poem-history-item");
+      if (!li) return;
+      e.preventDefault();
+      const poem = poemsById[Number(li.dataset.poemId)];
+      showPoem(poem, { closeHistory: true });
+    });
+  }
+
+  if (els.backToday && todayPoem) {
+    els.backToday.addEventListener("click", () => {
+      showPoem(todayPoem, { noScroll: false });
+    });
+  }
+})();
+</script>
+{% endblock %}

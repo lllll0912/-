@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block title %}诗库维护{% endblock %}
+{% block content %}
+{% if not is_admin %}
+<div class="poem-gate">
+  <div class="card poem-gate-card">
+    <p class="eyebrow">Maintainer Only</p>
+    <h2>诗库维护入口</h2>
+    <p class="muted">这里是维护者专用区域，输入维护密码后可以新增、编辑、删除诗词。</p>
+    <form method="post" class="poem-gate-form">
+      <input type="password" name="password" placeholder="维护密码" required autofocus />
+      <button type="submit">进入维护</button>
+    </form>
+    <a class="poem-gate-back" href="{{ url_for('poems_page') }}">← 返回诗词展示</a>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="row" style="justify-content: space-between; align-items: center;">
+    <div>
+      <h2>诗库维护</h2>
+      <p class="muted">共 {{ poems|length }} 首。改动会同步写入诗库文件并重建展示页。</p>
+    </div>
+    <div class="row">
+      <a href="{{ url_for('poem_create_page') }}"><button type="button">新增诗词</button></a>
+      <a class="btn-secondary pill-link" href="{{ url_for('poems_page') }}">看展示页</a>
+      <a class="btn-secondary pill-link" href="{{ url_for('poem_admin_logout') }}">退出维护</a>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 60px;">#</th>
+          <th style="width: 120px;">日期</th>
+          <th>诗句</th>
+          <th style="width: 200px;">出处</th>
+          <th style="width: 90px;" data-no-sort>诗境</th>
+          <th style="width: 150px;" data-no-sort>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for poem in poems %}
+        <tr>
+          <td>{{ poem.id }}</td>
+          <td>{{ poem.poem_date }}</td>
+          <td>{{ poem.content }}</td>
+          <td class="muted">{{ poem.story.source or '—' }}</td>
+          <td>
+            {% if poem.story.source or poem.story.full_poem or poem.story.interpretation %}
+              <span class="chip chip-income">已配</span>
+            {% else %}
+              <span class="chip">待补</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="row" style="gap: 8px;">
+              <a href="{{ url_for('poem_edit_page', poem_id=poem.id) }}">编辑</a>
+              <form method="post" action="{{ url_for('poem_delete_page', poem_id=poem.id) }}"
+                    onsubmit="return confirm('确定删除这首诗吗？');" style="display:inline;">
+                <button type="submit" class="btn-secondary" style="padding: 4px 10px; font-size: 12px;">删除</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

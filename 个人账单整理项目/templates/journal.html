@@ -1,0 +1,117 @@
+{% extends "layout.html" %}
+{% block title %}生活日志{% endblock %}
+{% block content %}
+<section class="journal-hero card">
+  <div class="journal-hero-copy">
+    <p class="eyebrow">Daily Journal</p>
+    <h2>把账单里的「日记」，拼成你的生活时间线</h2>
+    <p class="muted">这里读取数据库中 <code>note</code> 不为空的记录，按天归档。同一天的多条账单会合并成一页日记，并保留当日消费脉络。</p>
+  </div>
+  <div class="journal-stats">
+    <div class="stat-pill">
+      <span class="stat-label">有日志的天数</span>
+      <strong>{{ total_days }}</strong>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">日记条目</span>
+      <strong>{{ total_notes }}</strong>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">关联支出</span>
+      <strong>{{ '%.2f'|format(total_expense) }}</strong>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">关联收入</span>
+      <strong>{{ '%.2f'|format(total_income) }}</strong>
+    </div>
+  </div>
+</section>
+
+<div class="card">
+  <form method="get" class="row journal-toolbar">
+    <div>
+      <label class="field-label">月份</label>
+      <select name="month">
+        <option value="">全部月份</option>
+        {% for m in all_months %}
+          <option value="{{ m }}" {% if filters.month == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="flex: 1; min-width: 220px;">
+      <label class="field-label">搜索日记 / 明细</label>
+      <input type="text" name="keyword" value="{{ filters.keyword }}" placeholder="例如：加班、旅行、周末" />
+    </div>
+    <div>
+      <label class="field-label">&nbsp;</label>
+      <button type="submit">筛选</button>
+    </div>
+    {% if filters.month or filters.keyword %}
+    <div>
+      <label class="field-label">&nbsp;</label>
+      <a class="btn-secondary pill-link" href="{{ url_for('journal_page') }}">清空筛选</a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+{% if groups %}
+<section class="journal-timeline">
+  {% for group in groups %}
+  <article class="journal-day card" id="day-{{ group.bill_date }}">
+    <div class="journal-day-side">
+      <div class="journal-date-badge">{{ group.bill_date[5:7] }}-{{ group.bill_date[8:10] }}</div>
+      <div class="journal-year">{{ group.bill_date[:4] }}</div>
+      <div class="journal-day-meta">
+        <span>{{ group.record_count }} 笔账单</span>
+        <span>{{ group.note_count }} 条日记</span>
+      </div>
+    </div>
+    <div class="journal-day-body">
+      <div class="journal-notes">
+        {% for note in group.notes %}
+        <div class="journal-note-line">
+          <span class="journal-dot"></span>
+          <p>{{ note }}</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="journal-footprint">
+        <div class="journal-footprint-head">
+          <span>当日生活足迹</span>
+          <div class="journal-money">
+            {% if group.expense_total > 0 %}
+              <span class="chip chip-expense">支出 {{ '%.2f'|format(group.expense_total) }}</span>
+            {% endif %}
+            {% if group.income_total > 0 %}
+              <span class="chip chip-income">收入 {{ '%.2f'|format(group.income_total) }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="journal-tags">
+          {% for r in group.records[:8] %}
+          <span class="journal-tag {% if r.direction == '收入' %}is-income{% else %}is-expense{% endif %}">
+            {{ r.detail }} · {{ '%.2f'|format(r.amount) }}
+          </span>
+          {% endfor %}
+          {% if group.records|length > 8 %}
+          <span class="journal-tag muted-tag">+{{ group.records|length - 8 }} 更多</span>
+          {% endif %}
+        </div>
+        <div class="journal-actions">
+          <a href="{{ url_for('records_page', dates=group.bill_date) }}">查看当日全部账单</a>
+        </div>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+<div class="card journal-empty">
+  <h3>还没有可展示的生活日志</h3>
+  <p class="muted">请在导入或编辑账单时填写「日记」字段。之后这里会自动按天汇总，形成你的生活时间线。</p>
+  <a href="{{ url_for('import_page') }}">去导入账单</a>
+</div>
+{% endif %}
+{% endblock %}

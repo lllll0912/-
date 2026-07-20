@@ -255,6 +255,33 @@ def list_records(filters: Dict[str, Any], limit: Optional[int] = 20) -> List[Dic
         return cur.fetchall()
 
 
+def list_journal_records(month: str = "", keyword: str = "", limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    where = ["TRIM(COALESCE(note, '')) <> ''"]
+    args: List[Any] = []
+    month = str(month or "").strip()
+    keyword = str(keyword or "").strip()
+    if month:
+        where.append("DATE_FORMAT(bill_date, '%Y-%m')=%s")
+        args.append(month)
+    if keyword:
+        where.append("(note LIKE %s OR detail LIKE %s)")
+        kw = f"%{keyword}%"
+        args.extend([kw, kw])
+
+    sql = """
+        SELECT *
+        FROM records
+        WHERE {}
+        ORDER BY bill_date DESC, amount DESC, id DESC
+    """.format(" AND ".join(where))
+    if limit is not None:
+        sql += " LIMIT %s"
+        args.append(int(limit))
+    with get_cursor() as cur:
+        cur.execute(sql, tuple(args))
+        return cur.fetchall()
+
+
 def get_record(record_id: int) -> Optional[Dict[str, Any]]:
     with get_cursor() as cur:
         cur.execute("SELECT * FROM records WHERE id=%s", (record_id,))
