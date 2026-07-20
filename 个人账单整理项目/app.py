@@ -1,10 +1,12 @@
 from pathlib import Path
 import json
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 
 from flask import Flask, redirect, render_template, request, url_for, flash
-from flask import Response
+from flask import Response, session
 
+from auth import auth_bp, auth_enabled, is_logged_in
 from db.backup import write_latest_backup_csv
 from offline_report import collect_payload, render_report_html
 from db.repository import (
@@ -57,12 +59,39 @@ from rule_manager import (
 
 
 app = Flask(__name__)
-app.secret_key = "bill-secret-key"
+app.secret_key = os.environ.get("BILL_SECRET_KEY") or os.environ.get("SECRET_KEY") or "bill-dev-secret-change-me"
+app.permanent_session_lifetime = timedelta(days=14)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# 公网 HTTPS 部署时设 BILL_COOKIE_SECURE=1，本机 HTTP 调试不要开
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("BILL_COOKIE_SECURE", "").strip() in ("1", "true", "yes")
+app.register_blueprint(auth_bp)
+
 BASE_DIR = Path(__file__).resolve().parent
 SAMPLE_PATH = BASE_DIR / "Transfer Dock_Text_20260318112028.txt"
 if not SAMPLE_PATH.exists():
     SAMPLE_PATH = BASE_DIR / "1.待规则化年份账单" / "2025账单.txt"
 db_ready = False
+
+
+@app.before_request
+def _require_login():
+    if not auth_enabled():
+        return None
+    if request.endpoint and (
+        request.endpoint.startswith("auth.")
+        or request.endpoint == "static"
+    ):
+        return None
+    if is_logged_in():
+        return None
+    return redirect(url_for("auth.login", next=request.path))
+
+
+@app.context_processor
+def _inject_auth():
+    return {"auth_enabled": auth_enabled(), "is_logged_in": is_logged_in()}
+
 
 
 def ensure_db():
@@ -890,4 +919,6 @@ def download_offline_report_zip():
 
 if __name__ == "__main__":
     ensure_db()
-    app.run(host="127.0.0.1", port=8501, debug=False, use_reloader=False)
+    port = int(os.environ.get("PORT", "8501"))
+    host = os.environ.get("HOST", "0.0.0.0")
+    app.run(host=host, port=port, debug=False, use_reloader=False)

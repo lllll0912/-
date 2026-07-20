@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import os
 import re
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "bills.db"
+DB_PATH = Path(
+    os.environ.get("BILL_DB_PATH")
+    or (Path(os.environ["BILL_DATA_DIR"]) / "bills.db" if os.environ.get("BILL_DATA_DIR") else None)
+    or (Path(__file__).resolve().parent.parent / "data" / "bills.db")
+)
 
 
 def _dict_factory(cursor, row):
