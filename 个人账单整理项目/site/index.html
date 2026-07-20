@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>账单整理 · 演示</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Noto+Sans+SC:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="bg"></div>
+  <header class="top">
+    <p class="brand">账单整理</p>
+    <p class="badge">演示站 · 假数据</p>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>把账单理清楚</h1>
+      <p class="lead">导入清洗、分类学习、日历热力、旅游打标。真实账单只在你本机；这里是公开演示。</p>
+      <div class="cta">
+        <a class="btn" href="#demo">看演示数据</a>
+        <a class="btn ghost" href="#local">本机使用说明</a>
+      </div>
+    </section>
+
+    <section id="demo" class="panel">
+      <h2>演示概览（2025）</h2>
+      <p class="hint">以下金额与明细均为虚构示例，非任何人真实账单。</p>
+      <div class="stats" id="stats"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>日期</th><th>明细</th><th>类型</th><th>方向</th><th>金额</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="local" class="panel">
+      <h2>本机完整版（含真实数据）</h2>
+      <ol>
+        <li>打开仓库里的 <code>个人账单整理项目</code></li>
+        <li>双击 <code>run.bat</code></li>
+        <li>浏览器访问 <code>http://127.0.0.1:8501</code></li>
+      </ol>
+      <p>数据存在本地 <code>data/bills.db</code>（SQLite），不会上传到本演示站。</p>
+      <p>说明文档：项目内 <code>README.md</code></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>源码 monorepo · 演示托管 Netlify</p>
+  </footer>
+  <script src="./main.js"></script>
+</body>
+</html>

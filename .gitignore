@@ -21,10 +21,13 @@ Desktop.ini
 .DS_Store
 
 # ===== 个人数据（不要上传到 GitHub）=====
-# 账单备份与原始导出
+# 账单本地库与备份
+个人账单整理项目/data/
 个人账单整理项目/backup/
-个人账单整理项目/账单备份/
-个人账单整理项目/*.txt
+个人账单整理项目/.venv/
+个人账单整理项目/__pycache__/
+个人账单整理项目/**/__pycache__/
+个人账单整理项目/deploy-repo/
 
 # 喝水记录本地数据
 喝水提醒/data/
@@ -42,3 +45,7 @@ Desktop.ini
 # 每日一诗
 poem-20260313/deploy-repo/
 poem-20260313/.env
+poem-20260313/__pycache__/
+poem-20260313/scripts/__pycache__/
+poem-20260313/*.log
+poem-20260313/generate_stories_log.txt
