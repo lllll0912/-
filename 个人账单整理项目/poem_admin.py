@@ -45,10 +45,16 @@ def ensure_poem_data() -> None:
         return
     legacy_poem = LEGACY_POEM_ROOT / POEM_FILE_NAME
     legacy_stories = LEGACY_POEM_ROOT / STORIES_FILE_NAME
+    bundled_poem = BILL_DIR / "poems_data" / POEM_FILE_NAME
+    bundled_stories = BILL_DIR / "poems_data" / STORIES_FILE_NAME
     if legacy_poem.exists():
         shutil.copy2(legacy_poem, poem_file)
+    elif bundled_poem.exists():
+        shutil.copy2(bundled_poem, poem_file)
     if legacy_stories.exists():
         shutil.copy2(legacy_stories, stories_file)
+    elif bundled_stories.exists():
+        shutil.copy2(bundled_stories, stories_file)
     if poem_file.exists():
         build_poems_json()
 
