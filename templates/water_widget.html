@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>喝水小窗</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r17c" />
+  <style>
+    html, body.water-widget-page {
+      margin: 0;
+      min-height: 100%;
+      background: linear-gradient(165deg, #0c4a6e 0%, #082f49 45%, #0f172a 100%);
+      color: #e2e8f0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .ww {
+      box-sizing: border-box;
+      padding: 16px 16px 18px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .ww-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .ww-top h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+    }
+    .ww-pin {
+      font-size: 11px;
+      opacity: 0.75;
+    }
+    .ww-progress {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      overflow: hidden;
+    }
+    .ww-progress > i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #2dd4bf);
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.35s ease;
+    }
+    .ww-stats {
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .ww-stats span { font-size: 13px; font-weight: 500; opacity: 0.8; }
+    .ww-next {
+      font-size: 13px;
+      opacity: 0.9;
+      min-height: 1.4em;
+    }
+    .ww-next.is-due {
+      color: #fde68a;
+      font-weight: 650;
+    }
+    .ww-btn {
+      margin-top: auto;
+      border: 0;
+      border-radius: 14px;
+      padding: 16px 12px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #082f49;
+      background: linear-gradient(180deg, #7dd3fc, #38bdf8);
+      box-shadow: 0 8px 24px rgba(14, 165, 233, 0.35);
+    }
+    .ww-btn:disabled { opacity: 0.6; cursor: wait; }
+    .ww-btn:active { transform: translateY(1px); }
+    .ww-foot {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      opacity: 0.65;
+    }
+    .ww-foot a { color: #bae6fd; }
+    .ww-toast {
+      position: fixed;
+      left: 12px; right: 12px; top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(125, 211, 252, 0.35);
+      font-size: 13px;
+      display: none;
+      z-index: 20;
+    }
+    .ww-toast.show { display: block; }
+  </style>
+</head>
+<body class="water-widget-page">
+  <div id="ww-toast" class="ww-toast"></div>
+  <div class="ww">
+    <div class="ww-top">
+      <h1>喝水提醒</h1>
+      <span class="ww-pin">网页小窗</span>
+    </div>
+    <div class="ww-stats"><strong id="ww-total">{{ today_total }}</strong> <span>/ <span id="ww-goal">{{ goal }}</span> ml</span></div>
+    <div class="ww-progress"><i id="ww-bar" style="width: {{ pct }}%;"></i></div>
+    <div class="ww-next" id="ww-next" data-next="{{ next_slot or '' }}" data-enabled="{{ '1' if reminder_enabled else '0' }}">—</div>
+    <button type="button" class="ww-btn" id="ww-drink">喝了一杯（{{ cup_ml }} ml）</button>
+    <div class="ww-foot">
+      <a href="{{ url_for('water.water_home') }}" target="_blank" rel="noopener">打开完整页</a>
+      <span id="ww-cup-hint">默认 {{ cup_ml }} ml</span>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var statusUrl = {{ url_for('water.water_api_status')|tojson }};
+    var drinkUrl = {{ url_for('water.water_api_drink')|tojson }};
+    var cupMl = {{ cup_ml|int }};
+    var nextIso = {{ (next_slot or '')|tojson }};
+    var reminderOn = {{ 'true' if reminder_enabled else 'false' }};
+    var notifiedKey = "";
+    var toastEl = document.getElementById("ww-toast");
+
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+    }
+
+    function applyStatus(d) {
+      document.getElementById("ww-total").textContent = d.today_total;
+      document.getElementById("ww-goal").textContent = d.goal;
+      document.getElementById("ww-bar").style.width = (d.pct || 0) + "%";
+      cupMl = d.cup_ml;
+      document.getElementById("ww-drink").textContent = "喝了一杯（" + cupMl + " ml）";
+      document.getElementById("ww-cup-hint").textContent = "默认 " + cupMl + " ml";
+      reminderOn = !!d.reminder_enabled;
+      nextIso = d.next_slot || "";
+      tickCountdown();
+    }
+
+    function tickCountdown() {
+      var el = document.getElementById("ww-next");
+      if (!reminderOn) {
+        el.className = "ww-next";
+        el.textContent = "提醒已关闭（可在完整页设置中开启）";
+        document.title = "喝水小窗";
+        return;
+      }
+      if (!nextIso) {
+        el.textContent = "暂无下一提醒点";
+        return;
+      }
+      var ms = new Date(nextIso) - new Date();
+      if (ms <= 0) {
+        el.className = "ww-next is-due";
+        el.textContent = "该喝水啦！";
+        document.title = "该喝水啦！";
+        if (notifiedKey !== nextIso) {
+          notifiedKey = nextIso;
+          try {
+            if (window.Notification && Notification.permission === "granted") {
+              new Notification("喝水提醒", { body: "到点了，记一杯吧。" });
+            } else if (window.Notification && Notification.permission === "default") {
+              Notification.requestPermission();
+            }
+          } catch (e) {}
+        }
+        return;
+      }
+      el.className = "ww-next";
+      var sec = Math.floor(ms / 1000);
+      var h = Math.floor(sec / 3600);
+      var m = Math.floor((sec % 3600) / 60);
+      var s = sec % 60;
+      var label = (h > 0 ? h + ":" : "") + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+      el.textContent = "下次提醒倒计时 " + label;
+      document.title = label + " · 喝水";
+    }
+
+    function refresh() {
+      fetch(statusUrl, { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(applyStatus)
+        .catch(function () {});
+    }
+
+    document.getElementById("ww-drink").addEventListener("click", function () {
+      var btn = this;
+      btn.disabled = true;
+      var body = new URLSearchParams();
+      body.set("amount_ml", String(cupMl));
+      fetch(drinkUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString()
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok) throw new Error(d.error || "失败");
+          applyStatus(d);
+          toast("已记录 " + d.amount_ml + " ml");
+        })
+        .catch(function (e) { toast(e.message || "打卡失败"); })
+        .finally(function () { btn.disabled = false; });
+    });
+
+    tickCountdown();
+    setInterval(tickCountdown, 1000);
+    setInterval(refresh, 20000);
+    if (window.Notification && Notification.permission === "default") {
+      try { Notification.requestPermission(); } catch (e) {}
+    }
+  })();
+  </script>
+</body>
+</html>

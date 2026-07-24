@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block title %}推荐诗句{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content: space-between; align-items: center; gap: 12px;">
+    <div>
+      <h2>按风格推荐</h2>
+      <p class="muted">
+        当前偏好意象：{% if style_tags %}{{ style_tags|join('、') }}{% else %}雨、月、春、梦{% endif %}。
+        每次给出 5 句，可逐条加入或跳过。
+      </p>
+    </div>
+    <div class="row" style="gap: 8px;">
+      <form method="post">
+        <input type="hidden" name="action" value="refresh" />
+        <button type="submit">重新推荐 5 句</button>
+      </form>
+      <a class="btn-secondary pill-link" href="{{ url_for('poem_create_page') }}">返回新增入口</a>
+    </div>
+  </div>
+</div>
+
+{% if not recommendations %}
+<div class="card poem-intake-empty">
+  <h3>还没有推荐结果</h3>
+  <p class="muted">点击「重新推荐 5 句」，系统会按你现有诗库风格去公开诗库挑选。</p>
+  <form method="post">
+    <input type="hidden" name="action" value="refresh" />
+    <button type="submit">开始推荐</button>
+  </form>
+</div>
+{% else %}
+<section class="poem-intake-list">
+  {% for item in recommendations %}
+  <article class="card poem-intake-item">
+    <div class="poem-intake-item-head">
+      <span class="poem-intake-index">候选 {{ loop.index }}</span>
+      {% if item.verified %}
+        <span class="chip chip-income">已核实出处</span>
+      {% else %}
+        <span class="chip">未精确核实</span>
+      {% endif %}
+    </div>
+    <blockquote class="poem-intake-line">{{ item.content }}</blockquote>
+    <p class="poem-intake-source">{{ item.source or '出处待考' }}</p>
+    {% if item.reason %}
+    <p class="muted">推荐理由：{{ item.reason }}</p>
+    {% endif %}
+
+    <details class="poem-intake-story">
+      <summary>展开诗境预览</summary>
+      <div class="poem-intake-story-body">
+        {% set story = item.story or {} %}
+        {% if story.full_poem %}<div><span>全诗</span><pre>{{ story.full_poem }}</pre></div>{% endif %}
+        {% if story.background %}<div><span>作者生平</span><p>{{ story.background }}</p></div>{% endif %}
+        {% if story.life_state %}<div><span>写作时的生活状态</span><p>{{ story.life_state }}</p></div>{% endif %}
+        {% if story.poem_mood %}<div><span>诗中想表达的生活状态</span><p>{{ story.poem_mood }}</p></div>{% endif %}
+        {% if story.why_write %}<div><span>为何而写</span><p>{{ story.why_write }}</p></div>{% endif %}
+        {% if story.interpretation %}<div><span>名句解读</span><p>{{ story.interpretation }}</p></div>{% endif %}
+        {% if story.meaning %}<div><span>意在何处</span><p>{{ story.meaning }}</p></div>{% endif %}
+      </div>
+    </details>
+
+    <div class="row poem-intake-actions">
+      <form method="post" class="row" style="gap: 8px; align-items: end;">
+        <input type="hidden" name="action" value="accept" />
+        <input type="hidden" name="idx" value="{{ loop.index0 }}" />
+        <div>
+          <label class="field-label">入库日期</label>
+          <input type="date" name="poem_date" value="{{ default_date }}" required />
+        </div>
+        <button type="submit">加入诗库</button>
+      </form>
+      <form method="post">
+        <input type="hidden" name="action" value="dismiss" />
+        <input type="hidden" name="idx" value="{{ loop.index0 }}" />
+        <button type="submit" class="btn-secondary">跳过这句</button>
+      </form>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

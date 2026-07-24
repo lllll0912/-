@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}查诗入库{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content: space-between; align-items: center;">
+    <div>
+      <h2>主动查诗</h2>
+      <p class="muted">输入一句诗词，系统查询出处真实性并整理诗境。你品读后再决定是否加入。</p>
+    </div>
+    <a class="btn-secondary pill-link" href="{{ url_for('poem_create_page') }}">返回新增入口</a>
+  </div>
+</div>
+
+<form method="post" class="card">
+  <input type="hidden" name="action" value="query" />
+  <label class="field-label">输入诗句</label>
+  <textarea name="content" rows="3" style="width: 100%;" required placeholder="例如：竹外桃花三两枝，春江水暖鸭先知">{{ query_content }}</textarea>
+  <div class="row" style="margin-top: 12px;">
+    <button type="submit">查询出处与诗境</button>
+  </div>
+</form>
+
+{% if preview %}
+<article class="card poem-intake-item">
+  <div class="poem-intake-item-head">
+    <span class="poem-intake-index">查询结果</span>
+    {% if preview.verified %}
+      <span class="chip chip-income">已核实出处</span>
+    {% else %}
+      <span class="chip">未精确核实</span>
+    {% endif %}
+  </div>
+  <blockquote class="poem-intake-line">{{ preview.content }}</blockquote>
+  <p class="poem-intake-source">{{ preview.source or '出处待考' }}</p>
+  <p class="muted">{{ preview.authenticity }}</p>
+
+  <div class="poem-intake-story-body is-open">
+    {% set story = preview.story or {} %}
+    {% if story.full_poem %}<div><span>全诗</span><pre>{{ story.full_poem }}</pre></div>{% endif %}
+    {% if story.background %}<div><span>作者生平</span><p>{{ story.background }}</p></div>{% endif %}
+    {% if story.life_state %}<div><span>写作时的生活状态</span><p>{{ story.life_state }}</p></div>{% endif %}
+    {% if story.poem_mood %}<div><span>诗中想表达的生活状态</span><p>{{ story.poem_mood }}</p></div>{% endif %}
+    {% if story.why_write %}<div><span>为何而写</span><p>{{ story.why_write }}</p></div>{% endif %}
+    {% if story.interpretation %}<div><span>名句解读</span><p>{{ story.interpretation }}</p></div>{% endif %}
+    {% if story.meaning %}<div><span>意在何处</span><p>{{ story.meaning }}</p></div>{% endif %}
+  </div>
+
+  <div class="row poem-intake-actions" style="align-items: end;">
+    <form method="post" class="row" style="gap: 8px; align-items: end;">
+      <input type="hidden" name="action" value="accept" />
+      <div>
+        <label class="field-label">入库日期</label>
+        <input type="date" name="poem_date" value="{{ default_date }}" required />
+      </div>
+      <button type="submit">品读完毕，加入诗库</button>
+    </form>
+    <form method="post">
+      <input type="hidden" name="action" value="clear" />
+      <button type="submit" class="btn-secondary">清空结果</button>
+    </form>
+  </div>
+</article>
+{% endif %}
+{% endblock %}

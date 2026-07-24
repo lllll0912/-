@@ -1,0 +1,16 @@
+.venv
+__pycache__
+*.pyc
+.env
+data/
+backup/
+账单备份/
+deploy-repo/
+tests/
+legacy/
+*.bat
+*.ps1
+*.xlsx
+*.docx
+.git
+tunnel_*.log

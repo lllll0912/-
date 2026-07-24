@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}个人网站{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r17c" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">我</div>
+          <div class="brand-text">
+            <div class="brand-title">个人网站</div>
+            <div class="brand-sub">Personal Hub</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <details class="nav-group" open>
+            <summary class="nav-group-title">账单财务</summary>
+            <div class="nav-group-links">
+              <a class="nav-link{% if request.endpoint == 'import_page' %} active{% endif %}" href="{{ url_for('import_page') }}">导入清洗</a>
+              <a class="nav-link{% if request.endpoint == 'records_page' %} active{% endif %}" href="{{ url_for('records_page') }}">数据库记录</a>
+              <a class="nav-link{% if request.endpoint == 'analysis_page' %} active{% endif %}" href="{{ url_for('analysis_page') }}">分析看板</a>
+              <a class="nav-link{% if request.endpoint == 'types_page' %} active{% endif %}" href="{{ url_for('types_page') }}">类型字典</a>
+              <a class="nav-link{% if request.endpoint == 'travel_page' %} active{% endif %}" href="{{ url_for('travel_page') }}">旅游管理</a>
+            </div>
+          </details>
+
+          <details class="nav-group" open>
+            <summary class="nav-group-title">生活日常</summary>
+            <div class="nav-group-links">
+              <a class="nav-link{% if request.endpoint == 'journal_page' %} active{% endif %}" href="{{ url_for('journal_page') }}">生活日志</a>
+              <a class="nav-link{% if request.endpoint and request.endpoint.startswith('water.') %} active{% endif %}" href="{{ url_for('water.water_home') }}">喝水提醒</a>
+            </div>
+          </details>
+
+          <details class="nav-group" open>
+            <summary class="nav-group-title">诗意</summary>
+            <div class="nav-group-links">
+              <a class="nav-link{% if request.endpoint in ('poems_page', 'poem_admin_page', 'poem_create_page', 'poem_create_form_page', 'poem_recommend_page', 'poem_lookup_page', 'poem_edit_page') %} active{% endif %}" href="{{ url_for('poems_page') }}">每日诗词</a>
+            </div>
+          </details>
+
+          <details class="nav-group" open>
+            <summary class="nav-group-title">数据与账户</summary>
+            <div class="nav-group-links">
+              <a class="nav-link" href="{{ url_for('download_backup_zip') }}">导出备份</a>
+              <a class="nav-link" href="{{ url_for('download_offline_report_zip') }}">离线报告包</a>
+              {% if auth_enabled %}
+              <a class="nav-link" href="{{ url_for('auth.logout') }}">退出登录</a>
+              {% endif %}
+            </div>
+          </details>
+        </nav>
+
+        <div class="sidebar-foot">
+          <span class="ver-badge">r17</span>
+        </div>
+      </aside>
+
+      <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+      <div class="main-wrap">
+        <header class="topbar">
+          <button type="button" class="menu-toggle" id="menu-toggle" aria-label="打开菜单">☰</button>
+          <h1 class="page-title">{{ self.title() }}</h1>
+          <div class="topbar-spacer"></div>
+          {% if is_logged_in %}
+          <button type="button" class="btn-secondary water-widget-launch" id="topbar-water-widget" title="打开喝水网页小窗">喝水小窗</button>
+          {% endif %}
+        </header>
+
+        <main class="container">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+
+    <div class="modal-mask" id="modal-mask"></div>
+    <div class="modal" id="date-modal">
+      <div class="modal-card">
+        <div class="modal-hd">
+          <div>选择日期（年 / 月 / 日 多选）</div>
+          <button type="button" class="btn-secondary" onclick="DateTreePicker.close()">关闭</button>
+        </div>
+        <div class="modal-bd">
+          <div class="tree">
+            <div class="tree-col">
+              <div class="tree-title">
+                <span>年份</span>
+                <span class="tree-actions">
+                  <label class="chip"><input type="checkbox" id="dt-year-all" /> 全选</label>
+                </span>
+              </div>
+              <div class="tree-list" id="dt-years"></div>
+            </div>
+            <div class="tree-col">
+              <div class="tree-title">
+                <span id="dt-mid-title">月份 / 日期</span>
+                <span class="tree-actions">
+                  <label class="chip"><input type="checkbox" id="dt-mid-all" /> 全选</label>
+                </span>
+              </div>
+              <div class="tree-list" id="dt-mid"></div>
+            </div>
+          </div>
+          <div style="margin-top: 12px;" class="muted">
+            勾选「年」会选中该年全部日期；勾选「月」会选中该月全部日期；也可只勾选具体「日」。多级勾选会自动去重合并。
+          </div>
+          <div style="margin-top: 8px;" id="dt-summary"></div>
+        </div>
+        <div class="modal-ft">
+          <button type="button" class="btn-secondary" onclick="DateTreePicker.clear()">清空</button>
+          <button type="button" onclick="DateTreePicker.apply()">应用所选日期</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const sidebar = document.getElementById("sidebar");
+        const backdrop = document.getElementById("sidebar-backdrop");
+        const toggle = document.getElementById("menu-toggle");
+        function closeMenu() {
+          sidebar.classList.remove("open");
+          backdrop.classList.remove("open");
+        }
+        if (toggle) toggle.addEventListener("click", () => {
+          sidebar.classList.toggle("open");
+          backdrop.classList.toggle("open");
+        });
+        if (backdrop) backdrop.addEventListener("click", closeMenu);
+        document.querySelectorAll(".sidebar-nav .nav-link").forEach((a) => {
+          a.addEventListener("click", () => { if (window.innerWidth <= 960) closeMenu(); });
+        });
+      })();
+    </script>
+
+    <script>
+      (function () {
+        const currentUrl = window.location.pathname + window.location.search;
+        localStorage.setItem("bill:last-url:" + window.location.pathname, currentUrl);
+        document.querySelectorAll(".sidebar-nav .nav-link").forEach((a) => {
+          try {
+            const p = new URL(a.href, window.location.origin).pathname;
+            const saved = localStorage.getItem("bill:last-url:" + p);
+            if (saved) a.href = saved;
+          } catch (e) {}
+        });
+
+        if (window.location.pathname === "/types") return;
+        const pageKey = "bill:form-draft:" + window.location.pathname;
+        let draft = {};
+        try { draft = JSON.parse(localStorage.getItem(pageKey) || "{}"); } catch (e) {}
+        const controls = document.querySelectorAll("input, textarea, select");
+        const skipDraftRestore = !!window.__skipDraftRestore;
+        controls.forEach((el, idx) => {
+          if (el.type === "password" || el.type === "file") return;
+          const k = (el.form ? Array.from(document.forms).indexOf(el.form) : "x") + ":" + (el.name || el.id || ("f" + idx));
+          if (!skipDraftRestore && Object.prototype.hasOwnProperty.call(draft, k)) {
+            if (el.type === "checkbox" || el.type === "radio") el.checked = !!draft[k];
+            else el.value = draft[k];
+          }
+          const save = function () {
+            if (el.type === "checkbox" || el.type === "radio") draft[k] = !!el.checked;
+            else draft[k] = el.value;
+            localStorage.setItem(pageKey, JSON.stringify(draft));
+          };
+          el.addEventListener("input", save);
+          el.addEventListener("change", save);
+        });
+      })();
+    </script>
+
+    <script>
+      (function () {
+        function cellValue(td) {
+          if (!td) return "";
+          const ctl = td.querySelector("input, select, textarea");
+          if (ctl) {
+            if (ctl.tagName === "SELECT") {
+              const op = ctl.options[ctl.selectedIndex];
+              return (op ? op.text : ctl.value || "").trim();
+            }
+            return String(ctl.value || "").trim();
+          }
+          return (td.textContent || "").replace(/\s+/g, " ").trim();
+        }
+        function toComparable(raw) {
+          const t = String(raw || "").trim();
+          if (!t) return { type: "empty", value: "" };
+          const n = Number(t.replace(/,/g, ""));
+          if (!Number.isNaN(n) && /^-?\d+(\.\d+)?$/.test(t.replace(/,/g, ""))) return { type: "num", value: n };
+          if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return { type: "date", value: t };
+          return { type: "text", value: t.toLowerCase() };
+        }
+        function bindSortableTable(table) {
+          if (!table || table.dataset.sortableBound === "1") return;
+          const thead = table.tHead;
+          const tbody = table.tBodies && table.tBodies[0];
+          if (!thead || !tbody || !thead.rows.length) return;
+          table.dataset.sortableBound = "1";
+          const headers = Array.from(thead.rows[0].cells || []);
+          headers.forEach((th, idx) => {
+            if (!th || th.hasAttribute("data-no-sort")) return;
+            th.classList.add("sortable-th");
+            th.addEventListener("click", function (e) {
+              const t = e.target;
+              if (t && t.closest("a,button,input,select,label,textarea")) return;
+              const prev = th.getAttribute("data-sort-order") || "";
+              const next = prev === "asc" ? "desc" : "asc";
+              headers.forEach((h) => h.removeAttribute("data-sort-order"));
+              th.setAttribute("data-sort-order", next);
+              const rows = Array.from(tbody.rows || []);
+              rows.sort((ra, rb) => {
+                const va = toComparable(cellValue(ra.cells[idx]));
+                const vb = toComparable(cellValue(rb.cells[idx]));
+                if (va.type === "empty" && vb.type !== "empty") return 1;
+                if (vb.type === "empty" && va.type !== "empty") return -1;
+                if (va.value < vb.value) return next === "asc" ? -1 : 1;
+                if (va.value > vb.value) return next === "asc" ? 1 : -1;
+                return 0;
+              });
+              rows.forEach((r) => tbody.appendChild(r));
+            });
+          });
+        }
+        document.querySelectorAll("table").forEach(bindSortableTable);
+      })();
+    </script>
+
+    <script>
+      const DateTreePicker = (function () {
+        let allDates = [];
+        let tree = {};
+        let selected = new Set();
+        let target = null;
+        let activeYear = "";
+        let activeMonth = "";
+
+        function buildTree(dates) {
+          const t = {};
+          (dates || []).forEach((ds) => {
+            if (!ds || ds.length < 10) return;
+            const y = ds.slice(0, 4);
+            const m = ds.slice(5, 7);
+            const d = ds.slice(8, 10);
+            if (!t[y]) t[y] = {};
+            if (!t[y][m]) t[y][m] = [];
+            if (!t[y][m].includes(d)) t[y][m].push(d);
+          });
+          Object.keys(t).forEach((y) => {
+            Object.keys(t[y]).forEach((m) => t[y][m].sort());
+          });
+          return t;
+        }
+
+        function open(dates, opts) {
+          allDates = (dates || []).slice();
+          tree = buildTree(allDates);
+          target = opts || null;
+          selected = new Set();
+          activeYear = "";
+          activeMonth = "";
+          renderYears();
+          renderMid();
+          updateSummary();
+          document.getElementById("modal-mask").style.display = "block";
+          document.getElementById("date-modal").style.display = "block";
+        }
+
+        function close() {
+          document.getElementById("modal-mask").style.display = "none";
+          document.getElementById("date-modal").style.display = "none";
+        }
+
+        function clear() {
+          selected = new Set();
+          renderYears();
+          renderMid();
+          updateSummary();
+        }
+
+        function yearDates(y) {
+          const out = [];
+          const months = tree[y] || {};
+          Object.keys(months).forEach((m) => {
+            (months[m] || []).forEach((d) => out.push(`${y}-${m}-${d}`));
+          });
+          return out;
+        }
+
+        function monthDates(y, m) {
+          const days = (tree[y] && tree[y][m]) ? tree[y][m] : [];
+          return (days || []).map((d) => `${y}-${m}-${d}`);
+        }
+
+        function toggleMany(ds, on) {
+          (ds || []).forEach((x) => {
+            if (on) selected.add(x);
+            else selected.delete(x);
+          });
+        }
+
+        function setYearActive(y) {
+          activeYear = y;
+          activeMonth = "";
+          renderYears();
+          renderMid();
+        }
+
+        function setMonthActive(m) {
+          activeMonth = m;
+          renderMid();
+        }
+
+        function isAllSelected(ds) {
+          if (!ds || ds.length === 0) return false;
+          for (const x of ds) if (!selected.has(x)) return false;
+          return true;
+        }
+
+        function renderYears() {
+          const wrap = document.getElementById("dt-years");
+          wrap.innerHTML = "";
+          const years = Object.keys(tree).sort().reverse();
+          years.forEach((y) => {
+            const row = document.createElement("div");
+            row.className = "tree-item" + (activeYear === y ? " active" : "");
+            const ck = document.createElement("input");
+            ck.type = "checkbox";
+            const ds = yearDates(y);
+            ck.checked = isAllSelected(ds);
+            ck.addEventListener("change", () => {
+              toggleMany(ds, ck.checked);
+              updateSummary();
+              renderYears();
+              renderMid();
+            });
+            const label = document.createElement("div");
+            label.textContent = y;
+            label.style.fontWeight = "700";
+            row.appendChild(ck);
+            row.appendChild(label);
+            row.addEventListener("click", (e) => {
+              if (e.target === ck) return;
+              const checked = isAllSelected(ds);
+              toggleMany(ds, !checked);
+              setYearActive(y);
+              updateSummary();
+            });
+            wrap.appendChild(row);
+          });
+
+          const yearAll = document.getElementById("dt-year-all");
+          yearAll.checked = years.length > 0 && isAllSelected(allDates);
+          yearAll.onchange = function () {
+            toggleMany(allDates, yearAll.checked);
+            updateSummary();
+            renderYears();
+            renderMid();
+          };
+        }
+
+        function renderMid() {
+          const wrap = document.getElementById("dt-mid");
+          wrap.innerHTML = "";
+          const title = document.getElementById("dt-mid-title");
+          if (!activeYear) {
+            title.textContent = "月份 / 日期（请先选年份）";
+            document.getElementById("dt-mid-all").checked = false;
+            document.getElementById("dt-mid-all").onchange = null;
+            return;
+          }
+          title.textContent = `${activeYear} 年：月份 / 日期`;
+          const months = Object.keys(tree[activeYear] || {}).sort();
+          months.forEach((m) => {
+            const row = document.createElement("div");
+            row.className = "tree-item" + (activeMonth === m ? " active" : "");
+            const ck = document.createElement("input");
+            ck.type = "checkbox";
+            const ds = monthDates(activeYear, m);
+            ck.checked = isAllSelected(ds);
+            ck.addEventListener("change", () => {
+              toggleMany(ds, ck.checked);
+              updateSummary();
+              renderYears();
+              renderMid();
+            });
+            const label = document.createElement("div");
+            label.textContent = `${m} 月`;
+            label.style.fontWeight = "700";
+            row.appendChild(ck);
+            row.appendChild(label);
+            row.addEventListener("click", (e) => {
+              if (e.target === ck) return;
+              const checked = isAllSelected(ds);
+              toggleMany(ds, !checked);
+              setMonthActive(m);
+              updateSummary();
+            });
+            wrap.appendChild(row);
+
+            if (activeMonth === m) {
+              const days = (tree[activeYear][m] || []).slice();
+              const dayBox = document.createElement("div");
+              dayBox.style.padding = "6px 0 10px 30px";
+              dayBox.style.display = "grid";
+              dayBox.style.gridTemplateColumns = "repeat(8, minmax(64px, 1fr))";
+              dayBox.style.gap = "6px";
+              days.forEach((d) => {
+                const ds1 = `${activeYear}-${m}-${d}`;
+                const chip = document.createElement("label");
+                chip.className = "chip";
+                chip.style.justifyContent = "center";
+                const ck2 = document.createElement("input");
+                ck2.type = "checkbox";
+                ck2.checked = selected.has(ds1);
+                ck2.addEventListener("change", () => {
+                  toggleMany([ds1], ck2.checked);
+                  updateSummary();
+                  renderYears();
+                  renderMid();
+                });
+                const txt = document.createElement("span");
+                txt.textContent = `${d}日`;
+                chip.appendChild(ck2);
+                chip.appendChild(txt);
+                dayBox.appendChild(chip);
+              });
+              wrap.appendChild(dayBox);
+            }
+          });
+
+          const midAll = document.getElementById("dt-mid-all");
+          const scopeDates = activeMonth ? monthDates(activeYear, activeMonth) : yearDates(activeYear);
+          midAll.checked = scopeDates.length > 0 && isAllSelected(scopeDates);
+          midAll.onchange = function () {
+            toggleMany(scopeDates, midAll.checked);
+            updateSummary();
+            renderYears();
+            renderMid();
+          };
+        }
+
+        function updateSummary() {
+          const el = document.getElementById("dt-summary");
+          const arr = Array.from(selected).sort();
+          el.innerHTML = "";
+          const box = document.createElement("div");
+          box.className = "muted";
+          box.innerHTML = `已选择 <b>${arr.length}</b> 个日期` + (arr.length ? `（${arr[0]} ~ ${arr[arr.length-1]}）` : "");
+          el.appendChild(box);
+        }
+
+        function apply() {
+          const arr = Array.from(selected).sort();
+          if (target && target.inputId) {
+            const inp = document.getElementById(target.inputId);
+            if (inp) inp.value = arr.join(",");
+          }
+          if (target && target.labelId) {
+            const lab = document.getElementById(target.labelId);
+            if (lab) lab.textContent = arr.length ? `已选 ${arr.length} 天（${arr[0]} ~ ${arr[arr.length-1]}）` : "未选择";
+          }
+          close();
+        }
+
+        return { open, close, clear, apply };
+      })();
+    </script>
+    <script>
+    (function () {
+      var btn = document.getElementById("topbar-water-widget");
+      if (!btn) return;
+      var url = {{ url_for('water.water_widget')|tojson }};
+      btn.addEventListener("click", function () {
+        var w = window.open(
+          url,
+          "waterWidget",
+          "popup=yes,width=360,height=440,left=72,top=72,resizable=yes,scrollbars=no"
+        );
+        if (w) w.focus();
+        else alert("浏览器拦截了弹窗，请允许本站弹窗后重试。");
+      });
+    })();
+    </script>
+  </body>
+</html>

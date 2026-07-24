@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}新增诗词{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content: space-between; align-items: center;">
+    <div>
+      <h2>新增诗词</h2>
+      <p class="muted">不必自己满网找句。可以让系统按你现有诗库风格推荐，也可以输入一句后先查出处与诗境，再决定是否入库。</p>
+    </div>
+    <a class="btn-secondary pill-link" href="{{ url_for('poem_admin_page') }}">返回诗库维护</a>
+  </div>
+</div>
+
+<section class="poem-intake-grid">
+  <a class="poem-intake-card" href="{{ url_for('poem_recommend_page') }}">
+    <span class="poem-intake-kicker">被动推荐</span>
+    <strong>按风格推荐 5 句</strong>
+    <p>根据现有诗库意象与气质，从公开诗库里挑出 5 句相近的名句。你可以逐条品读，决定加入或跳过。</p>
+  </a>
+  <a class="poem-intake-card" href="{{ url_for('poem_lookup_page') }}">
+    <span class="poem-intake-kicker">主动查诗</span>
+    <strong>输入一句再决定</strong>
+    <p>你手动输入一句诗词，系统查询真实性与出处，并整理诗境内容。品读满意后再加入诗库。</p>
+  </a>
+  <a class="poem-intake-card is-muted" href="{{ url_for('poem_create_form_page') }}">
+    <span class="poem-intake-kicker">传统录入</span>
+    <strong>空白表单手写</strong>
+    <p>直接填写日期、诗句与诗境字段。适合你已有完整资料时使用。</p>
+  </a>
+</section>
+{% endblock %}

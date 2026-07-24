@@ -21,43 +21,34 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# ===== 个人数据（不要上传到 GitHub）=====
-# 账单本地库、备份、原始导出（隐私）
-个人账单整理项目/data/
-个人账单整理项目/backup/
-个人账单整理项目/账单备份/
-个人账单整理项目/deploy-repo/
-个人账单整理项目/deploy/fly/_token_once.txt
-个人账单整理项目/deploy/fly/*token*
-个人账单整理项目/tunnel_*.log
-个人账单整理项目/.pytest_cache/
-个人账单整理项目/.venv/
-个人账单整理项目/__pycache__/
-个人账单整理项目/**/__pycache__/
-个人账单整理项目/*.txt
-个人账单整理项目/**/*.xlsx
-个人账单整理项目/**/*.docx
-个人账单整理项目/**/*.xls
-个人账单整理项目/Transfer Dock*.txt
+# ===== 隐私数据 =====
+data/**
+!data/README.md
+backup/**
+!backup/README.md
+!backup/原始账单/
+backup/原始账单/**
+deploy/fly/_token_once.txt
+deploy/fly/*token*
+tunnel_*.log
+.pytest_cache/
+poems_data/intake_cache/
+*.xlsx
+*.docx
+*.xls
+Transfer Dock*.txt
 
+# 迁移残留（可整夹删）
+个人账单整理项目/
 
-# 喝水记录本地数据
-喝水提醒/data/
-
-# 数据库本地配置（如有）
-**/connector.local.py
-
-# 生成图标缓存（可由脚本重新生成）
-喝水提醒/assets/
-
-# 飞猪MCP 查询结果与攻略
-飞猪MCP/output/*
-!飞猪MCP/output/.gitkeep
-
-# 每日一诗
-poem-20260313/deploy-repo/
-poem-20260313/.env
-poem-20260313/__pycache__/
-poem-20260313/scripts/__pycache__/
-poem-20260313/*.log
-poem-20260313/generate_stories_log.txt
+# legacy 隐私
+legacy/喝水提醒/data/
+legacy/喝水提醒/assets/
+legacy/飞猪MCP/output/*
+!legacy/飞猪MCP/output/.gitkeep
+legacy/poem-20260313/deploy-repo/
+legacy/poem-20260313/.env
+legacy/poem-20260313/__pycache__/
+legacy/poem-20260313/*.log
+legacy/poem-20260313/generate_stories_log.txt
+legacy/_废弃_个人账单整理项目残留/

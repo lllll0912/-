@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}饮水历史{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content: space-between; align-items: center;">
+    <div>
+      <h2>近 30 日饮水</h2>
+      <p class="muted">日目标参考线 {{ goal }} ml</p>
+    </div>
+    <a class="btn-secondary pill-link" href="{{ url_for('water.water_home') }}">返回今日</a>
+  </div>
+</div>
+
+<div class="card">
+  {% if not series %}
+  <p class="muted">暂无历史数据。</p>
+  {% else %}
+  <div class="water-chart">
+    {% for item in series %}
+    <div class="water-chart-row">
+      <span class="water-chart-label">{{ item.label }}</span>
+      <div class="water-chart-track">
+        <div class="water-chart-fill" style="width: {{ (100 * item.total_ml / max_ml)|round(1) }}%;"></div>
+      </div>
+      <span class="water-chart-val">{{ item.total_ml }} ml</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
