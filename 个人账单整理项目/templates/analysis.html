@@ -80,11 +80,25 @@
             const ds = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
             const v = Number(data[ds] || 0);
             el.style.background = color(v);
-            el.title = `${ds} ${metricLabel}: ${v.toFixed(2)}（点击跳转查看记录）`;
+            el.title = `${ds} ${metricLabel}: ${v.toFixed(2)}（点击查看当日生活日志）`;
             el.textContent = v > 0 ? v.toFixed(0) : "";
+            el.dataset.date = ds;
             el.addEventListener("click", function () {
-              const url = new URL("{{ url_for('records_page') }}", window.location.origin);
-              url.searchParams.set("dates", ds);
+              try {
+                sessionStorage.setItem("analysisReturn", JSON.stringify({
+                  pendingBack: true,
+                  needRestore: true,
+                  scrollY: window.scrollY || 0,
+                  year: year,
+                  metric: "{{ metric }}"
+                }));
+              } catch (e) {}
+              const url = new URL("{{ url_for('journal_page') }}", window.location.origin);
+              url.searchParams.set("date", ds);
+              url.searchParams.set("from", "analysis");
+              url.searchParams.set("year", String(year));
+              url.searchParams.set("metric", "{{ metric }}");
+              url.hash = "day-" + ds;
               window.location.href = url.toString();
             });
           }
@@ -93,6 +107,26 @@
         box.appendChild(grid);
         wrap.appendChild(box);
       }
+
+      // 从日志页返回时，恢复原先滚动位置；同时作废「返回」一次性入口
+      try {
+        const raw = sessionStorage.getItem("analysisReturn");
+        if (raw) {
+          const saved = JSON.parse(raw);
+          if (saved && saved.needRestore && Number(saved.year) === year && saved.metric === "{{ metric }}") {
+            const y = Number(saved.scrollY) || 0;
+            requestAnimationFrame(function () {
+              window.scrollTo(0, y);
+              setTimeout(function () { window.scrollTo(0, y); }, 50);
+            });
+          }
+          if (saved) {
+            saved.needRestore = false;
+            saved.pendingBack = false;
+            sessionStorage.setItem("analysisReturn", JSON.stringify(saved));
+          }
+        }
+      } catch (e) {}
     })();
   </script>
 </div>

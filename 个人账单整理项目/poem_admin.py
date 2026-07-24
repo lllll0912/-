@@ -143,16 +143,40 @@ def _normalize_story(raw: Any) -> dict[str, str]:
             "source": str(raw.get("source") or "").strip(),
             "full_poem": str(raw.get("full_poem") or "").strip(),
             "background": str(raw.get("background") or "").strip(),
+            "life_state": str(raw.get("life_state") or "").strip(),
+            "poem_mood": str(raw.get("poem_mood") or "").strip(),
+            "why_write": str(raw.get("why_write") or "").strip(),
             "interpretation": str(raw.get("interpretation") or "").strip(),
             "meaning": str(raw.get("meaning") or "").strip(),
         }
     if isinstance(raw, str) and raw.strip():
         return {"interpretation": raw.strip()}
-    return {"source": "", "full_poem": "", "background": "", "interpretation": "", "meaning": ""}
+    return {
+        "source": "",
+        "full_poem": "",
+        "background": "",
+        "life_state": "",
+        "poem_mood": "",
+        "why_write": "",
+        "interpretation": "",
+        "meaning": "",
+    }
 
 
 def story_has_content(story: dict[str, str]) -> bool:
-    return any(str(story.get(k) or "").strip() for k in ("source", "full_poem", "background", "interpretation", "meaning"))
+    return any(
+        str(story.get(k) or "").strip()
+        for k in (
+            "source",
+            "full_poem",
+            "background",
+            "life_state",
+            "poem_mood",
+            "why_write",
+            "interpretation",
+            "meaning",
+        )
+    )
 
 
 def _poem_date_sort_key(poem: dict[str, Any]) -> tuple[float, int]:

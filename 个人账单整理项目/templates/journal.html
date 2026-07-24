@@ -1,6 +1,19 @@
 {% extends "layout.html" %}
 {% block title %}生活日志{% endblock %}
 {% block content %}
+{% if back_to_analysis %}
+<div class="journal-back-bar card" id="journal-back-bar" hidden>
+  <div class="journal-back-copy">
+    <span class="eyebrow">来自分析看板</span>
+    <strong>{% if focus_date %}正在查看 {{ focus_date }}{% else %}生活日志{% endif %}</strong>
+  </div>
+  <a class="btn-secondary pill-link journal-back-btn" id="journal-back-btn"
+     href="{{ url_for('analysis_page', year=back_year or none, metric=back_metric or 'expense') }}">
+    ← 返回分析看板
+  </a>
+</div>
+{% endif %}
+
 <section class="journal-hero card">
   <div class="journal-hero-copy">
     <p class="eyebrow">Daily Journal</p>
@@ -46,7 +59,7 @@
       <label class="field-label">&nbsp;</label>
       <button type="submit">筛选</button>
     </div>
-    {% if filters.month or filters.keyword %}
+    {% if filters.month or filters.keyword or focus_date %}
     <div>
       <label class="field-label">&nbsp;</label>
       <a class="btn-secondary pill-link" href="{{ url_for('journal_page') }}">清空筛选</a>
@@ -58,7 +71,7 @@
 {% if groups %}
 <section class="journal-timeline">
   {% for group in groups %}
-  <article class="journal-day card" id="day-{{ group.bill_date }}">
+  <article class="journal-day card{% if focus_date and group.bill_date == focus_date %} is-focused{% endif %}" id="day-{{ group.bill_date }}">
     <div class="journal-day-side">
       <div class="journal-date-badge">{{ group.bill_date[5:7] }}-{{ group.bill_date[8:10] }}</div>
       <div class="journal-year">{{ group.bill_date[:4] }}</div>
@@ -69,12 +82,19 @@
     </div>
     <div class="journal-day-body">
       <div class="journal-notes">
-        {% for note in group.notes %}
-        <div class="journal-note-line">
-          <span class="journal-dot"></span>
-          <p>{{ note }}</p>
-        </div>
-        {% endfor %}
+        {% if group.notes %}
+          {% for note in group.notes %}
+          <div class="journal-note-line">
+            <span class="journal-dot"></span>
+            <p>{{ note }}</p>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="journal-note-line is-empty">
+            <span class="journal-dot"></span>
+            <p class="muted">这一天还没有写日记，但有账单足迹可回顾。</p>
+          </div>
+        {% endif %}
       </div>
 
       <div class="journal-footprint">
@@ -86,6 +106,9 @@
             {% endif %}
             {% if group.income_total > 0 %}
               <span class="chip chip-income">收入 {{ '%.2f'|format(group.income_total) }}</span>
+            {% endif %}
+            {% if group.record_count == 0 %}
+              <span class="chip muted-tag">暂无账单</span>
             {% endif %}
           </div>
         </div>
@@ -100,7 +123,9 @@
           {% endif %}
         </div>
         <div class="journal-actions">
+          {% if group.record_count > 0 %}
           <a href="{{ url_for('records_page', dates=group.bill_date) }}">查看当日全部账单</a>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -114,4 +139,62 @@
   <a href="{{ url_for('import_page') }}">去导入账单</a>
 </div>
 {% endif %}
+
+<script>
+  (function () {
+    function readReturn() {
+      try {
+        return JSON.parse(sessionStorage.getItem("analysisReturn") || "null");
+      } catch (e) {
+        return null;
+      }
+    }
+    function writeReturn(data) {
+      try {
+        if (!data) sessionStorage.removeItem("analysisReturn");
+        else sessionStorage.setItem("analysisReturn", JSON.stringify(data));
+      } catch (e) {}
+    }
+    function cleanFromParams() {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get("from") !== "analysis") return;
+      u.searchParams.delete("from");
+      u.searchParams.delete("year");
+      u.searchParams.delete("metric");
+      history.replaceState(null, "", u.pathname + u.search + u.hash);
+    }
+
+    const bar = document.getElementById("journal-back-bar");
+    const btn = document.getElementById("journal-back-btn");
+    const saved = readReturn();
+    const canBack = !!(saved && saved.pendingBack);
+
+    if (bar) {
+      if (canBack) {
+        bar.hidden = false;
+        if (btn) {
+          btn.addEventListener("click", function () {
+            const cur = readReturn() || {};
+            cur.pendingBack = false;
+            writeReturn(cur);
+          });
+        }
+      } else {
+        bar.remove();
+        cleanFromParams();
+      }
+    } else if (!canBack) {
+      cleanFromParams();
+    }
+
+    {% if focus_date %}
+    const el = document.getElementById("day-{{ focus_date }}");
+    if (el) {
+      requestAnimationFrame(function () {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+    {% endif %}
+  })();
+</script>
 {% endblock %}

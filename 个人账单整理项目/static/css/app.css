@@ -148,6 +148,30 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.sidebar-nav::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .nav-section-label {
@@ -727,12 +751,62 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   gap: 16px;
 }
 
+.journal-back-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.journal-back-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.journal-back-copy strong {
+  font-size: 15px;
+}
+
+.journal-back-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .journal-day {
   display: grid;
   grid-template-columns: 120px 1fr;
   gap: 18px;
   position: relative;
   overflow: hidden;
+}
+
+.journal-day.is-focused {
+  border-color: rgba(79, 70, 229, 0.35);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12), var(--card-shadow);
+}
+
+.journal-day.is-focused .journal-date-badge {
+  background: linear-gradient(135deg, #4f46e5, #0284c7);
+}
+
+.journal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.journal-inline-back {
+  color: var(--muted);
 }
 
 .journal-day::before {
@@ -860,8 +934,6 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
 .journal-tag.is-income { color: #047857; }
 .journal-tag.muted-tag { color: var(--muted); }
 
-.journal-actions { margin-top: 12px; }
-
 .journal-empty {
   text-align: center;
   padding: 42px 24px;
@@ -886,7 +958,7 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
 .poem-stage {
   position: relative;
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: visible;
   margin-bottom: 18px;
   color: #f3f0e8;
   background:
@@ -894,6 +966,16 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
     radial-gradient(ellipse 70% 60% at 90% 100%, rgba(14,165,233,0.18), transparent 55%),
     linear-gradient(165deg, #10141f 0%, #1a2233 55%, #131a29 100%);
   box-shadow: 0 24px 56px rgba(15,23,42,0.28);
+}
+
+.poem-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .poem-stage::after {
@@ -907,12 +989,13 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   color: rgba(255,255,255,0.045);
   pointer-events: none;
   line-height: 1;
+  z-index: 0;
 }
 
 .poem-stage-inner {
   position: relative;
   z-index: 1;
-  max-width: 760px;
+  max-width: 820px;
   margin: 0 auto;
   padding: 54px 28px 44px;
   text-align: center;
@@ -953,6 +1036,9 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
 .poem-story-panel {
   margin-top: 26px;
   text-align: left;
+  width: min(100%, 720px);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .poem-story-panel > summary {
@@ -973,75 +1059,240 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
 
 .poem-story-panel .poem-story-body {
   margin-top: 18px;
-  padding: 20px;
+  padding: 8px;
   border-radius: var(--radius-md);
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(8, 12, 20, 0.45);
+  border: 1px solid rgba(255,255,255,0.1);
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.22) transparent;
 }
 
-.poem-story-body { display: grid; gap: 14px; }
+.poem-story-panel .poem-story-body::-webkit-scrollbar { width: 5px; }
+.poem-story-panel .poem-story-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 999px;
+}
+
+.poem-story-body {
+  display: grid;
+  gap: 10px;
+}
+
+.poem-story-sec {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.06);
+}
 
 .poem-story-sec span {
   display: block;
   font-size: 11px;
-  letter-spacing: 0.2em;
-  color: rgba(148,163,184,0.9);
-  margin-bottom: 6px;
+  letter-spacing: 0.22em;
+  color: rgba(196, 181, 253, 0.9);
+  margin-bottom: 10px;
 }
 
 .poem-story-sec p,
 .poem-story-sec pre {
   margin: 0;
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 2;
+  letter-spacing: 0.02em;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
-  font-family: inherit;
+  text-align: justify;
+  font-family: "Noto Sans SC", "KaiTi", "STKaiti", sans-serif;
+  color: rgba(243,240,232,0.9);
+}
+
+.poem-story-sec pre {
+  font-family: "KaiTi", "STKaiti", "Noto Sans SC", serif;
+  font-size: 15px;
+  line-height: 1.95;
+  text-align: left;
+  color: rgba(243,240,232,0.95);
 }
 
 .poem-stage .poem-story-sec p,
-.poem-stage .poem-story-sec pre { color: rgba(243,240,232,0.88); }
+.poem-stage .poem-story-sec pre { color: rgba(243,240,232,0.9); }
 
-.poem-browse-toolbar .row { align-items: end; }
+/* 寻诗 + 往日诗册：与舞台同色系 */
+.poem-atelier {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.poem-seek,
+.poem-history-card,
+.poem-empty {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  color: #f3f0e8;
+  background:
+    radial-gradient(ellipse 80% 70% at 10% 0%, rgba(99,102,241,0.18), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(14,165,233,0.12), transparent 50%),
+    linear-gradient(165deg, #121826 0%, #182233 55%, #10161f 100%);
+  border: 1px solid rgba(243, 240, 232, 0.08);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+}
+
+.poem-seek {
+  padding: 20px 22px 18px;
+}
+
+.poem-seek-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.poem-seek-kicker {
+  font-size: 12px;
+  letter-spacing: 0.36em;
+  text-indent: 0.36em;
+  color: rgba(243, 240, 232, 0.7);
+}
+
+.poem-seek-hint {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(243, 240, 232, 0.42);
+  font-family: "KaiTi", "STKaiti", serif;
+}
+
+.poem-seek-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+
+.poem-seek-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.poem-seek-field span {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: rgba(243, 240, 232, 0.5);
+}
+
+.poem-seek-grow { flex: 1; min-width: 200px; }
+
+.poem-seek-field select,
+.poem-seek-field input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(243, 240, 232, 0.16);
+  color: #f3f0e8;
+  border-radius: 12px;
+  min-height: 40px;
+  box-shadow: none;
+}
+
+.poem-seek-field select:focus,
+.poem-seek-field input:focus {
+  outline: none;
+  border-color: rgba(165, 180, 252, 0.55);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.poem-seek-field select option {
+  color: #0f172a;
+  background: #fff;
+}
+
+.poem-seek-field input::placeholder {
+  color: rgba(243, 240, 232, 0.35);
+}
+
+.poem-seek-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.poem-seek-btn {
+  background: rgba(243, 240, 232, 0.12);
+  border: 1px solid rgba(243, 240, 232, 0.28);
+  color: #f3f0e8;
+  box-shadow: none;
+  min-height: 40px;
+  padding: 0 18px;
+}
+
+.poem-seek-btn:hover {
+  background: rgba(243, 240, 232, 0.18);
+  transform: none;
+  filter: none;
+}
+
+.poem-seek-clear {
+  color: rgba(243, 240, 232, 0.55);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.poem-seek-clear:hover { color: #f3f0e8; }
 
 .poem-history-card {
   padding: 0;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--card-shadow);
 }
 
 .poem-history-toggle {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 18px 22px;
   border: 0;
-  background: linear-gradient(135deg, #fafbff 0%, #f4f7ff 100%);
+  background: transparent;
   cursor: pointer;
   box-shadow: none;
   transform: none;
   text-align: left;
-  color: var(--text);
+  color: #f3f0e8;
   transition: background 0.2s ease;
 }
 
 .poem-history-toggle:hover {
-  background: linear-gradient(135deg, #f3f6ff 0%, #eef2ff 100%);
+  background: rgba(255, 255, 255, 0.04);
   transform: none;
   filter: none;
   box-shadow: none;
 }
 
+.poem-history-toggle-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .poem-history-toggle-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
+
+.poem-history-toggle-meta {
+  font-size: 12px;
+  color: rgba(243, 240, 232, 0.45);
 }
 
 .poem-history-chevron {
   margin-left: auto;
-  color: var(--primary);
+  color: rgba(165, 180, 252, 0.9);
   font-size: 12px;
   transition: transform 0.25s ease;
 }
@@ -1051,13 +1302,21 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
 }
 
 .poem-history-panel {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(243, 240, 232, 0.08);
   max-height: 0;
   overflow: hidden;
   opacity: 0;
   transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.25s ease;
   padding: 0 14px;
-  background: #f8fafc;
+  background: rgba(0, 0, 0, 0.12);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.poem-history-panel::-webkit-scrollbar { width: 5px; }
+.poem-history-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
 }
 
 .poem-history-panel.is-open {
@@ -1079,24 +1338,25 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
 .poem-history-item {
   padding: 14px 16px;
   cursor: pointer;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(243, 240, 232, 0.1);
   border-radius: var(--radius-md);
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .poem-history-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.12);
-  border-color: rgba(79, 70, 229, 0.25);
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(165, 180, 252, 0.35);
+  box-shadow: none;
 }
 
 .poem-history-item.active {
-  transform: translateY(-1px);
-  background: linear-gradient(135deg, rgba(79,70,229,0.08) 0%, rgba(14,165,233,0.05) 100%);
-  border-color: rgba(79, 70, 229, 0.35);
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.15);
+  transform: none;
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(165, 180, 252, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(165, 180, 252, 0.15);
 }
 
 .poem-history-item-head {
@@ -1110,20 +1370,50 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   font-family: var(--font-num);
   font-size: 12px;
   font-weight: 600;
-  color: var(--primary);
+  color: rgba(196, 181, 253, 0.95);
 }
 
 .poem-history-text {
   font-family: "KaiTi", "STKaiti", "Noto Sans SC", serif;
   font-size: 17px;
   line-height: 1.7;
-  color: var(--text);
+  color: rgba(243, 240, 232, 0.92);
 }
 
 .poem-history-source {
   margin-top: 8px;
   font-size: 12px;
-  color: var(--muted);
+  color: rgba(243, 240, 232, 0.48);
+  font-family: "KaiTi", "STKaiti", serif;
+}
+
+.poem-atelier .chip-today {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(165, 180, 252, 0.35);
+  color: #c7d2fe;
+}
+
+.poem-atelier .chip-story {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(52, 211, 153, 0.28);
+  color: #a7f3d0;
+}
+
+.poem-empty {
+  padding: 36px 24px;
+  text-align: center;
+}
+
+.poem-empty h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-family: "KaiTi", "STKaiti", serif;
+}
+
+.poem-empty p {
+  margin: 0;
+  color: rgba(243, 240, 232, 0.5);
+  font-size: 13px;
 }
 
 @keyframes poemStageSwap {

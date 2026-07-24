@@ -38,12 +38,27 @@
   </div>
 
   <div style="margin-top: 12px;">
-    <label class="field-label">创作背景</label>
-    <textarea name="background" rows="3" style="width: 100%;">{{ form.background }}</textarea>
+    <label class="field-label">作者生平</label>
+    <textarea name="background" rows="4" style="width: 100%;">{{ form.background }}</textarea>
   </div>
 
   <div style="margin-top: 12px;">
-    <label class="field-label">解读</label>
+    <label class="field-label">写作时的生活状态</label>
+    <textarea name="life_state" rows="3" style="width: 100%;" placeholder="作者写这首诗时处在怎样的生活处境">{{ form.life_state }}</textarea>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <label class="field-label">诗中想表达的生活状态</label>
+    <textarea name="poem_mood" rows="3" style="width: 100%;" placeholder="这首诗想留下怎样的心情与生活感受">{{ form.poem_mood }}</textarea>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <label class="field-label">为何而写</label>
+    <textarea name="why_write" rows="3" style="width: 100%;" placeholder="为何要写下这首诗">{{ form.why_write }}</textarea>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <label class="field-label">名句解读</label>
     <textarea name="interpretation" rows="4" style="width: 100%;">{{ form.interpretation }}</textarea>
   </div>
 

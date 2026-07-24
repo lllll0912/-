@@ -8,7 +8,7 @@
     <blockquote class="poem-stage-text" id="poem-stage-text">{% if today_poem %}{{ today_poem.content }}{% else %}诗库还是空的，静候第一句诗。{% endif %}</blockquote>
     <p class="poem-stage-source" id="poem-stage-source"{% if not today_poem or not today_poem.story.source %} hidden{% endif %}>{% if today_poem and today_poem.story.source %}—— {{ today_poem.story.source }}{% endif %}</p>
     <div id="poem-story-wrap">
-      {% if today_poem and (today_poem.story.full_poem or today_poem.story.interpretation or today_poem.story.meaning or today_poem.story.background) %}
+      {% if today_poem and (today_poem.story.full_poem or today_poem.story.interpretation or today_poem.story.meaning or today_poem.story.background or today_poem.story.life_state or today_poem.story.poem_mood or today_poem.story.why_write) %}
       <details class="poem-story-panel" id="poem-story-panel">
         <summary>展开诗境 · 出处与解读</summary>
         <div class="poem-story-body" id="poem-story-body"></div>
@@ -19,69 +19,73 @@
   </div>
 </section>
 
-<div class="card poem-browse-toolbar">
-  <form method="get" class="row">
-    <div>
-      <label class="field-label">月份</label>
-      <select name="month">
-        <option value="">全部月份</option>
-        {% for m in all_months %}
-          <option value="{{ m }}" {% if filters.month == m %}selected{% endif %}>{{ m }}</option>
-        {% endfor %}
-      </select>
+<section class="poem-atelier">
+  <div class="poem-seek">
+    <div class="poem-seek-head">
+      <span class="poem-seek-kicker">寻诗</span>
+      <p class="poem-seek-hint">按月份或字句，轻叩往日</p>
     </div>
-    <div style="flex: 1; min-width: 200px;">
-      <label class="field-label">寻一句诗</label>
-      <input type="text" name="keyword" value="{{ filters.keyword }}" placeholder="例如：听雨、相思、长安" />
-    </div>
-    <div>
-      <label class="field-label">&nbsp;</label>
-      <button type="submit">查找</button>
-    </div>
-    {% if filters.month or filters.keyword %}
-    <div>
-      <label class="field-label">&nbsp;</label>
-      <a class="btn-secondary pill-link" href="{{ url_for('poems_page') }}">清空</a>
-    </div>
-    {% endif %}
-  </form>
-</div>
-
-{% if poems %}
-<div class="card poem-history-card">
-  <button type="button" class="poem-history-toggle" id="poem-history-toggle" aria-expanded="false">
-    <span class="poem-history-toggle-title">往日列表</span>
-    <span class="muted">共 {{ poems|length }} 首 · 按日期降序</span>
-    <span class="poem-history-chevron" id="poem-history-chevron">▼</span>
-  </button>
-  <div class="poem-history-panel" id="poem-history-panel">
-    <ul class="poem-history-list" id="poem-history-list">
-      {% for poem in poems %}
-      <li class="poem-history-item{% if today_poem and poem.id == today_poem.id %} is-today{% endif %}"
-          data-poem-id="{{ poem.id }}" tabindex="0" role="button">
-        <div class="poem-history-item-head">
-          <span class="poem-history-date">{% if poem.poem_date %}{{ poem.poem_date }}{% else %}未标注日期{% endif %}</span>
-          {% if today_poem and poem.id == today_poem.id %}
-          <span class="chip chip-today">今日</span>
-          {% elif poem.story.source or poem.story.interpretation %}
-          <span class="chip chip-story">有诗境</span>
-          {% endif %}
-        </div>
-        <div class="poem-history-text">{{ poem.content }}</div>
-        {% if poem.story.source %}
-        <div class="poem-history-source">{{ poem.story.source }}</div>
+    <form method="get" class="poem-seek-form">
+      <label class="poem-seek-field">
+        <span>月份</span>
+        <select name="month">
+          <option value="">全部月份</option>
+          {% for m in all_months %}
+            <option value="{{ m }}" {% if filters.month == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="poem-seek-field poem-seek-grow">
+        <span>寻一句诗</span>
+        <input type="text" name="keyword" value="{{ filters.keyword }}" placeholder="听雨、相思、长安…" />
+      </label>
+      <div class="poem-seek-actions">
+        <button type="submit" class="poem-seek-btn">查找</button>
+        {% if filters.month or filters.keyword %}
+        <a class="poem-seek-clear" href="{{ url_for('poems_page') }}">清空</a>
         {% endif %}
-      </li>
-      {% endfor %}
-    </ul>
+      </div>
+    </form>
   </div>
-</div>
-{% else %}
-<div class="card journal-empty">
-  <h3>没有找到符合条件的诗句</h3>
-  <p class="muted">换个关键词，或清空筛选再看看。</p>
-</div>
-{% endif %}
+
+  {% if poems %}
+  <div class="poem-history-card">
+    <button type="button" class="poem-history-toggle" id="poem-history-toggle" aria-expanded="false">
+      <span class="poem-history-toggle-copy">
+        <span class="poem-history-toggle-title">往日诗册</span>
+        <span class="poem-history-toggle-meta">共 {{ poems|length }} 首 · 按日期降序</span>
+      </span>
+      <span class="poem-history-chevron" id="poem-history-chevron">▼</span>
+    </button>
+    <div class="poem-history-panel" id="poem-history-panel">
+      <ul class="poem-history-list" id="poem-history-list">
+        {% for poem in poems %}
+        <li class="poem-history-item{% if today_poem and poem.id == today_poem.id %} is-today{% endif %}"
+            data-poem-id="{{ poem.id }}" tabindex="0" role="button">
+          <div class="poem-history-item-head">
+            <span class="poem-history-date">{% if poem.poem_date %}{{ poem.poem_date }}{% else %}未标注日期{% endif %}</span>
+            {% if today_poem and poem.id == today_poem.id %}
+            <span class="chip chip-today">今日</span>
+            {% elif poem.story.source or poem.story.interpretation %}
+            <span class="chip chip-story">有诗境</span>
+            {% endif %}
+          </div>
+          <div class="poem-history-text">{{ poem.content }}</div>
+          {% if poem.story.source %}
+          <div class="poem-history-source">—— {{ poem.story.source }}</div>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% else %}
+  <div class="poem-empty">
+    <h3>没有找到符合条件的诗句</h3>
+    <p>换个关键词，或清空筛选再看看。</p>
+  </div>
+  {% endif %}
+</section>
 
 <footer class="poem-foot">
   {% if is_poem_admin %}
@@ -130,10 +134,21 @@
     story = story || {};
     const sections = [];
     if (story.full_poem) sections.push(["全诗", story.full_poem, true]);
-    if (story.background) sections.push(["创作背景", story.background, false]);
-    if (story.interpretation) sections.push(["解读", story.interpretation, false]);
+    if (story.background) sections.push(["作者生平", story.background, false]);
+    if (story.life_state) sections.push(["写作时的生活状态", story.life_state, false]);
+    if (story.poem_mood) sections.push(["诗中想表达的生活状态", story.poem_mood, false]);
+    if (story.why_write) sections.push(["为何而写", story.why_write, false]);
+    if (story.interpretation) sections.push(["名句解读", story.interpretation, false]);
     if (story.meaning) sections.push(["意在何处", story.meaning, false]);
     return sections;
+  }
+
+  function formatProse(text) {
+    return String(text || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/([。！？；])\s*/g, "$1\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }
 
   function renderStory(story) {
@@ -143,12 +158,13 @@
       return;
     }
     const body = sections.map(([label, text, isPre]) => {
-      const inner = isPre ? `<pre>${escapeHtml(text)}</pre>` : `<p>${escapeHtml(text)}</p>`;
+      const shown = isPre ? text : formatProse(text);
+      const inner = isPre ? `<pre>${escapeHtml(shown)}</pre>` : `<p>${escapeHtml(shown)}</p>`;
       return `<div class="poem-story-sec"><span>${label}</span>${inner}</div>`;
     }).join("");
     els.storyWrap.innerHTML =
-      `<details class="poem-story-panel" id="poem-story-panel" open>` +
-      `<summary>展开诗境 · 出处与解读</summary>` +
+      `<details class="poem-story-panel" id="poem-story-panel">` +
+      `<summary>展开诗境 · 出处与心境</summary>` +
       `<div class="poem-story-body">${body}</div></details>`;
   }
 

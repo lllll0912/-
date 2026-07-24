@@ -3,6 +3,7 @@ from collections import OrderedDict
 import hashlib
 import json
 import os
+import re
 import secrets
 from datetime import datetime, timedelta
 
@@ -62,6 +63,27 @@ from rule_manager import (
     load_rules,
 )
 
+
+def _load_dotenv() -> None:
+    """读取项目根目录 .env（不覆盖已有环境变量）。"""
+    env_path = Path(__file__).resolve().parent / ".env"
+    if not env_path.exists():
+        return
+    try:
+        for raw in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            if not key or key in os.environ:
+                continue
+            os.environ[key] = value.strip().strip('"').strip("'")
+    except OSError:
+        return
+
+
+_load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("BILL_SECRET_KEY") or os.environ.get("SECRET_KEY") or "bill-dev-secret-change-me"
@@ -167,6 +189,9 @@ def _poem_form_payload(src=None):
         "source": str(story.get("source") or "").strip(),
         "full_poem": str(story.get("full_poem") or "").strip(),
         "background": str(story.get("background") or "").strip(),
+        "life_state": str(story.get("life_state") or "").strip(),
+        "poem_mood": str(story.get("poem_mood") or "").strip(),
+        "why_write": str(story.get("why_write") or "").strip(),
         "interpretation": str(story.get("interpretation") or "").strip(),
         "meaning": str(story.get("meaning") or "").strip(),
     }
@@ -180,6 +205,9 @@ def _poem_payload_from_form():
             "source": (request.form.get("source") or "").strip(),
             "full_poem": (request.form.get("full_poem") or "").strip(),
             "background": (request.form.get("background") or "").strip(),
+            "life_state": (request.form.get("life_state") or "").strip(),
+            "poem_mood": (request.form.get("poem_mood") or "").strip(),
+            "why_write": (request.form.get("why_write") or "").strip(),
             "interpretation": (request.form.get("interpretation") or "").strip(),
             "meaning": (request.form.get("meaning") or "").strip(),
         },
@@ -824,14 +852,52 @@ def journal_page():
     ensure_db()
     month = request.args.get("month", "").strip()
     keyword = request.args.get("keyword", "").strip()
+    focus_date = request.args.get("date", "").strip()
+    from_source = request.args.get("from", "").strip()
+    back_year = request.args.get("year", "").strip()
+    back_metric = request.args.get("metric", "expense").strip().lower()
+    if back_metric not in ("expense", "income"):
+        back_metric = "expense"
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", focus_date or ""):
+        focus_date = ""
+
+    # 从分析看板点进来时，默认收窄到该月，方便定位当天
+    if focus_date and not month and not keyword:
+        month = focus_date[:7]
+
     rows = list_journal_records(month=month, keyword=keyword)
     groups = _journal_groups(rows)
+
+    if focus_date and not any(g["bill_date"] == focus_date for g in groups):
+        day_rows = list_records({"dates": [focus_date]}, limit=None)
+        if day_rows:
+            extra = _journal_groups(day_rows)
+        else:
+            extra = [
+                {
+                    "bill_date": focus_date,
+                    "records": [],
+                    "notes": [],
+                    "expense_total": 0.0,
+                    "income_total": 0.0,
+                    "record_count": 0,
+                    "note_count": 0,
+                }
+            ]
+        by_day = {g["bill_date"]: g for g in groups}
+        for g in extra:
+            by_day[g["bill_date"]] = g
+        groups = sorted(by_day.values(), key=lambda g: g["bill_date"], reverse=True)
+
     all_months = sorted({str(r.get("bill_date") or "")[:7] for r in rows if str(r.get("bill_date") or "")[:7]}, reverse=True)
+    if focus_date and focus_date[:7] not in all_months:
+        all_months = sorted(set(all_months) | {focus_date[:7]}, reverse=True)
 
     total_expense = round(sum(float(g["expense_total"]) for g in groups), 2)
     total_income = round(sum(float(g["income_total"]) for g in groups), 2)
     note_count = sum(int(g["note_count"]) for g in groups)
     latest_day = groups[0]["bill_date"] if groups else ""
+    back_to_analysis = from_source == "analysis"
     return render_template(
         "journal.html",
         filters={"month": month, "keyword": keyword},
@@ -842,6 +908,10 @@ def journal_page():
         total_expense=total_expense,
         total_income=total_income,
         latest_day=latest_day,
+        focus_date=focus_date,
+        back_to_analysis=back_to_analysis,
+        back_year=back_year,
+        back_metric=back_metric,
     )
 
 
