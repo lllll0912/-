@@ -88,11 +88,11 @@ def parse_for_staging(raw_text: str, options: Optional[ImportOptions] = None) ->
                     "row_index": row_index,
                     "bill_date": bill_date,
                     "amount": 0.0,
-                    "detail": "",
+                    "detail": "日记",
                     "note": note,
                     "direction": "支出",
-                    "category_l1": "其他消费",
-                    "category": "其他消费",
+                    "category_l1": "零金额",
+                    "category": "零金额",
                     "explicit_category_raw": "",
                     "category_unknown": False,
                     "is_travel": _is_travel_record("", note, opts, inline_tag),
@@ -187,11 +187,11 @@ def parse_bill_text(raw_text: str, options: Optional[ParseOptions] = None) -> Li
                 {
                     "日期": normalized_date,
                     "金额": 0.0,
-                    "类型明细": "",
+                    "类型明细": "日记",
                     "日记": note.strip(),
                     "交易方向": "支出",
-                    "一级类型": "其他消费",
-                    "类型": "其他消费",
+                    "一级类型": "零金额",
+                    "类型": "零金额",
                 }
             )
             continue

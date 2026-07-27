@@ -484,8 +484,13 @@ def _preview_normalize_rows(raw_rows):
         errors = []
         if not bill_date:
             errors.append("日期格式错误")
+        # 纯日记天：金额为 0 + 有日记 + 无消费明细 → 仍有效，须入库供生活日志使用
         if detail == "":
-            errors.append("类型明细不能为空")
+            if note and _is_zero_amount(amount):
+                detail = "日记"
+                category = cat_l1 = ZERO_AMOUNT_CATEGORY
+            else:
+                errors.append("类型明细不能为空")
         out.append(
             {
                 "row_index": int(r.get("row_index", idx)),

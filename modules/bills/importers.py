@@ -94,11 +94,19 @@ def _build_stage_row(row_index: int, row: Dict[str, Any]) -> Dict[str, Any]:
     if direction is None:
         errors.append("交易方向必须是收入或支出")
         direction = "支出"
+    # 纯日记：金额 0 + 有日记 + 无明细 → 允许入库
     if not detail:
-        errors.append("类型明细不能为空")
+        if note and abs(float(amount or 0)) < 1e-9:
+            detail = "日记"
+        else:
+            errors.append("类型明细不能为空")
 
     is_inc = direction == "收入"
-    if not type_raw and not l1_raw:
+    if abs(float(amount or 0)) < 1e-9 and note:
+        cat_l1, cat = "零金额", "零金额"
+        category_unknown = False
+        explicit_raw = ""
+    elif not type_raw and not l1_raw:
         cat_l1, cat = infer_category(detail, is_inc)
         category_unknown = False
         explicit_raw = ""
