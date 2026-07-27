@@ -106,7 +106,7 @@
     <button type="button" id="btn-filter-pending" class="btn-secondary toolbar-btn">仅看待分类</button>
     <button type="button" id="btn-filter-unknown" class="btn-secondary toolbar-btn">仅看待映射类型</button>
     <button type="button" id="btn-show-all" class="btn-secondary toolbar-btn">显示全部</button>
-    <div class="muted">红色：待分类；橙色：文本里的类型不在字典，请映射或改类型。</div>
+    <div class="muted">红色：待分类（金额为 0 的不计入）；橙色：文本里的类型不在字典，请映射或改类型。</div>
   </div>
 
   <form method="post" id="preview-edit-form">
@@ -173,8 +173,8 @@
       }
       const consumeTypes = flatTypes(consumeGrouped);
       const incomeTypes = flatTypes(incomeGrouped);
-      const consumeKnown = consumeTypes.slice(); consumeKnown.push("待分类");
-      const incomeKnown = incomeTypes.slice(); incomeKnown.push("待分类收入");
+      const consumeKnown = consumeTypes.slice(); consumeKnown.push("待分类", "零金额");
+      const incomeKnown = incomeTypes.slice(); incomeKnown.push("待分类收入", "零金额");
 
       // 类型标准化映射：扁平下拉
       (function initMapSelects(){
@@ -190,13 +190,47 @@
         });
       })();
 
+      function rowAmount(tr) {
+        const el = tr.querySelector('[data-f="amount"]');
+        const n = Number(el && el.value !== "" ? el.value : NaN);
+        return Number.isFinite(n) ? n : 0;
+      }
+      function isZeroAmount(tr) {
+        return Math.abs(rowAmount(tr)) < 1e-9;
+      }
       function markPending(tr) {
+        // 金额为 0：不进入待分类，无需打标签
+        if (isZeroAmount(tr)) {
+          tr.classList.remove("pending-row");
+          const catEl = tr.querySelector('[data-f="category"]');
+          const l1El = tr.querySelector('[data-f="category_l1"]');
+          if (catEl && (catEl.value === "待分类" || catEl.value === "待分类收入" || !catEl.value)) {
+            // 确保选项里有「零金额」
+            if (![...catEl.options].some(o => o.value === "零金额")) {
+              const op = document.createElement("option");
+              op.value = "零金额"; op.textContent = "零金额";
+              catEl.appendChild(op);
+            }
+            catEl.value = "零金额";
+            catEl.setAttribute("data-current", "零金额");
+            if (l1El) l1El.value = "零金额";
+          }
+          return;
+        }
         const catEl = tr.querySelector('[data-f="category"]');
         const val = catEl ? catEl.value : "";
         if (val === "待分类" || val === "待分类收入") tr.classList.add("pending-row");
         else tr.classList.remove("pending-row");
       }
       function markUnknown(tr) {
+        if (isZeroAmount(tr)) {
+          tr.classList.remove("unknown-cat-row");
+          const uk = tr.querySelector('[data-f="category_unknown"]');
+          const raw = tr.querySelector('[data-f="explicit_category_raw"]');
+          if (uk) uk.value = "0";
+          if (raw) raw.value = "";
+          return;
+        }
         const uk = tr.querySelector('[data-f="category_unknown"]');
         if (uk && uk.value === "1") tr.classList.add("unknown-cat-row");
         else tr.classList.remove("unknown-cat-row");
@@ -237,13 +271,20 @@
         const pOp = document.createElement("option");
         pOp.value = pendingLabel; pOp.textContent = pendingLabel;
         catEl.appendChild(pOp);
-        if (oldCat && !Array.from(catEl.options).some(o => o.value === oldCat)) {
+        if (![...catEl.options].some(o => o.value === "零金额")) {
+          const zOp = document.createElement("option");
+          zOp.value = "零金额"; zOp.textContent = "零金额";
+          catEl.appendChild(zOp);
+        }
+        let prefer = oldCat;
+        if (isZeroAmount(tr)) prefer = "零金额";
+        if (prefer && !Array.from(catEl.options).some(o => o.value === prefer)) {
           const op = document.createElement("option");
-          op.value = oldCat; op.textContent = oldCat;
+          op.value = prefer; op.textContent = prefer;
           catEl.appendChild(op);
         }
-        catEl.value = (oldCat && Array.from(catEl.options).some(o => o.value === oldCat))
-          ? oldCat
+        catEl.value = (prefer && Array.from(catEl.options).some(o => o.value === prefer))
+          ? prefer
           : (catEl.options.length ? catEl.options[0].value : "");
         catEl.setAttribute("data-current", catEl.value);
         syncCategoryL1(tr);
@@ -255,6 +296,7 @@
       body.querySelectorAll("tr.preview-row").forEach((tr) => {
         const dirEl = tr.querySelector('[data-f="direction"]');
         const catEl = tr.querySelector('[data-f="category"]');
+        const amtEl = tr.querySelector('[data-f="amount"]');
         const old = tr.getAttribute("data-original-category") || "";
         if (catEl) catEl.setAttribute("data-current", old);
         rebuildCategoryOptions(tr);
@@ -263,6 +305,10 @@
             if (catEl) catEl.setAttribute("data-current", catEl.value);
             rebuildCategoryOptions(tr);
           });
+        }
+        if (amtEl) {
+          amtEl.addEventListener("input", function () { rebuildCategoryOptions(tr); });
+          amtEl.addEventListener("change", function () { rebuildCategoryOptions(tr); });
         }
         if (catEl) {
           catEl.addEventListener("change", function () {

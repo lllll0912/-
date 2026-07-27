@@ -57,7 +57,9 @@
             <summary class="nav-group-title">账户</summary>
             <div class="nav-group-links">
               {% if is_owner %}
-              <a class="nav-link" href="{{ url_for('download_backup_zip') }}">导出备份</a>
+              <a class="nav-link" href="{{ url_for('download_backup_zip') }}" id="export-local-backup">导出备份</a>
+              <button type="button" class="nav-link" id="bind-local-backup" style="width:100%;text-align:left;border:0;background:transparent;cursor:pointer;font:inherit;color:inherit;padding:inherit;">绑定本机 backup</button>
+              <div class="muted" id="local-backup-status" style="padding:0 12px 6px;font-size:12px;">未绑定</div>
               <a class="nav-link" href="{{ url_for('download_offline_report_zip') }}">离线报告包</a>
               {% endif %}
               <a class="nav-link" href="{{ url_for('auth.logout') }}">退出 / 切换模式</a>
@@ -504,5 +506,9 @@
       });
     })();
     </script>
+    {% if is_owner %}
+    <script>window.__SYNC_LOCAL_BACKUP = {{ sync_local_backup|tojson }};</script>
+    <script src="{{ url_for('static', filename='js/local-backup.js') }}?v=r19"></script>
+    {% endif %}
   </body>
 </html>

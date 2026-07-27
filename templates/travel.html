@@ -5,19 +5,24 @@
   <h2>旅游打标维护（直接同步数据库）</h2>
   <div class="muted">在这里按日期段打标或清除旅游标签，提交后会立即更新数据库中的记录。</div>
   <style>
-    .date-cascader-wrap { position: relative; min-width: 220px; }
+    .travel-card-dates { overflow: visible; }
+    .date-cascader-wrap { position: relative; min-width: 220px; z-index: 5; }
     .date-cascader-trigger {
       min-height: 34px; border: 1px solid #c8d3ea; border-radius: 10px; background: #fff;
       padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px;
       color: #1f2a44;
     }
     .date-cascader-panel {
-      position: absolute; top: 40px; left: 0; z-index: 90; width: 680px; max-width: 92vw;
+      position: fixed; z-index: 1200; width: min(720px, 94vw);
+      max-height: min(70vh, 520px);
       background: #fff; border: 1px solid #d9e2f2; border-radius: 12px; box-shadow: 0 10px 28px rgba(30,56,110,.2);
       display: none; overflow: hidden;
     }
-    .date-cascader-panel.open { display: grid; grid-template-columns: 1fr 1fr 1.2fr; }
-    .dc-col { border-right: 1px solid #edf1fa; max-height: 320px; overflow: auto; }
+    .date-cascader-panel.open {
+      display: grid; grid-template-columns: 1fr 1fr 1.2fr;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+    .dc-col { border-right: 1px solid #edf1fa; overflow: auto; min-height: 180px; max-height: calc(min(70vh, 520px) - 52px); }
     .dc-col:last-child { border-right: 0; }
     .dc-head {
       position: sticky; top: 0; z-index: 2; background: #fbfdff; border-bottom: 1px solid #edf1fa;
@@ -25,9 +30,9 @@
     }
     .dc-item { padding: 8px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
     .dc-item:hover, .dc-item.active { background: #f3f7ff; }
-    .dc-foot { grid-column: 1 / span 3; padding: 8px 10px; border-top: 1px solid #edf1fa; display: flex; justify-content: space-between; }
+    .dc-foot { grid-column: 1 / span 3; padding: 8px 10px; border-top: 1px solid #edf1fa; display: flex; justify-content: space-between; background: #fff; }
   </style>
-  <div class="row" style="margin-top: 8px;">
+  <div class="row travel-card-dates" style="margin-top: 8px;">
     <form method="post" class="row">
       <input type="hidden" name="action" value="set_tag" />
       <div>
@@ -220,17 +225,46 @@
         setLabel(label, selected);
       }
 
+      // 挂到 body，避免被卡片/主区 overflow 裁切
+      if (panel.parentElement !== document.body) document.body.appendChild(panel);
+
+      function positionPanel(){
+        const rect = trigger.getBoundingClientRect();
+        const panelW = Math.min(720, window.innerWidth * 0.94);
+        const panelH = Math.min(window.innerHeight * 0.7, 520);
+        let left = rect.left;
+        let top = rect.bottom + 6;
+        if (left + panelW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - panelW - 8);
+        if (top + panelH > window.innerHeight - 8) {
+          top = Math.max(8, rect.top - panelH - 6);
+        }
+        panel.style.left = left + "px";
+        panel.style.top = top + "px";
+        panel.style.width = panelW + "px";
+      }
+
       trigger.addEventListener("click", function(e){
         e.stopPropagation();
-        panel.classList.toggle("open");
-        if (panel.classList.contains("open")) {
+        const willOpen = !panel.classList.contains("open");
+        document.querySelectorAll(".date-cascader-panel.open").forEach((p) => p.classList.remove("open"));
+        if (willOpen) {
+          panel.classList.add("open");
           selected = parseSet(input.value || "");
           setLabel(label, selected);
           render();
+          positionPanel();
         }
       });
+      window.addEventListener("resize", function(){
+        if (panel.classList.contains("open")) positionPanel();
+      });
+      window.addEventListener("scroll", function(){
+        if (panel.classList.contains("open")) positionPanel();
+      }, true);
       document.addEventListener("click", function(e){
-        if (!e.target.closest(".date-cascader-wrap")) panel.classList.remove("open");
+        if (!e.target.closest(".date-cascader-wrap") && !e.target.closest(".date-cascader-panel")) {
+          panel.classList.remove("open");
+        }
       });
       panel.addEventListener("click", function(e){ e.stopPropagation(); });
       setLabel(label, selected);

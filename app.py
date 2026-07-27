@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta
 
 from flask import Flask, redirect, render_template, request, url_for, flash
-from flask import Response, session
+from flask import Response, session, jsonify, send_from_directory, abort, g
 
 BASE_DIR = Path(__file__).resolve().parent
 # 模块路径：账单 / 诗词包内仍用短导入名（db / poem_admin …）
@@ -27,7 +27,12 @@ from auth import (
     is_logged_in,
     is_owner,
 )
-from db.backup import write_latest_backup_csv, create_backup_bundle
+from db.backup import (
+    create_backup_bundle,
+    find_latest_main_csv,
+    get_backup_dir,
+    list_backup_bundle_files,
+)
 from offline_report import collect_payload, render_report_html
 from db.repository import (
     backfill_category_l1,
@@ -83,6 +88,65 @@ from rule_manager import (
     RULE_FILE,
 )
 import json as _json_for_rules
+
+
+ZERO_AMOUNT_CATEGORY = "零金额"
+
+
+def _is_zero_amount(amount) -> bool:
+    try:
+        return abs(float(amount or 0)) < 1e-9
+    except Exception:
+        return False
+
+
+def _uses_remote_data_dir() -> bool:
+    """Fly 等远程 Volume：备份在服务器上，需同步到本机绑定目录。"""
+    return bool((os.environ.get("BILL_DATA_DIR") or "").strip())
+
+
+def _backup_zip_bytes(clear_old: bool = True) -> Response:
+    """强制下载 zip（未绑定本机文件夹时的回退）。"""
+    from io import BytesIO
+    import zipfile
+
+    main_csv, files = create_backup_bundle(clear_old=clear_old)
+    ts = Path(main_csv).stem.replace("records_backup_", "", 1)
+    bio = BytesIO()
+    with zipfile.ZipFile(bio, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for fp in files:
+            z.write(fp, arcname=Path(fp).name)
+    bio.seek(0)
+    return Response(
+        bio.getvalue(),
+        mimetype="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename=records_backup_{ts}.zip",
+        },
+    )
+
+
+def _backup_and_redirect(endpoint: str, **url_kwargs):
+    """
+    写入服务器 backup/ 后跳转：
+    - 本机运行：已直接落在项目 backup/，无需再下载
+    - 正式站：标记 session，由前端写入用户绑定的本机 backup 文件夹
+    """
+    main_csv, _files = create_backup_bundle(clear_old=True)
+    backup_dir = get_backup_dir()
+    if not _uses_remote_data_dir():
+        flash("已直接写入本机项目目录：{}".format(backup_dir), "success")
+        return redirect(url_for(endpoint, **url_kwargs))
+    session["sync_local_backup"] = True
+    flash(
+        "服务器已备份（{}）。若已绑定本机 backup 文件夹将自动写入；否则请侧栏绑定，或下载 zip。".format(
+            Path(main_csv).name
+        ),
+        "success",
+    )
+    return redirect(url_for(endpoint, **url_kwargs))
+
+
 
 
 def _load_dotenv() -> None:
@@ -155,6 +219,16 @@ def _require_access():
     return None
 
 
+@app.before_request
+def _consume_local_backup_sync_flag():
+    endpoint = request.endpoint
+    if not endpoint or endpoint == "static" or endpoint.startswith("auth."):
+        g.sync_local_backup = False
+        return
+    # 每请求只取一次，避免静态资源请求抢走标记
+    g.sync_local_backup = bool(session.pop("sync_local_backup", False))
+
+
 @app.context_processor
 def _inject_auth():
     return {
@@ -163,6 +237,7 @@ def _inject_auth():
         "is_owner": is_owner(),
         "is_guest": is_guest(),
         "access_role": "guest" if is_guest() else ("owner" if is_owner() else None),
+        "sync_local_backup": bool(getattr(g, "sync_local_backup", False)),
     }
 
 
@@ -329,6 +404,8 @@ def _unknown_category_pairs(rows):
     seen = set()
     out = []
     for r in rows or []:
+        if _is_zero_amount(r.get("amount")):
+            continue
         d = str(r.get("direction", "")).strip()
         if d not in ("收入", "支出"):
             continue
@@ -337,7 +414,7 @@ def _unknown_category_pairs(rows):
         raw = str(r.get("explicit_category_raw") or cat or "").strip()
         # 即使历史预览当时是“已知”，但用户后续编辑了字典（删除/改名），也要重新判定未知并提示映射
         cu = bool(r.get("category_unknown"))
-        if cat and cat not in ("待分类", "待分类收入"):
+        if cat and cat not in ("待分类", "待分类收入", ZERO_AMOUNT_CATEGORY):
             if (not is_known_category(cat, is_income)) and (not is_known_l1(cat, is_income)):
                 cu = True
                 if not raw:
@@ -380,7 +457,12 @@ def _preview_normalize_rows(raw_rows):
         is_income = direction == "收入"
         explicit_raw = str(r.get("explicit_category_raw", "")).strip()
         cu = str(r.get("category_unknown", "0")).strip().lower() in ("1", "true", "yes")
-        if is_known_category(category, is_income) or is_known_l1(category, is_income):
+        # 金额为 0：不需要分类，不进待分类 / 待映射
+        if _is_zero_amount(amount):
+            category = cat_l1 = ZERO_AMOUNT_CATEGORY
+            cu = False
+            explicit_raw = ""
+        elif is_known_category(category, is_income) or is_known_l1(category, is_income):
             cu = False
             explicit_raw = ""
             category = l2_to_l1(category, is_income) or category
@@ -644,7 +726,7 @@ def import_page():
             if not rows:
                 flash("预览记录为空，无法生成临时表", "error")
                 return redirect(url_for("import_page"))
-            if any(r.get("category_unknown") for r in rows):
+            if any((r.get("category_unknown") and not _is_zero_amount(r.get("amount"))) for r in rows):
                 flash(
                     "仍有「未映射类型」的行：请先在「类型标准化映射」中映射，或把类型改成字典里的标准类型后再入库。",
                     "error",
@@ -660,7 +742,6 @@ def import_page():
             import_mode = request.form.get("import_mode", "replace").strip()
             replace_existing = import_mode != "insert_only"
             result = confirm_batch(batch_id, replace_existing=replace_existing)
-            backup_file = write_latest_backup_csv()
             if replace_existing:
                 flash(
                     "已确认生成临时表并入库（覆盖模式）：新增 {} 条，覆盖删除旧记录 {} 条".format(
@@ -677,8 +758,7 @@ def import_page():
                 )
             if int(result.get("travel_reapplied", 0)) > 0:
                 flash("已按旅游管理的日期打标规则回填旅游标签：{} 条".format(result["travel_reapplied"]), "success")
-            flash("已生成最新本地备份：{}".format(backup_file), "success")
-            return redirect(url_for("records_page"))
+            return _backup_and_redirect("import_page")
 
         flash("未知操作", "error")
         return redirect(url_for("import_page"))
@@ -811,7 +891,6 @@ def staging_page(batch_id: int):
 
         if action == "confirm_batch":
             result = confirm_batch(batch_id)
-            backup_file = write_latest_backup_csv()
             flash(
                 "确认完成：新增 {} 条，覆盖删除旧记录 {} 条（按导入日期覆盖）".format(
                     result["inserted"], result["replaced_deleted"]
@@ -820,8 +899,7 @@ def staging_page(batch_id: int):
             )
             if int(result.get("travel_reapplied", 0)) > 0:
                 flash("已按旅游管理的日期打标规则回填旅游标签：{} 条".format(result["travel_reapplied"]), "success")
-            flash("已生成最新本地备份：{}".format(backup_file), "success")
-            return redirect(url_for("records_page"))
+            return _backup_and_redirect("records_page")
 
     rows = list_staging_records(batch_id)
     return render_template(
@@ -1076,14 +1154,14 @@ def types_page():
         if action in ("add", "update"):
             if not name:
                 flash("类型名不能为空", "error")
-            else:
-                upsert_rule(name, pattern, is_income)
-                flash("已保存类型规则", "success")
-            return redirect(url_for("types_page"))
+                return redirect(url_for("types_page"))
+            upsert_rule(name, pattern, is_income)
+            flash("已保存类型规则", "success")
+            return _backup_and_redirect("types_page")
         if action == "delete":
             delete_rule(name, is_income)
             flash("已删除类型规则", "success")
-            return redirect(url_for("types_page"))
+            return _backup_and_redirect("types_page")
 
     return render_template(
         "types.html",
@@ -1105,7 +1183,7 @@ def travel_page():
                 return redirect(url_for("travel_page"))
             count = update_travel_companions_by_trip_tag(tag, companions)
             flash("已更新同行人，影响 {} 条记录".format(count), "success")
-            return redirect(url_for("travel_page"))
+            return _backup_and_redirect("travel_page")
 
         raw = request.form.get("dates", "").strip()
         dates = [x.strip() for x in raw.split(",") if x.strip()]
@@ -1120,11 +1198,11 @@ def travel_page():
                 return redirect(url_for("travel_page"))
             count = set_travel_tag_by_dates(dates, tag, companions)
             flash("旅游打标完成，更新 {} 条记录".format(count), "success")
-            return redirect(url_for("travel_page"))
+            return _backup_and_redirect("travel_page")
         if action == "clear_tag":
             count = clear_travel_tag_by_dates(dates)
             flash("已清除旅游标签，更新 {} 条记录".format(count), "success")
-            return redirect(url_for("travel_page"))
+            return _backup_and_redirect("travel_page")
 
     travel = travel_summary()
     tagged_rows = travel_tagged_dates(limit=365)
@@ -1441,28 +1519,42 @@ def poem_delete_page(poem_id: int):
     return redirect(url_for("poem_admin_page"))
 
 
+@app.route("/api/backup/latest")
+def api_backup_latest():
+    if not is_owner():
+        return jsonify({"error": "forbidden"}), 403
+    ensure_db()
+    main_csv = find_latest_main_csv()
+    if not main_csv:
+        return jsonify({"files": []})
+    files = []
+    for fp in list_backup_bundle_files(main_csv):
+        name = Path(fp).name
+        files.append({"name": name, "url": url_for("api_backup_file", name=name)})
+    return jsonify({"files": files, "main": Path(main_csv).name})
+
+
+@app.route("/api/backup/file/<name>")
+def api_backup_file(name: str):
+    if not is_owner():
+        abort(403)
+    if not re.fullmatch(r"records_backup_[A-Za-z0-9_.-]+", name or ""):
+        abort(400)
+    backup_dir = get_backup_dir()
+    path = Path(backup_dir) / name
+    if not path.is_file():
+        abort(404)
+    return send_from_directory(backup_dir, name, as_attachment=False)
+
+
 @app.route("/download/backup.zip")
 def download_backup_zip():
-    """一键导出备份：写入 backup/（Fly 上为 /data/backup），并下载同名 zip 到浏览器本地。"""
+    """生成备份：默认走本机绑定同步；?raw=1 强制下载 zip。"""
     ensure_db()
-    from io import BytesIO
-    import zipfile
-    from pathlib import Path
-
-    main_csv, files = create_backup_bundle(clear_old=True)
-    ts = Path(main_csv).stem.replace("records_backup_", "", 1)
-    bio = BytesIO()
-    with zipfile.ZipFile(bio, "w", compression=zipfile.ZIP_DEFLATED) as z:
-        for fp in files:
-            z.write(fp, arcname=Path(fp).name)
-    bio.seek(0)
-    return Response(
-        bio.getvalue(),
-        mimetype="application/zip",
-        headers={
-            "Content-Disposition": f"attachment; filename=records_backup_{ts}.zip",
-        },
-    )
+    if request.args.get("raw") == "1":
+        flash("已生成 zip，请解压到本机项目的 backup/ 文件夹。", "success")
+        return _backup_zip_bytes(clear_old=True)
+    return _backup_and_redirect("records_page")
 
 
 @app.route("/download/offline_report.zip")

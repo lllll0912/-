@@ -182,6 +182,29 @@ def list_backup_bundle_files(main_csv_path: str) -> List[str]:
     return [p for p in candidates if os.path.isfile(p)]
 
 
+def find_latest_main_csv() -> str:
+    """backup/ 中最新的主 csv（排除 _types/_travel）。"""
+    backup_dir = get_backup_dir()
+    if not os.path.isdir(backup_dir):
+        return ""
+    best = ""
+    best_mtime = -1.0
+    for name in os.listdir(backup_dir):
+        if not name.startswith(BACKUP_PREFIX) or not name.endswith(".csv"):
+            continue
+        if "_types" in name or "_travel" in name:
+            continue
+        path = os.path.join(backup_dir, name)
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError:
+            continue
+        if mtime >= best_mtime:
+            best_mtime = mtime
+            best = path
+    return best
+
+
 def create_backup_bundle(clear_old: bool = True) -> Tuple[str, List[str]]:
     main_csv = write_latest_backup_csv(clear_old=clear_old)
     files = list_backup_bundle_files(main_csv)
