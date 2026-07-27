@@ -1,37 +1,106 @@
 {% extends "layout.html" %}
 {% block title %}旅游管理{% endblock %}
 {% block content %}
+<style>
+  .travel-card-dates { overflow: visible; }
+  .date-cascader-wrap { position: relative; min-width: 220px; z-index: 5; }
+  .date-cascader-trigger {
+    min-height: 34px; border: 1px solid #c8d3ea; border-radius: 10px; background: #fff;
+    padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    color: #1f2a44;
+  }
+  .date-cascader-panel {
+    position: fixed; z-index: 1200; width: min(720px, 94vw);
+    max-height: min(70vh, 520px);
+    background: #fff; border: 1px solid #d9e2f2; border-radius: 12px; box-shadow: 0 10px 28px rgba(30,56,110,.2);
+    display: none; overflow: hidden;
+  }
+  .date-cascader-panel.open {
+    display: grid; grid-template-columns: 1fr 1fr 1.2fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .dc-col { border-right: 1px solid #edf1fa; overflow: auto; min-height: 180px; max-height: calc(min(70vh, 520px) - 52px); }
+  .dc-col:last-child { border-right: 0; }
+  .dc-head {
+    position: sticky; top: 0; z-index: 2; background: #fbfdff; border-bottom: 1px solid #edf1fa;
+    padding: 8px 10px; font-size: 12px; color: #4b5a78; display: flex; align-items: center; justify-content: space-between;
+  }
+  .dc-item { padding: 8px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .dc-item:hover, .dc-item.active { background: #f3f7ff; }
+  .dc-foot { grid-column: 1 / span 3; padding: 8px 10px; border-top: 1px solid #edf1fa; display: flex; justify-content: space-between; background: #fff; }
+
+  .travel-analytics { --ta-ink: #1c2a3a; --ta-muted: #6b7c90; --ta-line: #e4ebf3; --ta-soft: #f4f7fa; --ta-accent: #0f766e; }
+  .travel-analytics .ta-toolbar {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 12px; margin-bottom: 18px;
+  }
+  .travel-analytics .ta-toolbar h2 { margin: 0; }
+  .travel-analytics .ta-hint { color: var(--ta-muted); font-size: 13px; margin-top: 4px; }
+  .travel-analytics .ta-section { margin-top: 22px; }
+  .travel-analytics .ta-section:first-of-type { margin-top: 0; }
+  .travel-analytics .ta-label {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    margin: 0 0 10px; font-size: 13px; font-weight: 650; letter-spacing: 0.02em; color: var(--ta-ink);
+  }
+  .travel-analytics .ta-label span { font-weight: 500; color: var(--ta-muted); font-size: 12px; }
+  .travel-analytics .ta-table-wrap {
+    border: 1px solid var(--ta-line); border-radius: 12px; overflow: auto; max-height: 480px;
+    background: #fff;
+  }
+  .travel-analytics table.ta-table {
+    width: 100%; border-collapse: collapse; font-size: 13.5px; color: var(--ta-ink);
+  }
+  .travel-analytics table.ta-table thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--ta-soft); color: var(--ta-muted); font-weight: 600; font-size: 12px;
+    text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--ta-line);
+    white-space: nowrap;
+  }
+  .travel-analytics table.ta-table tbody td {
+    padding: 12px 14px; border-bottom: 1px solid #eef2f6; vertical-align: middle;
+  }
+  .travel-analytics table.ta-table tbody tr:last-child td { border-bottom: 0; }
+  .travel-analytics table.ta-table tbody tr:hover td { background: #f8fbfc; }
+  .travel-analytics .ta-num { text-align: right; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .travel-analytics .ta-tag { font-weight: 650; }
+  .travel-analytics .ta-companions { color: var(--ta-muted); max-width: 220px; }
+  .travel-analytics .ta-empty {
+    padding: 28px 16px; text-align: center; color: var(--ta-muted); font-size: 13px;
+  }
+  .travel-analytics .ta-expense { color: #b45309; }
+  .travel-analytics .ta-income { color: var(--ta-accent); }
+
+  .travel-modal-mask {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.42); z-index: 1400;
+    display: none; align-items: center; justify-content: center; padding: 18px;
+  }
+  .travel-modal-mask.open { display: flex; }
+  .travel-modal-card {
+    width: min(820px, 96vw); max-height: min(86vh, 720px);
+    background: #fff; border-radius: 14px; border: 1px solid #d9e2f2;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .travel-modal-hd, .travel-modal-ft {
+    padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: #f8fafc;
+  }
+  .travel-modal-hd { border-bottom: 1px solid #e5ebf5; }
+  .travel-modal-ft { border-top: 1px solid #e5ebf5; justify-content: flex-end; }
+  .travel-modal-bd { padding: 12px 16px; overflow: auto; flex: 1; }
+  .travel-modal-bd table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .travel-modal-bd th, .travel-modal-bd td { padding: 10px 8px; border-bottom: 1px solid #eef2f6; text-align: left; vertical-align: middle; }
+  .travel-modal-bd th { color: #6b7c90; font-size: 12px; font-weight: 600; position: sticky; top: 0; background: #fff; }
+  .travel-modal-bd input[type="text"] {
+    width: 100%; min-width: 160px; box-sizing: border-box;
+    border: 1px solid #cfd9ea; border-radius: 8px; padding: 7px 10px;
+  }
+  .travel-modal-bd .ta-meta { color: #6b7c90; font-size: 12px; white-space: nowrap; }
+</style>
+
 <div class="card">
   <h2>旅游打标维护（直接同步数据库）</h2>
   <div class="muted">在这里按日期段打标或清除旅游标签，提交后会立即更新数据库中的记录。</div>
-  <style>
-    .travel-card-dates { overflow: visible; }
-    .date-cascader-wrap { position: relative; min-width: 220px; z-index: 5; }
-    .date-cascader-trigger {
-      min-height: 34px; border: 1px solid #c8d3ea; border-radius: 10px; background: #fff;
-      padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px;
-      color: #1f2a44;
-    }
-    .date-cascader-panel {
-      position: fixed; z-index: 1200; width: min(720px, 94vw);
-      max-height: min(70vh, 520px);
-      background: #fff; border: 1px solid #d9e2f2; border-radius: 12px; box-shadow: 0 10px 28px rgba(30,56,110,.2);
-      display: none; overflow: hidden;
-    }
-    .date-cascader-panel.open {
-      display: grid; grid-template-columns: 1fr 1fr 1.2fr;
-      grid-template-rows: minmax(0, 1fr) auto;
-    }
-    .dc-col { border-right: 1px solid #edf1fa; overflow: auto; min-height: 180px; max-height: calc(min(70vh, 520px) - 52px); }
-    .dc-col:last-child { border-right: 0; }
-    .dc-head {
-      position: sticky; top: 0; z-index: 2; background: #fbfdff; border-bottom: 1px solid #edf1fa;
-      padding: 8px 10px; font-size: 12px; color: #4b5a78; display: flex; align-items: center; justify-content: space-between;
-    }
-    .dc-item { padding: 8px 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-    .dc-item:hover, .dc-item.active { background: #f3f7ff; }
-    .dc-foot { grid-column: 1 / span 3; padding: 8px 10px; border-top: 1px solid #edf1fa; display: flex; justify-content: space-between; background: #fff; }
-  </style>
   <div class="row travel-card-dates" style="margin-top: 8px;">
     <form method="post" class="row">
       <input type="hidden" name="action" value="set_tag" />
@@ -73,6 +142,7 @@
 </div>
 
 <script id="bill-dates-json" type="application/json">{{ bill_dates_json|safe }}</script>
+<script id="trips-json" type="application/json">{{ trips_json|safe }}</script>
 <script>
   (function(){
     const allDates = JSON.parse(document.getElementById('bill-dates-json').textContent || "[]");
@@ -225,7 +295,6 @@
         setLabel(label, selected);
       }
 
-      // 挂到 body，避免被卡片/主区 overflow 裁切
       if (panel.parentElement !== document.body) document.body.appendChild(panel);
 
       function positionPanel(){
@@ -285,79 +354,219 @@
   })();
 </script>
 
-<div class="card">
-  <h2>已打标日期（最近365组）</h2>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>日期</th><th>标签</th><th>同行人</th><th>记录数</th><th>旅游支出</th><th>旅游收入</th></tr></thead>
-      <tbody>
-        {% for r in tagged_rows %}
-        <tr>
-          <td>{{ r.bill_date }}</td>
-          <td>{{ r.travel_tag }}</td>
-          <td>{{ r.travel_companions or '' }}</td>
-          <td>{{ r.record_count }}</td>
-          <td>{{ r.expense }}</td>
-          <td>{{ r.income }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="card travel-analytics">
+  <div class="ta-toolbar">
+    <div>
+      <h2>旅游专题分析</h2>
+      <div class="ta-hint">按行程汇总；同行人请点右侧按钮批量维护，确认后一次保存并备份。</div>
+    </div>
+    <button type="button" id="btn-companions-edit" class="btn-secondary"{% if not travel.by_trip %} disabled{% endif %}>同行人维护</button>
+  </div>
+
+  <div class="ta-section">
+    <div class="ta-label">按行程标签统计 <span>{{ travel.by_trip|length }} 个行程</span></div>
+    <div class="ta-table-wrap">
+      {% if travel.by_trip %}
+      <table class="ta-table">
+        <thead>
+          <tr>
+            <th>行程标签</th>
+            <th>同行人</th>
+            <th>开始</th>
+            <th>结束</th>
+            <th class="ta-num">天数</th>
+            <th class="ta-num">支出</th>
+            <th class="ta-num">收入</th>
+            <th class="ta-num">记录</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in travel.by_trip %}
+          <tr>
+            <td class="ta-tag">{{ r.travel_tag }}</td>
+            <td class="ta-companions">{{ r.travel_companions or "—" }}</td>
+            <td>{{ r.start_date }}</td>
+            <td>{{ r.end_date }}</td>
+            <td class="ta-num">{{ r.duration_days }}</td>
+            <td class="ta-num ta-expense">{{ r.expense }}</td>
+            <td class="ta-num ta-income">{{ r.income }}</td>
+            <td class="ta-num">{{ r.record_count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="ta-empty">暂无旅游行程。请先在上方按日期段打标。</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="ta-section">
+    <div class="ta-label">每月旅游 / 非旅游支出</div>
+    <div class="ta-table-wrap">
+      {% if travel.by_month %}
+      <table class="ta-table">
+        <thead>
+          <tr>
+            <th>月份</th>
+            <th class="ta-num">旅游支出</th>
+            <th class="ta-num">非旅游支出</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in travel.by_month %}
+          <tr>
+            <td>{{ r.month }}</td>
+            <td class="ta-num ta-expense">{{ r.travel_expense }}</td>
+            <td class="ta-num">{{ r.normal_expense }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="ta-empty">暂无月份数据。</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="ta-section">
+    <div class="ta-label">旅游支出类型 Top12</div>
+    <div class="ta-table-wrap">
+      {% if travel.by_category %}
+      <table class="ta-table">
+        <thead>
+          <tr>
+            <th>类型</th>
+            <th class="ta-num">旅游支出</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in travel.by_category %}
+          <tr>
+            <td>{{ r.category }}</td>
+            <td class="ta-num ta-expense">{{ r.expense }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="ta-empty">暂无类型汇总。</div>
+      {% endif %}
+    </div>
   </div>
 </div>
 
-<div class="card">
-  <h2>旅游专题分析</h2>
-  <h3>按行程标签统计</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>行程标签</th><th>同行人</th><th>开始日期</th><th>结束日期</th><th>持续天数</th><th>旅游支出</th><th>旅游收入</th><th>记录数</th></tr></thead>
-      <tbody>
-        {% for r in travel.by_trip %}
-        <tr>
-          <td>{{ r.travel_tag }}</td>
-          <td>
-            <form method="post" class="row" style="gap:6px; align-items:center;">
-              <input type="hidden" name="action" value="update_trip_companions" />
-              <input type="hidden" name="trip_tag" value="{{ r.travel_tag }}" />
-              <input type="text" name="trip_companions" value="{{ r.travel_companions or '' }}" placeholder="输入同行人" style="width:150px;" />
-              <button type="submit" class="btn-secondary">保存</button>
-            </form>
-          </td>
-          <td>{{ r.start_date }}</td>
-          <td>{{ r.end_date }}</td>
-          <td>{{ r.duration_days }}</td>
-          <td>{{ r.expense }}</td>
-          <td>{{ r.income }}</td>
-          <td>{{ r.record_count }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <h3>每月旅游/非旅游支出对比</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>月份</th><th>旅游支出</th><th>非旅游支出</th></tr></thead>
-      <tbody>
-        {% for r in travel.by_month %}
-        <tr><td>{{ r.month }}</td><td>{{ r.travel_expense }}</td><td>{{ r.normal_expense }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <h3>旅游支出类型Top12</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>类型</th><th>旅游支出</th></tr></thead>
-      <tbody>
-        {% for r in travel.by_category %}
-        <tr><td>{{ r.category }}</td><td>{{ r.expense }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="travel-modal-mask" id="companions-modal" aria-hidden="true">
+  <div class="travel-modal-card" role="dialog" aria-labelledby="companions-modal-title">
+    <div class="travel-modal-hd">
+      <div>
+        <div id="companions-modal-title" style="font-weight:700;">同行人维护</div>
+        <div class="muted" style="font-size:12px;margin-top:2px;">可编辑多条行程；点确认后一次性提交，只备份一次。</div>
+      </div>
+      <button type="button" class="btn-secondary" id="companions-modal-close">关闭</button>
+    </div>
+    <div class="travel-modal-bd">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:22%;">行程标签</th>
+            <th>同行人</th>
+            <th style="width:28%;">日期</th>
+          </tr>
+        </thead>
+        <tbody id="companions-modal-body"></tbody>
+      </table>
+    </div>
+    <div class="travel-modal-ft">
+      <button type="button" class="btn-secondary" id="companions-modal-cancel">取消</button>
+      <button type="button" id="companions-modal-save">确认变更</button>
+    </div>
   </div>
 </div>
+
+<form method="post" id="companions-batch-form" style="display:none;">
+  <input type="hidden" name="action" value="batch_update_companions" />
+  <input type="hidden" name="companions_json" id="companions-json" value="[]" />
+</form>
+
+<script>
+(function () {
+  var trips = [];
+  try {
+    trips = JSON.parse(document.getElementById("trips-json").textContent || "[]") || [];
+  } catch (e) { trips = []; }
+
+  var mask = document.getElementById("companions-modal");
+  var body = document.getElementById("companions-modal-body");
+  var openBtn = document.getElementById("btn-companions-edit");
+  var closeBtn = document.getElementById("companions-modal-close");
+  var cancelBtn = document.getElementById("companions-modal-cancel");
+  var saveBtn = document.getElementById("companions-modal-save");
+  var form = document.getElementById("companions-batch-form");
+  var jsonInput = document.getElementById("companions-json");
+
+  function openModal() {
+    body.innerHTML = "";
+    if (!trips.length) {
+      body.innerHTML = '<tr><td colspan="3" class="muted">暂无行程</td></tr>';
+    } else {
+      trips.forEach(function (t, idx) {
+        var tr = document.createElement("tr");
+        var companions = t.travel_companions || "";
+        var range = (t.start_date || "") + (t.end_date && t.end_date !== t.start_date ? " ~ " + t.end_date : "");
+        tr.innerHTML =
+          '<td><b></b><div class="ta-meta"></div></td>' +
+          '<td><input type="text" data-idx="' + idx + '" data-tag="" data-original="" placeholder="如 张三、李四" /></td>' +
+          '<td class="ta-meta"></td>';
+        tr.querySelector("b").textContent = t.travel_tag || "";
+        tr.querySelector(".ta-meta").textContent = (t.record_count || 0) + " 条 · 支出 " + (t.expense || 0);
+        var input = tr.querySelector("input");
+        input.value = companions;
+        input.setAttribute("data-tag", t.travel_tag || "");
+        input.setAttribute("data-original", companions);
+        tr.children[2].textContent = range;
+        body.appendChild(tr);
+      });
+    }
+    mask.classList.add("open");
+    mask.setAttribute("aria-hidden", "false");
+  }
+
+  function closeModal() {
+    mask.classList.remove("open");
+    mask.setAttribute("aria-hidden", "true");
+  }
+
+  if (openBtn) openBtn.addEventListener("click", openModal);
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+  mask.addEventListener("click", function (e) {
+    if (e.target === mask) closeModal();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && mask.classList.contains("open")) closeModal();
+  });
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", function () {
+      var items = [];
+      body.querySelectorAll("input[data-tag]").forEach(function (input) {
+        items.push({
+          tag: input.getAttribute("data-tag") || "",
+          companions: (input.value || "").trim(),
+          original: input.getAttribute("data-original") || "",
+        });
+      });
+      var changed = items.filter(function (x) { return x.companions !== x.original; });
+      if (!changed.length) {
+        alert("没有修改任何同行人");
+        return;
+      }
+      if (!confirm("确认更新 " + changed.length + " 个行程的同行人？将一次性保存并备份。")) return;
+      jsonInput.value = JSON.stringify(items);
+      form.submit();
+    });
+  }
+})();
+</script>
 {% endblock %}

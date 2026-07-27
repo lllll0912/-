@@ -61,8 +61,7 @@ from db.repository import (
     clear_travel_tag_by_date_range,
     set_travel_tag_by_dates,
     clear_travel_tag_by_dates,
-    update_travel_companions_by_trip_tag,
-    travel_tagged_dates,
+    batch_update_travel_companions,
     travel_summary,
     update_staging_record,
     update_record,
@@ -1175,14 +1174,38 @@ def travel_page():
     ensure_db()
     if request.method == "POST":
         action = request.form.get("action", "")
-        if action == "update_trip_companions":
-            tag = request.form.get("trip_tag", "").strip()
-            companions = request.form.get("trip_companions", "").strip()
-            if not tag:
-                flash("行程标签不能为空", "error")
+        if action == "batch_update_companions":
+            try:
+                items = json.loads(request.form.get("companions_json") or "[]")
+            except Exception:
+                flash("同行人数据格式错误", "error")
                 return redirect(url_for("travel_page"))
-            count = update_travel_companions_by_trip_tag(tag, companions)
-            flash("已更新同行人，影响 {} 条记录".format(count), "success")
+            if not isinstance(items, list):
+                flash("同行人数据格式错误", "error")
+                return redirect(url_for("travel_page"))
+            # 仅提交有变更的行程
+            changed = []
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                tag = str(it.get("tag") or "").strip()
+                if not tag:
+                    continue
+                new_c = str(it.get("companions") or "").strip()
+                old_c = str(it.get("original") or "").strip()
+                if new_c == old_c:
+                    continue
+                changed.append({"tag": tag, "companions": new_c})
+            if not changed:
+                flash("同行人无变更", "success")
+                return redirect(url_for("travel_page"))
+            result = batch_update_travel_companions(changed)
+            flash(
+                "已批量更新同行人：{} 个行程，影响 {} 条账单".format(
+                    result["trips"], result["records"]
+                ),
+                "success",
+            )
             return _backup_and_redirect("travel_page")
 
         raw = request.form.get("dates", "").strip()
@@ -1205,11 +1228,10 @@ def travel_page():
             return _backup_and_redirect("travel_page")
 
     travel = travel_summary()
-    tagged_rows = travel_tagged_dates(limit=365)
     return render_template(
         "travel.html",
         travel=travel,
-        tagged_rows=tagged_rows,
+        trips_json=json.dumps(travel.get("by_trip") or [], ensure_ascii=False, default=str),
         bill_dates_json=json.dumps(list_bill_dates(), ensure_ascii=False),
     )
 

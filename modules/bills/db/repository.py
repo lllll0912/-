@@ -1,4 +1,5 @@
 from typing import Dict, List, Any, Optional
+import re
 
 from db.connector import get_cursor
 
@@ -552,6 +553,16 @@ def summary_by_day(limit: int = 120) -> List[Dict[str, Any]]:
 
 
 def travel_summary() -> Dict[str, List[Dict[str, Any]]]:
+    def _uniq_companions(raw: str) -> str:
+        parts = []
+        seen = set()
+        for p in re.split(r"[、,，;/；|]+", str(raw or "")):
+            p = p.strip()
+            if p and p not in seen:
+                seen.add(p)
+                parts.append(p)
+        return "、".join(parts)
+
     with get_cursor() as cur:
         cur.execute(
             """
@@ -566,10 +577,12 @@ def travel_summary() -> Dict[str, List[Dict[str, Any]]]:
             FROM records
             WHERE is_travel=1
             GROUP BY COALESCE(NULLIF(travel_tag,''),'未命名行程')
-            ORDER BY expense DESC
+            ORDER BY start_date DESC, travel_tag
             """
         )
         by_trip = cur.fetchall()
+        for row in by_trip:
+            row["travel_companions"] = _uniq_companions(row.get("travel_companions") or "")
 
         cur.execute(
             """
@@ -673,6 +686,25 @@ def update_travel_companions_by_trip_tag(travel_tag: str, companions: str) -> in
             (str(companions or "")[:255], tag),
         )
         return cur.rowcount
+
+
+def batch_update_travel_companions(items: List[Dict[str, str]]) -> Dict[str, int]:
+    """
+    批量按行程标签更新同行人。
+    items: [{tag, companions}, ...]
+    返回 {trips, records}
+    """
+    trips = 0
+    records = 0
+    for item in items or []:
+        tag = str((item or {}).get("tag") or "").strip()
+        if not tag:
+            continue
+        companions = str((item or {}).get("companions") or "").strip()[:255]
+        n = update_travel_companions_by_trip_tag(tag, companions)
+        trips += 1
+        records += int(n or 0)
+    return {"trips": trips, "records": records}
 
 
 def backfill_category_l1(l2_to_l1_map: Dict[str, str]) -> int:
