@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Iterable, Optional, Dict, List, Any
 
-from rule_manager import infer_category, is_known_category, l2_to_l1
+from rule_manager import infer_category, is_known_category, is_known_l1, l2_to_l1
 
 @dataclass
 class ParseOptions:
@@ -122,9 +122,13 @@ def parse_for_staging(raw_text: str, options: Optional[ImportOptions] = None) ->
             cat_l1 = ""
             cat_l2 = ""
             if explicit_raw:
-                if is_known_category(explicit_raw, is_income):
+                mapped = l2_to_l1(explicit_raw, is_income)
+                if mapped and (is_known_category(mapped, is_income) or is_known_l1(mapped, is_income)):
+                    cat_l2 = mapped
+                    cat_l1 = mapped
+                elif is_known_category(explicit_raw, is_income) or is_known_l1(explicit_raw, is_income):
                     cat_l2 = explicit_raw
-                    cat_l1 = l2_to_l1(cat_l2, is_income) or cat_l2
+                    cat_l1 = explicit_raw
                 else:
                     cat_l2 = explicit_raw
                     cat_l1 = ""
@@ -212,8 +216,9 @@ def parse_bill_text(raw_text: str, options: Optional[ParseOptions] = None) -> Li
                 explicit_category = parts[3]
 
             if explicit_category:
-                cat_l2 = explicit_category
-                cat_l1 = l2_to_l1(cat_l2, is_income) or cat_l2
+                mapped = l2_to_l1(explicit_category, is_income) or explicit_category
+                cat_l2 = mapped
+                cat_l1 = mapped
             else:
                 cat_l1, cat_l2 = infer_category(detail, is_income)
 

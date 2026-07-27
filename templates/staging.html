@@ -50,7 +50,7 @@
       </thead>
       <tbody>
         {% for r in rows %}
-        <tr>
+        <tr class="stg-edit-row" data-old-cat="{{ r.category or r.category_l1 }}">
           <form method="post">
             <td>
               {{ r.row_index }}
@@ -61,12 +61,15 @@
             <td><input type="text" name="detail" value="{{ r.detail }}" style="width: 160px;" /></td>
             <td><input type="text" name="note" value="{{ r.note }}" style="width: 220px;" /></td>
             <td>
-              <select name="direction">
+              <select name="direction" class="stg-dir">
                 <option value="支出" {% if r.direction == '支出' %}selected{% endif %}>支出</option>
                 <option value="收入" {% if r.direction == '收入' %}selected{% endif %}>收入</option>
               </select>
             </td>
-            <td><input type="text" name="category" value="{{ r.category }}" style="width: 100px;" /></td>
+            <td>
+              <select name="category" class="stg-cat" style="width: 110px;"></select>
+              <input type="hidden" name="category_l1" class="stg-cat-l1" value="{{ r.category_l1 or r.category }}" />
+            </td>
             <td>
               <select name="is_travel">
                 <option value="0" {% if not r.is_travel %}selected{% endif %}>否</option>
@@ -97,4 +100,53 @@
     </table>
   </div>
 </div>
+<script>
+  const stgConsumeGrouped = {{ consume_grouped|tojson }};
+  const stgIncomeGrouped = {{ income_grouped|tojson }};
+  function stgFlatTypes(dir) {
+    const groups = dir === "收入" ? stgIncomeGrouped : stgConsumeGrouped;
+    return (groups || []).map(g => g.l1).filter(Boolean);
+  }
+  function syncStgCatL1(tr) {
+    const catEl = tr.querySelector("select.stg-cat");
+    const l1El = tr.querySelector("input.stg-cat-l1");
+    if (catEl && l1El) l1El.value = catEl.value || "";
+  }
+  function buildStgCategorySelect(tr) {
+    const dirEl = tr.querySelector("select.stg-dir");
+    const catEl = tr.querySelector("select.stg-cat");
+    if (!dirEl || !catEl) return;
+    const types = stgFlatTypes(dirEl.value);
+    const oldCat = tr.getAttribute("data-old-cat") || catEl.value || "";
+
+    catEl.innerHTML = "";
+    types.forEach(c => {
+      const op = document.createElement("option");
+      op.value = c; op.textContent = c;
+      catEl.appendChild(op);
+    });
+    if (oldCat && !Array.from(catEl.options).some(o => o.value === oldCat)) {
+      const op = document.createElement("option");
+      op.value = oldCat; op.textContent = oldCat;
+      catEl.appendChild(op);
+    }
+    catEl.value = (oldCat && Array.from(catEl.options).some(o => o.value === oldCat))
+      ? oldCat
+      : (catEl.options.length ? catEl.options[0].value : "");
+    tr.setAttribute("data-old-cat", catEl.value || "");
+    syncStgCatL1(tr);
+
+    if (!catEl._stgBound) {
+      catEl.addEventListener("change", function () {
+        tr.setAttribute("data-old-cat", catEl.value || "");
+        syncStgCatL1(tr);
+      });
+      dirEl.addEventListener("change", function () {
+        buildStgCategorySelect(tr);
+      });
+      catEl._stgBound = true;
+    }
+  }
+  document.querySelectorAll("tr.stg-edit-row").forEach(buildStgCategorySelect);
+</script>
 {% endblock %}

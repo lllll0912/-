@@ -52,7 +52,6 @@
       <div>关键词</div>
       <input type="text" name="keyword" value="{{ filters.keyword }}" style="width: 100%;" />
     </div>
-    <input type="hidden" name="category_l1" value="{{ filters.category_l1 }}" />
     <input type="hidden" name="category" value="{{ filters.category }}" />
     <input type="hidden" name="direction" value="{{ filters.direction }}" />
     <input type="hidden" name="is_travel" value="{{ filters.is_travel }}" />
@@ -274,7 +273,6 @@
   <form method="post" class="row" style="margin-top: 10px;">
     <input type="hidden" name="action" value="bulk_delete_dates" />
     <input type="hidden" name="direction_filter" value="{{ filters.direction }}" />
-    <input type="hidden" name="category_l1_filter" value="{{ filters.category_l1 }}" />
     <input type="hidden" name="category_filter" value="{{ filters.category }}" />
     <input type="hidden" name="is_travel_filter" value="{{ filters.is_travel }}" />
     <input type="hidden" name="keyword_filter" value="{{ filters.keyword }}" />
@@ -295,54 +293,42 @@
     <table>
       <thead>
         <tr>
-          <th><a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='id', sort_order='asc' if filters.sort_by=='id' and filters.sort_order=='desc' else 'desc') }}">ID</a></th>
+          <th><a href="{{ url_for('records_page', direction=filters.direction, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='id', sort_order='asc' if filters.sort_by=='id' and filters.sort_order=='desc' else 'desc') }}">ID</a></th>
           <th>
             <button type="button" class="th-link" onclick="document.getElementById('records-date-trigger').click()">日期 ▾</button>
-            <a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='bill_date', sort_order='asc' if filters.sort_by=='bill_date' and filters.sort_order=='desc' else 'desc') }}" style="margin-left: 4px;">↕</a>
+            <a href="{{ url_for('records_page', direction=filters.direction, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='bill_date', sort_order='asc' if filters.sort_by=='bill_date' and filters.sort_order=='desc' else 'desc') }}" style="margin-left: 4px;">↕</a>
           </th>
-          <th><a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='amount', sort_order='asc' if filters.sort_by=='amount' and filters.sort_order=='desc' else 'desc') }}">金额</a></th>
+          <th><a href="{{ url_for('records_page', direction=filters.direction, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='amount', sort_order='asc' if filters.sort_by=='amount' and filters.sort_order=='desc' else 'desc') }}">金额</a></th>
           <th>
             <div class="th-filter-wrap">
               <button type="button" class="th-filter-btn" onclick="toggleFilterMenu('dir-menu')">方向 ▾</button>
               <div class="th-menu" id="dir-menu">
-                <a href="{{ url_for('records_page', direction='', category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">全部方向</a>
-                <a href="{{ url_for('records_page', direction='支出', category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">支出</a>
-                <a href="{{ url_for('records_page', direction='收入', category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">收入</a>
+                <a href="{{ url_for('records_page', direction='', category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">全部方向</a>
+                <a href="{{ url_for('records_page', direction='支出', category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">支出</a>
+                <a href="{{ url_for('records_page', direction='收入', category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">收入</a>
               </div>
             </div>
           </th>
           <th>
             <div class="th-filter-wrap">
-              <button type="button" class="th-filter-btn" onclick="toggleFilterMenu('l1-menu')">一级类型 ▾</button>
-              <div class="th-menu" id="l1-menu">
-                <a href="{{ url_for('records_page', direction=filters.direction, category_l1='', category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">全部</a>
-                {% for v in l1_values %}
-                <a href="{{ url_for('records_page', direction=filters.direction, category_l1=v, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">{{ v }}</a>
-                {% endfor %}
-              </div>
-            </div>
-            <a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='category_l1', sort_order='asc' if filters.sort_by=='category_l1' and filters.sort_order=='desc' else 'desc') }}" style="margin-left: 4px;">↕</a>
-          </th>
-          <th>
-            <div class="th-filter-wrap">
-              <button type="button" class="th-filter-btn" onclick="toggleFilterMenu('cat-menu')">二级类型 ▾</button>
+              <button type="button" class="th-filter-btn" onclick="toggleFilterMenu('cat-menu')">类型 ▾</button>
               <div class="th-menu" id="cat-menu">
-                <a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category='', is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">全部</a>
+                <a href="{{ url_for('records_page', direction=filters.direction, category='', is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">全部</a>
                 {% for c in category_values %}
-                <a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=c, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">{{ c }}</a>
+                <a href="{{ url_for('records_page', direction=filters.direction, category=c, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">{{ c }}</a>
                 {% endfor %}
               </div>
             </div>
-            <a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='category', sort_order='asc' if filters.sort_by=='category' and filters.sort_order=='desc' else 'desc') }}" style="margin-left: 4px;">↕</a>
+            <a href="{{ url_for('records_page', direction=filters.direction, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='category', sort_order='asc' if filters.sort_by=='category' and filters.sort_order=='desc' else 'desc') }}" style="margin-left: 4px;">↕</a>
           </th>
-          <th><a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='detail', sort_order='asc' if filters.sort_by=='detail' and filters.sort_order=='desc' else 'desc') }}">明细</a></th>
+          <th><a href="{{ url_for('records_page', direction=filters.direction, category=filters.category, is_travel=filters.is_travel, keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by='detail', sort_order='asc' if filters.sort_by=='detail' and filters.sort_order=='desc' else 'desc') }}">明细</a></th>
           <th>
             <div class="th-filter-wrap">
               <button type="button" class="th-filter-btn" onclick="toggleFilterMenu('travel-menu')">旅游 ▾</button>
               <div class="th-menu" id="travel-menu">
-                <a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel='', keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">全部</a>
-                <a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel='1', keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">旅游</a>
-                <a href="{{ url_for('records_page', direction=filters.direction, category_l1=filters.category_l1, category=filters.category, is_travel='0', keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">非旅游</a>
+                <a href="{{ url_for('records_page', direction=filters.direction, category=filters.category, is_travel='', keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">全部</a>
+                <a href="{{ url_for('records_page', direction=filters.direction, category=filters.category, is_travel='1', keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">旅游</a>
+                <a href="{{ url_for('records_page', direction=filters.direction, category=filters.category, is_travel='0', keyword=filters.keyword, dates=(filters.dates or [])|join(','), sort_by=filters.sort_by, sort_order=filters.sort_order) }}">非旅游</a>
               </div>
             </div>
           </th>
@@ -354,14 +340,13 @@
       </thead>
       <tbody>
         {% for r in records %}
-        <tr class="rec-edit-row" data-old-l1="{{ r.category_l1 }}" data-old-l2="{{ r.category }}">
+        <tr class="rec-edit-row" data-old-cat="{{ r.category or r.category_l1 }}">
           <form method="post">
             <td>
               {{ r.id }}
               <input type="hidden" name="action" value="update" />
               <input type="hidden" name="record_id" value="{{ r.id }}" />
               <input type="hidden" name="direction_filter" value="{{ filters.direction }}" />
-              <input type="hidden" name="category_l1_filter" value="{{ filters.category_l1 }}" />
               <input type="hidden" name="category_filter" value="{{ filters.category }}" />
               <input type="hidden" name="is_travel_filter" value="{{ filters.is_travel }}" />
               <input type="hidden" name="keyword_filter" value="{{ filters.keyword }}" />
@@ -377,8 +362,10 @@
                 <option value="收入" {% if r.direction == '收入' %}selected{% endif %}>收入</option>
               </select>
             </td>
-            <td><select name="category_l1" class="rec-l1" style="width:100px;"></select></td>
-            <td><select name="category" class="rec-l2" style="width:100px;"></select></td>
+            <td>
+              <select name="category" class="rec-cat" style="width:110px;"></select>
+              <input type="hidden" name="category_l1" class="rec-cat-l1" value="{{ r.category or r.category_l1 }}" />
+            </td>
             <td><input type="text" name="detail" value="{{ r.detail }}" style="width: 130px;" /></td>
             <td>
               <select name="is_travel">
@@ -403,82 +390,48 @@
   function recGroupsByDir(dir) {
     return dir === "收入" ? recIncomeGrouped : recConsumeGrouped;
   }
-  function recL2ToL1(l2, dir) {
-    const groups = recGroupsByDir(dir);
-    for (const g of groups) {
-      if ((g.l2s || []).indexOf(l2) >= 0) return g.l1;
-    }
-    return "";
+  function recFlatTypes(dir) {
+    return recGroupsByDir(dir).map(g => g.l1).filter(Boolean);
+  }
+  function syncRecCatL1(tr) {
+    const catEl = tr.querySelector("select.rec-cat");
+    const l1El = tr.querySelector("input.rec-cat-l1");
+    if (catEl && l1El) l1El.value = catEl.value || "";
   }
   function buildRecCategorySelects(tr) {
     const dirEl = tr.querySelector('select[name="direction"]');
-    const l1El = tr.querySelector("select.rec-l1");
-    const l2El = tr.querySelector("select.rec-l2");
-    if (!dirEl || !l1El || !l2El) return;
-    const groups = recGroupsByDir(dirEl.value);
-    const oldL2 = tr.getAttribute("data-old-l2") || "";
-    const oldL1 = tr.getAttribute("data-old-l1") || recL2ToL1(oldL2, dirEl.value);
+    const catEl = tr.querySelector("select.rec-cat");
+    if (!dirEl || !catEl) return;
+    const types = recFlatTypes(dirEl.value);
+    const oldCat = tr.getAttribute("data-old-cat") || catEl.value || "";
 
-    l1El.innerHTML = "";
-    groups.forEach(g => {
+    catEl.innerHTML = "";
+    types.forEach(c => {
       const op = document.createElement("option");
-      op.value = g.l1; op.textContent = g.l1;
-      l1El.appendChild(op);
+      op.value = c; op.textContent = c;
+      catEl.appendChild(op);
     });
-    if (oldL1 && !Array.from(l1El.options).some(o => o.value === oldL1)) {
+    if (oldCat && !Array.from(catEl.options).some(o => o.value === oldCat)) {
       const op = document.createElement("option");
-      op.value = oldL1; op.textContent = oldL1;
-      l1El.appendChild(op);
+      op.value = oldCat; op.textContent = oldCat;
+      catEl.appendChild(op);
     }
-    l1El.value = oldL1 || (l1El.options.length ? l1El.options[0].value : "");
+    catEl.value = (oldCat && Array.from(catEl.options).some(o => o.value === oldCat))
+      ? oldCat
+      : (catEl.options.length ? catEl.options[0].value : "");
+    tr.setAttribute("data-old-cat", catEl.value || "");
+    syncRecCatL1(tr);
 
-    const renderL2 = function(keepVal) {
-      const grp = groups.find(g => g.l1 === l1El.value);
-      l2El.innerHTML = "";
-      const l2s = (grp ? grp.l2s.slice() : []);
-      if (l1El.value && l2s.indexOf(l1El.value) < 0) {
-        l2s.unshift(l1El.value);
-      }
-      l2s.forEach(c => {
-        const op = document.createElement("option");
-        op.value = c; op.textContent = c;
-        l2El.appendChild(op);
+    if (!catEl._recBound) {
+      catEl.addEventListener("change", function () {
+        tr.setAttribute("data-old-cat", catEl.value || "");
+        syncRecCatL1(tr);
       });
-      if (keepVal && !Array.from(l2El.options).some(o => o.value === keepVal)) {
-        const op = document.createElement("option");
-        op.value = keepVal; op.textContent = keepVal;
-        l2El.appendChild(op);
-      }
-      if (keepVal && Array.from(l2El.options).some(o => o.value === keepVal)) {
-        l2El.value = keepVal;
-      } else if (l1El.value && Array.from(l2El.options).some(o => o.value === l1El.value)) {
-        // 业务规则：选一级后，二级默认=一级（可手动改）
-        l2El.value = l1El.value;
-      } else {
-        l2El.value = l2El.options.length ? l2El.options[0].value : "";
-      }
-      tr.setAttribute("data-old-l2", l2El.value || "");
-    };
-
-    renderL2(oldL2);
-    tr.setAttribute("data-old-l1", l1El.value || "");
-
-    l1El.addEventListener("change", function () {
-      // 切换一级时按业务规则默认二级=一级
-      renderL2(l1El.value);
-      tr.setAttribute("data-old-l1", l1El.value || "");
-    });
-    l2El.addEventListener("change", function () {
-      const inferred = recL2ToL1(l2El.value, dirEl.value);
-      if (inferred && Array.from(l1El.options).some(o => o.value === inferred)) {
-        l1El.value = inferred;
-      }
-      tr.setAttribute("data-old-l1", l1El.value || "");
-      tr.setAttribute("data-old-l2", l2El.value || "");
-    });
-    dirEl.addEventListener("change", function () {
-      buildRecCategorySelects(tr);
-    });
+      dirEl.addEventListener("change", function () {
+        buildRecCategorySelects(tr);
+      });
+      catEl._recBound = true;
+    }
   }
 
   function toggleFilterMenu(id) {

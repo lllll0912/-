@@ -58,14 +58,30 @@ def _normalize_travel_flag(val: Any):
     return text in ("1", "true", "yes", "y", "是", "旅游")
 
 
+def _resolve_category(type_raw: str, l1_raw: str, is_inc: bool):
+    """单层类型：优先「类型」，其次「一级类型」；未知则标记待映射。"""
+    type_raw = (type_raw or "").strip()
+    l1_raw = (l1_raw or "").strip()
+    candidate = type_raw or l1_raw
+    if not candidate:
+        return "", "", False, ""
+    if is_known_category(candidate, is_inc) or is_known_l1(candidate, is_inc):
+        mapped = l2_to_l1(candidate, is_inc) or candidate
+        return mapped, mapped, False, ""
+    if l1_raw and (is_known_category(l1_raw, is_inc) or is_known_l1(l1_raw, is_inc)):
+        mapped = l2_to_l1(l1_raw, is_inc) or l1_raw
+        return mapped, mapped, False, ""
+    return candidate, l1_raw, True, candidate
+
+
 def _build_stage_row(row_index: int, row: Dict[str, Any]) -> Dict[str, Any]:
     bill_date = _normalize_date(row.get("日期"))
     amount = _to_float(row.get("金额"))
     direction = _normalize_direction(row.get("交易方向"))
     detail = str(row.get("类型明细", "")).strip()
     note = str(row.get("日记", "")).strip()
-    category_l2 = str(row.get("类型", "")).strip()
-    category_l1_raw = str(row.get("一级类型", "")).strip()
+    type_raw = str(row.get("类型", "")).strip()
+    l1_raw = str(row.get("一级类型", "")).strip()
     is_travel = _normalize_travel_flag(row.get("旅游标识"))
     travel_tag = str(row.get("旅游标签", "")).strip()
 
@@ -81,29 +97,24 @@ def _build_stage_row(row_index: int, row: Dict[str, Any]) -> Dict[str, Any]:
     if not detail:
         errors.append("类型明细不能为空")
 
-    explicit_raw = ""
-    category_unknown = False
     is_inc = direction == "收入"
-
-    if not category_l2:
-        cat_l1, cat_l2 = infer_category(detail, is_inc)
-        category_l1_raw = cat_l1
-        category_l2 = cat_l2
+    if not type_raw and not l1_raw:
+        cat_l1, cat = infer_category(detail, is_inc)
+        category_unknown = False
+        explicit_raw = ""
     else:
-        # 兼容旧习惯：用户只填“类型”时，默认按一级类型处理
-        # 例如“生活支出”会被视为 category_l1=生活支出, category_l2=生活支出
-        if is_known_l1(category_l2, is_inc):
-            explicit_raw = ""
-            category_unknown = False
-            category_l1_raw = category_l2
-        elif is_known_category(category_l2, is_inc):
-            explicit_raw = ""
-            category_unknown = False
-            if not category_l1_raw:
-                category_l1_raw = l2_to_l1(category_l2, is_inc) or category_l2
-        else:
-            category_unknown = True
-            explicit_raw = category_l2
+        cat, cat_l1, category_unknown, explicit_raw = _resolve_category(type_raw, l1_raw, is_inc)
+        if not cat and not category_unknown:
+            cat_l1, cat = infer_category(detail, is_inc)
+
+    # 单层：双写同值
+    if cat and not cat_l1:
+        cat_l1 = cat
+    if cat_l1 and not cat:
+        cat = cat_l1
+    if cat and cat_l1 and cat != cat_l1 and not category_unknown:
+        # 以类型字典一级为准
+        cat = cat_l1 = (l2_to_l1(cat, is_inc) or cat_l1 or cat)
 
     return {
         "row_index": row_index,
@@ -112,8 +123,8 @@ def _build_stage_row(row_index: int, row: Dict[str, Any]) -> Dict[str, Any]:
         "detail": detail,
         "note": note,
         "direction": direction,
-        "category_l1": category_l1_raw,
-        "category": category_l2,
+        "category_l1": cat_l1,
+        "category": cat,
         "explicit_category_raw": explicit_raw if category_unknown else "",
         "category_unknown": category_unknown,
         "is_travel": is_travel,

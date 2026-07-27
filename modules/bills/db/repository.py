@@ -456,18 +456,18 @@ def summary_by_category_month(year: int, direction: str = "", categories: Option
         args.extend(cats)
     with get_cursor() as cur:
         if cats:
-            # 选了类型：展示类型维度
+            # 选了类型：展示类型维度（单层）
             cur.execute(
                 """
                 SELECT DATE_FORMAT(bill_date, '%Y-%m') AS month,
                        direction,
-                       category_l1,
+                       category AS category_l1,
                        category,
                        ROUND(SUM(amount), 2) AS total_amount
                 FROM records
                 WHERE {}
-                GROUP BY DATE_FORMAT(bill_date, '%Y-%m'), direction, category_l1, category
-                ORDER BY month DESC, direction, total_amount DESC, category_l1, category
+                GROUP BY DATE_FORMAT(bill_date, '%Y-%m'), direction, category
+                ORDER BY month DESC, direction, total_amount DESC, category
                 """.format(" AND ".join(where)),
                 tuple(args),
             )
@@ -687,4 +687,50 @@ def backfill_category_l1(l2_to_l1_map: Dict[str, str]) -> int:
                 (l1, l2),
             )
             total += cur.rowcount
+    return total
+
+
+def collapse_categories_to_single_level(l2_to_l1_map: Dict[str, str]) -> int:
+    """
+    将历史二级类型折叠为一级：category = category_l1 = 一级名。
+    优先用映射表把旧二级名改成一级名，再把已有 category_l1 写回 category，最后双写对齐。
+    """
+    total = 0
+    with get_cursor(dictionary=False) as cur:
+        for l2, l1 in (l2_to_l1_map or {}).items():
+            l2 = str(l2 or "").strip()
+            l1 = str(l1 or "").strip()
+            if not l2 or not l1:
+                continue
+            for table in ("records", "staging_records"):
+                try:
+                    cur.execute(
+                        f"UPDATE {table} SET category=%s, category_l1=%s WHERE category=%s",
+                        (l1, l1, l2),
+                    )
+                    total += cur.rowcount
+                except Exception:
+                    pass
+        for table in ("records", "staging_records"):
+            try:
+                cur.execute(
+                    f"""
+                    UPDATE {table}
+                    SET category = category_l1
+                    WHERE category_l1 IS NOT NULL AND TRIM(category_l1) <> ''
+                      AND (category IS NULL OR category <> category_l1)
+                    """
+                )
+                total += cur.rowcount
+                cur.execute(
+                    f"""
+                    UPDATE {table}
+                    SET category_l1 = category
+                    WHERE category IS NOT NULL AND TRIM(category) <> ''
+                      AND (category_l1 IS NULL OR category_l1 = '' OR category_l1 <> category)
+                    """
+                )
+                total += cur.rowcount
+            except Exception:
+                pass
     return total

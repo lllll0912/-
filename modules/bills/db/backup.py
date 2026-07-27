@@ -133,21 +133,19 @@ def write_latest_backup_csv(clear_old: bool = True) -> str:
 
     types_csv = base_no_ext + "_types.csv"
     with open(types_csv, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=["map", "category_l1", "category_l2", "pattern"])
+        w = csv.DictWriter(f, fieldnames=["map", "category", "pattern"])
         w.writeheader()
         rules = load_rules()
         for map_name in ("CONSUME_MAP", "INCOME_MAP"):
-            grouped = rules.get(map_name, {}) or {}
-            for l1, subs in grouped.items():
-                for l2, pattern in (subs or {}).items():
-                    w.writerow(
-                        {
-                            "map": map_name,
-                            "category_l1": l1,
-                            "category_l2": l2,
-                            "pattern": pattern or "",
-                        }
-                    )
+            flat = rules.get(map_name, {}) or {}
+            for name, pattern in flat.items():
+                w.writerow(
+                    {
+                        "map": map_name,
+                        "category": name,
+                        "pattern": pattern or "",
+                    }
+                )
 
     travel_csv = base_no_ext + "_travel.csv"
     with open(travel_csv, "w", newline="", encoding="utf-8-sig") as f:

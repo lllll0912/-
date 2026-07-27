@@ -31,6 +31,7 @@ from db.backup import write_latest_backup_csv, create_backup_bundle
 from offline_report import collect_payload, render_report_html
 from db.repository import (
     backfill_category_l1,
+    collapse_categories_to_single_level,
     confirm_batch,
     create_import_batch,
     delete_records_by_date,
@@ -77,7 +78,11 @@ from rule_manager import (
     upsert_rule,
     delete_rule,
     load_rules,
+    peek_legacy_l2_map,
+    save_rules,
+    RULE_FILE,
 )
+import json as _json_for_rules
 
 
 def _load_dotenv() -> None:
@@ -167,6 +172,7 @@ def ensure_db():
     if not db_ready:
         init_db()
         _migrate_l1()
+        _migrate_single_level_categories()
         try:
             from modules.notes.store import init_notes_db
 
@@ -177,17 +183,35 @@ def ensure_db():
 
 
 def _migrate_l1():
-    """首次启动时，用当前规则为 category_l1 为空的旧记录回填。"""
+    """兼容：为空的 category_l1 按旧二级名回填（单层迁移前可能仍有用）。"""
     try:
-        rules = load_rules()
-        l2map = {}
-        for map_key in ("CONSUME_MAP", "INCOME_MAP"):
-            for l1_name, subs in rules.get(map_key, {}).items():
-                for l2_name in subs:
-                    if l2_name not in l2map:
-                        l2map[l2_name] = l1_name
-        if l2map:
-            backfill_category_l1(l2map)
+        legacy = peek_legacy_l2_map()
+        if legacy:
+            backfill_category_l1(legacy)
+    except Exception:
+        pass
+
+
+def _migrate_single_level_categories():
+    """一次性：规则扁平化 + 记录折叠为仅一级类型。"""
+    try:
+        data_dir = Path(os.environ.get("BILL_DATA_DIR") or (BASE_DIR / "data"))
+        data_dir.mkdir(parents=True, exist_ok=True)
+        marker = data_dir / ".category_single_level_v1"
+        if marker.exists():
+            return
+        legacy = {}
+        if os.path.exists(RULE_FILE):
+            with open(RULE_FILE, "r", encoding="utf-8") as f:
+                raw = _json_for_rules.load(f)
+            from rule_manager import _normalize_rules
+
+            rules, legacy = _normalize_rules(raw)
+            save_rules(rules)
+        else:
+            save_rules(load_rules())
+        collapse_categories_to_single_level(legacy)
+        marker.write_text("ok\n", encoding="utf-8")
     except Exception:
         pass
 
@@ -356,17 +380,23 @@ def _preview_normalize_rows(raw_rows):
         is_income = direction == "收入"
         explicit_raw = str(r.get("explicit_category_raw", "")).strip()
         cu = str(r.get("category_unknown", "0")).strip().lower() in ("1", "true", "yes")
-        if is_known_category(category, is_income):
+        if is_known_category(category, is_income) or is_known_l1(category, is_income):
             cu = False
             explicit_raw = ""
-            if not cat_l1:
-                cat_l1 = l2_to_l1(category, is_income) or category
-        elif is_known_l1(category, is_income):
-            cu = False
-            explicit_raw = ""
+            category = l2_to_l1(category, is_income) or category
             cat_l1 = category
+        elif is_known_l1(cat_l1, is_income) or is_known_category(cat_l1, is_income):
+            cu = False
+            explicit_raw = ""
+            category = cat_l1 = (l2_to_l1(cat_l1, is_income) or cat_l1)
         elif cu and not explicit_raw:
             explicit_raw = category
+        else:
+            # 双写对齐
+            if not cat_l1:
+                cat_l1 = category
+            elif not category:
+                category = cat_l1
         # 业务规则：导入清洗阶段不维护旅游字段，统一由“旅游管理”页面按日期维护
         is_travel = False
         travel_tag = ""
@@ -517,31 +547,24 @@ def import_page():
                 if not target or not raw:
                     continue
                 is_income = d == "收入"
-                # 支持映射 token:
-                # - L1::生活支出
-                # - L2::医药
-                # - 兼容旧值：直接二级类型名
-                mapped_l1 = ""
-                mapped_l2 = ""
-                if target.startswith("L1::"):
-                    v = target[4:].strip()
-                    if not v or not is_known_l1(v, is_income):
-                        continue
-                    mapped_l1 = v
-                    mapped_l2 = v
-                elif target.startswith("L2::"):
-                    v = target[4:].strip()
-                    if not v or not is_known_category(v, is_income):
-                        continue
-                    mapped_l2 = v
-                    mapped_l1 = l2_to_l1(v, is_income) or v
+                # 支持映射 token: 纯类型名 或 L1::类型名（兼容旧 L2::）
+                mapped = ""
+                if target.startswith("L1::") or target.startswith("L2::"):
+                    mapped = target[4:].strip()
                 else:
-                    if not is_known_category(target, is_income):
+                    mapped = target
+                if not mapped or not (
+                    is_known_category(mapped, is_income) or is_known_l1(mapped, is_income)
+                ):
+                    # 尝试旧二级名映射
+                    mapped2 = l2_to_l1(mapped, is_income) if mapped else ""
+                    if not mapped2 or not is_known_category(mapped2, is_income):
                         continue
-                    mapped_l2 = target
-                    mapped_l1 = l2_to_l1(target, is_income) or target
-                r["category"] = mapped_l2
-                r["category_l1"] = mapped_l1
+                    mapped = mapped2
+                else:
+                    mapped = l2_to_l1(mapped, is_income) or mapped
+                r["category"] = mapped
+                r["category_l1"] = mapped
                 r["category_unknown"] = False
                 r["explicit_category_raw"] = ""
                 changed += 1
@@ -747,14 +770,15 @@ def staging_page(batch_id: int):
     if request.method == "POST":
         if action == "update_row":
             row_id = int(request.form["row_id"])
+            cat = (request.form.get("category") or request.form.get("category_l1") or "其他消费").strip()
             payload = {
                 "bill_date": request.form.get("bill_date") or None,
                 "amount": request.form.get("amount", "0"),
                 "detail": request.form.get("detail", ""),
                 "note": request.form.get("note", ""),
                 "direction": request.form.get("direction", "支出"),
-                "category_l1": request.form.get("category_l1", ""),
-                "category": request.form.get("category", "其他消费"),
+                "category_l1": cat,
+                "category": cat,
                 "is_travel": request.form.get("is_travel", "") == "1",
                 "travel_tag": request.form.get("travel_tag", ""),
                 "is_valid": request.form.get("is_valid", "") == "1",
@@ -800,7 +824,13 @@ def staging_page(batch_id: int):
             return redirect(url_for("records_page"))
 
     rows = list_staging_records(batch_id)
-    return render_template("staging.html", batch=batch, rows=rows)
+    return render_template(
+        "staging.html",
+        batch=batch,
+        rows=rows,
+        consume_grouped=category_options_grouped(False),
+        income_grouped=category_options_grouped(True),
+    )
 
 
 @app.route("/records", methods=["GET", "POST"])
@@ -810,18 +840,16 @@ def records_page():
     if request.method == "POST":
         if action == "update":
             record_id = int(request.form["record_id"])
-            cat_l2 = request.form.get("category", "其他消费")
-            cat_l1_from_form = request.form.get("category_l1", "").strip()
+            cat = (request.form.get("category") or request.form.get("category_l1") or "其他消费").strip()
             dir_ = request.form.get("direction", "支出")
-            cat_l1 = cat_l1_from_form or l2_to_l1(cat_l2, dir_ == "收入") or cat_l2
             payload = {
                 "bill_date": request.form["bill_date"],
                 "amount": request.form.get("amount", "0"),
                 "detail": request.form.get("detail", ""),
                 "note": request.form.get("note", ""),
                 "direction": dir_,
-                "category_l1": cat_l1,
-                "category": cat_l2,
+                "category_l1": cat,
+                "category": cat,
                 "is_travel": request.form.get("is_travel", "") == "1",
                 "travel_tag": request.form.get("travel_tag", ""),
             }
@@ -1040,18 +1068,20 @@ def types_page():
         action = request.form.get("action", "")
         target = request.form.get("target", "consume")
         is_income = target == "income"
-        l1 = request.form.get("l1", "").strip()
-        l2 = request.form.get("l2", "").strip()
+        name = (request.form.get("name") or request.form.get("l1") or "").strip()
+        # 兼容旧表单字段
+        if not name:
+            name = (request.form.get("l2") or "").strip()
         pattern = request.form.get("pattern", "").strip()
         if action in ("add", "update"):
-            if not l1 or not l2:
-                flash("一级类型和二级类型名不能为空", "error")
+            if not name:
+                flash("类型名不能为空", "error")
             else:
-                upsert_rule(l1, l2, pattern, is_income)
+                upsert_rule(name, pattern, is_income)
                 flash("已保存类型规则", "success")
             return redirect(url_for("types_page"))
         if action == "delete":
-            delete_rule(l1, l2, is_income)
+            delete_rule(name, is_income)
             flash("已删除类型规则", "success")
             return redirect(url_for("types_page"))
 

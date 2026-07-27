@@ -84,13 +84,13 @@ class TestParser(unittest.TestCase):
         self.assertTrue(rows[0]["category"])
         self.assertNotIn(rows[0]["category"], ("待分类", ""))
 
-    def test_explicit_known_l2_sets_l1(self):
+    def test_explicit_known_legacy_l2_maps_to_l1(self):
         txt = """6-01；测L1
 药方；30；医药
 """
         rows = parse_for_staging(txt, ImportOptions(year=2025))
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["category"], "医药")
+        self.assertEqual(rows[0]["category"], "生活支出")
         self.assertEqual(rows[0]["category_l1"], "生活支出")
         self.assertFalse(rows[0].get("category_unknown"))
 

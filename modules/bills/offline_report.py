@@ -153,14 +153,14 @@ def render_report_html(payload: Dict[str, Any]) -> str:
             </select>
           </div>
           <div style="min-width:320px;">
-            <div>二级类型（可多选）</div>
+            <div>类型（可多选）</div>
             <select id="sum-cats" multiple style="min-width:320px;min-height:120px;"></select>
           </div>
           <div><button type="button" onclick="renderSummary()">应用</button></div>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>月份</th><th>方向</th><th>一级类型</th><th>二级类型</th><th>金额</th></tr></thead>
+            <thead><tr><th>月份</th><th>方向</th><th>类型</th><th>金额</th></tr></thead>
             <tbody id="sum-body"></tbody>
           </table>
         </div>
@@ -187,7 +187,7 @@ def render_report_html(payload: Dict[str, Any]) -> str:
         <h3>旅游支出类型Top12</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>二级类型</th><th>旅游支出</th></tr></thead>
+            <thead><tr><th>类型</th><th>旅游支出</th></tr></thead>
             <tbody id="travel-cat"></tbody>
           </table>
         </div>
@@ -208,7 +208,7 @@ def render_report_html(payload: Dict[str, Any]) -> str:
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>日期</th><th>金额</th><th>方向</th><th>一级类型</th><th>二级类型</th><th>明细</th><th>旅游</th><th>旅游标签</th><th>日记</th></tr></thead>
+            <thead><tr><th>ID</th><th>日期</th><th>金额</th><th>方向</th><th>类型</th><th>明细</th><th>旅游</th><th>旅游标签</th><th>日记</th></tr></thead>
             <tbody id="rec-body"></tbody>
           </table>
         </div>
@@ -304,15 +304,16 @@ def render_report_html(payload: Dict[str, Any]) -> str:
         if (dir && String(r.direction)!==dir) return;
         if (cats.size && !cats.has(String(r.category||''))) return;
         const m = bd.slice(0,7);
-        const k = [m, String(r.direction||''), String(r.category_l1||''), String(r.category||'')].join('|');
+        const cat = String(r.category||r.category_l1||'');
+        const k = [m, String(r.direction||''), cat].join('|');
         agg[k] = (agg[k]||0) + Number(r.amount||0);
       });
       const out = Object.keys(agg).sort().reverse().map(k=>{
-        const [m, d, l1, c] = k.split('|');
-        return {month:m, direction:d, category_l1:l1, category:c, total_amount: Math.round(agg[k]*100)/100};
+        const [m, d, c] = k.split('|');
+        return {month:m, direction:d, category:c, total_amount: Math.round(agg[k]*100)/100};
       });
       const body = document.getElementById('sum-body');
-      body.innerHTML = out.length ? out.map(x=>`<tr><td>${x.month}</td><td>${x.direction}</td><td>${x.category_l1}</td><td>${x.category}</td><td>${x.total_amount.toFixed(2)}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">无匹配数据</td></tr>';
+      body.innerHTML = out.length ? out.map(x=>`<tr><td>${x.month}</td><td>${x.direction}</td><td>${x.category}</td><td>${x.total_amount.toFixed(2)}</td></tr>`).join('') : '<tr><td colspan="4" class="muted">无匹配数据</td></tr>';
     }
 
     function renderTravel(){
@@ -348,9 +349,9 @@ def render_report_html(payload: Dict[str, Any]) -> str:
       document.getElementById('rec-count').textContent = String(rows.length);
       document.getElementById('rec-body').innerHTML = rows.slice(0, 2000).map(r=>`<tr>
         <td>${r.id||''}</td><td>${r.bill_date||''}</td><td>${Number(r.amount||0).toFixed(2)}</td>
-        <td>${r.direction||''}</td><td>${r.category_l1||''}</td><td>${r.category||''}</td><td>${r.detail||''}</td>
+        <td>${r.direction||''}</td><td>${r.category||r.category_l1||''}</td><td>${r.detail||''}</td>
         <td>${Number(r.is_travel||0)?'是':'否'}</td><td>${r.travel_tag||''}</td><td>${r.note||''}</td>
-      </tr>`).join('') + (rows.length>2000?'<tr><td colspan="10" class="muted">离线版最多渲染前2000条。</td></tr>':'');
+      </tr>`).join('') + (rows.length>2000?'<tr><td colspan="9" class="muted">离线版最多渲染前2000条。</td></tr>':'');
     }
 
     function boot(){
