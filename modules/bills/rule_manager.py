@@ -317,3 +317,53 @@ def delete_rule(*args, **kwargs) -> None:
         del rules[key][name]
         save_rules(rules)
 
+
+def replace_rule_maps(
+    consume_items: Optional[List[Dict[str, str]]] = None,
+    income_items: Optional[List[Dict[str, str]]] = None,
+) -> Dict[str, Any]:
+    """
+    一次性替换支出/收入类型字典（确认后整表写入，只 save 一次）。
+    items: [{name, pattern}, ...]；空 name 跳过。
+    返回 {changed, consume_count, income_count, error}。
+    """
+    def _build(items: Optional[List[Dict[str, str]]]) -> Tuple[Optional[RulesMap], str]:
+        out: RulesMap = {}
+        for it in items or []:
+            if not isinstance(it, dict):
+                continue
+            name = str(it.get("name") or "").strip()
+            if not name:
+                continue
+            if name in out:
+                return None, "类型名重复：{}".format(name)
+            out[name] = _clean_pattern(it.get("pattern") or "")
+        return out, ""
+
+    consume_map, err = _build(consume_items)
+    if err:
+        return {"changed": False, "consume_count": 0, "income_count": 0, "error": err}
+    income_map, err = _build(income_items)
+    if err:
+        return {"changed": False, "consume_count": 0, "income_count": 0, "error": err}
+
+    rules = load_rules()
+    old_c = rules.get("CONSUME_MAP") or {}
+    old_i = rules.get("INCOME_MAP") or {}
+    if consume_map is None:
+        consume_map = dict(old_c)
+    if income_map is None:
+        income_map = dict(old_i)
+
+    changed = consume_map != old_c or income_map != old_i
+    if changed:
+        rules["CONSUME_MAP"] = consume_map
+        rules["INCOME_MAP"] = income_map
+        save_rules(rules)
+    return {
+        "changed": changed,
+        "consume_count": len(consume_map),
+        "income_count": len(income_map),
+        "error": "",
+    }
+

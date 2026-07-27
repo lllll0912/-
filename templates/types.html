@@ -1,86 +1,337 @@
 {% extends "layout.html" %}
 {% block title %}类型字典管理{% endblock %}
 {% block content %}
-<div class="card">
-  <h2>类型字典管理</h2>
-  <div class="muted">仅一级类型：每条规则是「类型名 + 关键词/正则」（用 <code>|</code> 分隔）。导入与记录里只选这一层类型。</div>
+<style>
+  .types-page .types-toolbar {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 12px; margin-bottom: 8px;
+  }
+  .types-page .types-toolbar h2 { margin: 0; }
+  .types-page .types-hint { color: #6b7c90; font-size: 13px; margin-top: 4px; }
+  .types-page .types-section { margin-top: 18px; }
+  .types-page .types-section h3 {
+    margin: 0 0 10px; font-size: 14px; font-weight: 650; color: #1c2a3a;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  }
+  .types-page .types-section h3 span { font-weight: 500; color: #6b7c90; font-size: 12px; }
+  .types-page .types-table-wrap {
+    border: 1px solid #e4ebf3; border-radius: 12px; overflow: auto; max-height: 420px; background: #fff;
+  }
+  .types-page table.types-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .types-page table.types-table thead th {
+    position: sticky; top: 0; z-index: 1; background: #f4f7fa; color: #6b7c90;
+    font-weight: 600; font-size: 12px; text-align: left; padding: 11px 14px; border-bottom: 1px solid #e4ebf3;
+  }
+  .types-page table.types-table tbody td {
+    padding: 11px 14px; border-bottom: 1px solid #eef2f6; vertical-align: top;
+  }
+  .types-page table.types-table tbody tr:last-child td { border-bottom: 0; }
+  .types-page .types-name { font-weight: 650; white-space: nowrap; }
+  .types-page .types-pattern { color: #4b5a78; word-break: break-word; }
+  .types-page .types-empty { padding: 24px; text-align: center; color: #6b7c90; font-size: 13px; }
+
+  .types-modal-mask {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.42); z-index: 1400;
+    display: none; align-items: center; justify-content: center; padding: 18px;
+  }
+  .types-modal-mask.open { display: flex; }
+  .types-modal-card {
+    width: min(960px, 96vw); max-height: min(88vh, 780px);
+    background: #fff; border-radius: 14px; border: 1px solid #d9e2f2;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .types-modal-hd, .types-modal-ft {
+    padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: #f8fafc;
+  }
+  .types-modal-hd { border-bottom: 1px solid #e5ebf5; }
+  .types-modal-ft { border-top: 1px solid #e5ebf5; justify-content: flex-end; }
+  .types-modal-bd { padding: 12px 16px; overflow: auto; flex: 1; }
+  .types-modal-bd .tm-block { margin-bottom: 18px; }
+  .types-modal-bd .tm-block-hd {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;
+  }
+  .types-modal-bd .tm-block-hd strong { font-size: 14px; }
+  .types-modal-bd table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .types-modal-bd th, .types-modal-bd td {
+    padding: 8px 6px; border-bottom: 1px solid #eef2f6; text-align: left; vertical-align: middle;
+  }
+  .types-modal-bd th { color: #6b7c90; font-size: 12px; font-weight: 600; position: sticky; top: 0; background: #fff; }
+  .types-modal-bd input[type="text"] {
+    width: 100%; box-sizing: border-box; border: 1px solid #cfd9ea; border-radius: 8px; padding: 7px 10px;
+  }
+  .types-modal-bd .tm-name { width: 160px; min-width: 120px; }
+  .types-modal-bd .tm-del { width: 64px; text-align: center; white-space: nowrap; }
+</style>
+
+<div class="card types-page">
+  <div class="types-toolbar">
+    <div>
+      <h2>类型字典管理</h2>
+      <div class="types-hint">仅一级类型：类型名 + 关键词/正则（用 <code>|</code> 分隔）。点右侧维护，改完确认后才保存并备份一次。</div>
+    </div>
+    <button type="button" id="btn-types-edit" class="btn-secondary">类型字典维护</button>
+  </div>
+
+  <div class="types-section">
+    <h3>支出类型 <span>{{ consume_rows|length }} 条</span></h3>
+    <div class="types-table-wrap">
+      {% if consume_rows %}
+      <table class="types-table">
+        <thead><tr><th style="width:180px;">类型</th><th>匹配规则</th></tr></thead>
+        <tbody>
+          {% for r in consume_rows %}
+          <tr>
+            <td class="types-name">{{ r.name }}</td>
+            <td class="types-pattern">{{ r.pattern or "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="types-empty">暂无支出类型。</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="types-section">
+    <h3>收入类型 <span>{{ income_rows|length }} 条</span></h3>
+    <div class="types-table-wrap">
+      {% if income_rows %}
+      <table class="types-table">
+        <thead><tr><th style="width:180px;">类型</th><th>匹配规则</th></tr></thead>
+        <tbody>
+          {% for r in income_rows %}
+          <tr>
+            <td class="types-name">{{ r.name }}</td>
+            <td class="types-pattern">{{ r.pattern or "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="types-empty">暂无收入类型。</div>
+      {% endif %}
+    </div>
+  </div>
 </div>
 
-<div class="card">
-  <h2>支出类型</h2>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr><th>类型</th><th>匹配规则（| 分隔）</th><th>操作</th></tr>
-      </thead>
-      <tbody>
-        {% for r in consume_rows %}
-        <tr>
-          <form method="post">
-            <input type="hidden" name="target" value="consume" />
-            <td><input type="text" name="name" value="{{ r.name }}" required style="width:160px;" /></td>
-            <td><input type="text" name="pattern" value="{{ r.pattern }}" style="width: 420px;" /></td>
-            <td class="row">
-              <button type="submit" name="action" value="update">保存</button>
-              <button type="submit" name="action" value="delete" class="btn-secondary">删除</button>
-            </td>
-          </form>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="types-modal-mask" id="types-modal" aria-hidden="true">
+  <div class="types-modal-card" role="dialog" aria-labelledby="types-modal-title">
+    <div class="types-modal-hd">
+      <div>
+        <div id="types-modal-title" style="font-weight:700;">类型字典维护</div>
+        <div class="muted" style="font-size:12px;margin-top:2px;">可增删改多条；点确认后一次性提交，只备份一次。</div>
+      </div>
+      <button type="button" class="btn-secondary" id="types-modal-close">关闭</button>
+    </div>
+    <div class="types-modal-bd">
+      <div class="tm-block">
+        <div class="tm-block-hd">
+          <strong>支出类型</strong>
+          <button type="button" class="btn-secondary" id="types-add-consume">新增一行</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="tm-name">类型名</th>
+              <th>匹配规则（| 分隔）</th>
+              <th class="tm-del">删除</th>
+            </tr>
+          </thead>
+          <tbody id="types-body-consume"></tbody>
+        </table>
+      </div>
+      <div class="tm-block">
+        <div class="tm-block-hd">
+          <strong>收入类型</strong>
+          <button type="button" class="btn-secondary" id="types-add-income">新增一行</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="tm-name">类型名</th>
+              <th>匹配规则（| 分隔）</th>
+              <th class="tm-del">删除</th>
+            </tr>
+          </thead>
+          <tbody id="types-body-income"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="types-modal-ft">
+      <button type="button" class="btn-secondary" id="types-modal-cancel">取消</button>
+      <button type="button" id="types-modal-save">确认变更</button>
+    </div>
   </div>
-  <h3 style="margin-top: 10px;">新增支出类型</h3>
-  <form method="post" class="row">
-    <input type="hidden" name="target" value="consume" />
-    <div>
-      <div>类型名</div>
-      <input type="text" name="name" required placeholder="如 生活支出" style="width:160px;" />
-    </div>
-    <div>
-      <div>匹配规则</div>
-      <input type="text" name="pattern" style="width: 360px;" placeholder="例如 中药|买药|看病" />
-    </div>
-    <div><button type="submit" name="action" value="add">新增</button></div>
-  </form>
 </div>
 
-<div class="card">
-  <h2>收入类型</h2>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr><th>类型</th><th>匹配规则（| 分隔）</th><th>操作</th></tr>
-      </thead>
-      <tbody>
-        {% for r in income_rows %}
-        <tr>
-          <form method="post">
-            <input type="hidden" name="target" value="income" />
-            <td><input type="text" name="name" value="{{ r.name }}" required style="width:160px;" /></td>
-            <td><input type="text" name="pattern" value="{{ r.pattern }}" style="width: 420px;" /></td>
-            <td class="row">
-              <button type="submit" name="action" value="update">保存</button>
-              <button type="submit" name="action" value="delete" class="btn-secondary">删除</button>
-            </td>
-          </form>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <h3 style="margin-top: 10px;">新增收入类型</h3>
-  <form method="post" class="row">
-    <input type="hidden" name="target" value="income" />
-    <div>
-      <div>类型名</div>
-      <input type="text" name="name" required placeholder="如 工资" style="width:160px;" />
-    </div>
-    <div>
-      <div>匹配规则</div>
-      <input type="text" name="pattern" style="width: 360px;" placeholder="例如 奖金|绩效" />
-    </div>
-    <div><button type="submit" name="action" value="add">新增</button></div>
-  </form>
-</div>
+<form method="post" id="types-batch-form" style="display:none;">
+  <input type="hidden" name="action" value="batch_replace_rules" />
+  <input type="hidden" name="rules_json" id="rules-json" value="{}" />
+</form>
+
+<script id="types-json" type="application/json">{{ types_json|safe }}</script>
+<script>
+(function () {
+  var data = { consume: [], income: [] };
+  try {
+    data = JSON.parse(document.getElementById("types-json").textContent || "{}") || data;
+  } catch (e) {}
+
+  var mask = document.getElementById("types-modal");
+  var bodyConsume = document.getElementById("types-body-consume");
+  var bodyIncome = document.getElementById("types-body-income");
+  var openBtn = document.getElementById("btn-types-edit");
+  var closeBtn = document.getElementById("types-modal-close");
+  var cancelBtn = document.getElementById("types-modal-cancel");
+  var saveBtn = document.getElementById("types-modal-save");
+  var addConsume = document.getElementById("types-add-consume");
+  var addIncome = document.getElementById("types-add-income");
+  var form = document.getElementById("types-batch-form");
+  var jsonInput = document.getElementById("rules-json");
+
+  var draft = { consume: [], income: [] };
+
+  function cloneRows(rows) {
+    return (rows || []).map(function (r) {
+      return { name: r.name || "", pattern: r.pattern || "", deleted: false };
+    });
+  }
+
+  function renderBody(tbody, key) {
+    tbody.innerHTML = "";
+    draft[key].forEach(function (row, idx) {
+      if (row.deleted) return;
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="tm-name"><input type="text" data-k="' + key + '" data-i="' + idx + '" data-f="name" /></td>' +
+        '<td><input type="text" data-k="' + key + '" data-i="' + idx + '" data-f="pattern" placeholder="如 中药|买药|看病" /></td>' +
+        '<td class="tm-del"><button type="button" class="btn-secondary" data-del="' + key + '" data-i="' + idx + '">删</button></td>';
+      var inputs = tr.querySelectorAll("input");
+      inputs[0].value = row.name || "";
+      inputs[1].value = row.pattern || "";
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderAll() {
+    renderBody(bodyConsume, "consume");
+    renderBody(bodyIncome, "income");
+  }
+
+  function syncFromDom() {
+    mask.querySelectorAll("input[data-k]").forEach(function (input) {
+      var k = input.getAttribute("data-k");
+      var i = Number(input.getAttribute("data-i"));
+      var f = input.getAttribute("data-f");
+      if (!draft[k] || !draft[k][i]) return;
+      draft[k][i][f] = input.value;
+    });
+  }
+
+  function openModal() {
+    draft = {
+      consume: cloneRows(data.consume),
+      income: cloneRows(data.income),
+    };
+    renderAll();
+    mask.classList.add("open");
+    mask.setAttribute("aria-hidden", "false");
+  }
+
+  function closeModal() {
+    mask.classList.remove("open");
+    mask.setAttribute("aria-hidden", "true");
+  }
+
+  function addRow(key) {
+    syncFromDom();
+    draft[key].push({ name: "", pattern: "", deleted: false });
+    renderAll();
+  }
+
+  if (openBtn) openBtn.addEventListener("click", openModal);
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+  if (addConsume) addConsume.addEventListener("click", function () { addRow("consume"); });
+  if (addIncome) addIncome.addEventListener("click", function () { addRow("income"); });
+
+  mask.addEventListener("click", function (e) {
+    if (e.target === mask) closeModal();
+    var btn = e.target.closest("[data-del]");
+    if (!btn) return;
+    syncFromDom();
+    var k = btn.getAttribute("data-del");
+    var i = Number(btn.getAttribute("data-i"));
+    if (draft[k] && draft[k][i]) draft[k][i].deleted = true;
+    renderAll();
+  });
+
+  mask.addEventListener("input", function (e) {
+    var input = e.target;
+    if (!input || !input.getAttribute) return;
+    if (!input.getAttribute("data-k")) return;
+    var k = input.getAttribute("data-k");
+    var i = Number(input.getAttribute("data-i"));
+    var f = input.getAttribute("data-f");
+    if (draft[k] && draft[k][i]) draft[k][i][f] = input.value;
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && mask.classList.contains("open")) closeModal();
+  });
+
+  function collect(key) {
+    return (draft[key] || [])
+      .filter(function (r) { return !r.deleted; })
+      .map(function (r) {
+        return { name: String(r.name || "").trim(), pattern: String(r.pattern || "").trim() };
+      })
+      .filter(function (r) { return !!r.name; });
+  }
+
+  function sameList(a, b) {
+    if ((a || []).length !== (b || []).length) return false;
+    var ma = {};
+    (a || []).forEach(function (r) { ma[r.name] = r.pattern || ""; });
+    for (var i = 0; i < (b || []).length; i++) {
+      var r = b[i];
+      if (!Object.prototype.hasOwnProperty.call(ma, r.name)) return false;
+      if ((ma[r.name] || "") !== (r.pattern || "")) return false;
+    }
+    return true;
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", function () {
+      syncFromDom();
+      var consume = collect("consume");
+      var income = collect("income");
+      function findDup(list) {
+        var seen = {};
+        for (var i = 0; i < list.length; i++) {
+          var n = list[i].name;
+          if (seen[n]) return n;
+          seen[n] = true;
+        }
+        return "";
+      }
+      var dup = findDup(consume) || findDup(income);
+      if (dup) {
+        alert("类型名重复：" + dup);
+        return;
+      }
+      if (sameList(consume, data.consume) && sameList(income, data.income)) {
+        alert("没有修改");
+        return;
+      }
+      if (!confirm("确认保存类型字典？将一次性写入并备份。")) return;
+      jsonInput.value = JSON.stringify({ consume: consume, income: income });
+      form.submit();
+    });
+  }
+})();
+</script>
 {% endblock %}

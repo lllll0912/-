@@ -81,6 +81,7 @@ from rule_manager import (
     list_rule_rows,
     upsert_rule,
     delete_rule,
+    replace_rule_maps,
     load_rules,
     peek_legacy_l2_map,
     save_rules,
@@ -1148,10 +1149,37 @@ def types_page():
     ensure_db()
     if request.method == "POST":
         action = request.form.get("action", "")
+        if action == "batch_replace_rules":
+            try:
+                payload = json.loads(request.form.get("rules_json") or "{}")
+            except Exception:
+                flash("类型字典数据格式错误", "error")
+                return redirect(url_for("types_page"))
+            if not isinstance(payload, dict):
+                flash("类型字典数据格式错误", "error")
+                return redirect(url_for("types_page"))
+            result = replace_rule_maps(
+                consume_items=payload.get("consume") or [],
+                income_items=payload.get("income") or [],
+            )
+            if result.get("error"):
+                flash(result["error"], "error")
+                return redirect(url_for("types_page"))
+            if not result.get("changed"):
+                flash("类型字典无变更", "success")
+                return redirect(url_for("types_page"))
+            flash(
+                "已保存类型字典：支出 {} 条，收入 {} 条".format(
+                    result["consume_count"], result["income_count"]
+                ),
+                "success",
+            )
+            return _backup_and_redirect("types_page")
+
+        # 兼容旧单条表单（若仍有缓存页）
         target = request.form.get("target", "consume")
         is_income = target == "income"
         name = (request.form.get("name") or request.form.get("l1") or "").strip()
-        # 兼容旧表单字段
         if not name:
             name = (request.form.get("l2") or "").strip()
         pattern = request.form.get("pattern", "").strip()
@@ -1171,6 +1199,13 @@ def types_page():
         "types.html",
         consume_rows=list_rule_rows(False),
         income_rows=list_rule_rows(True),
+        types_json=json.dumps(
+            {
+                "consume": list_rule_rows(False),
+                "income": list_rule_rows(True),
+            },
+            ensure_ascii=False,
+        ),
     )
 
 
