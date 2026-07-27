@@ -1758,3 +1758,45 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   padding: 6px 12px;
   font-size: 13px;
 }
+
+.notes-list {
+  display: grid;
+  gap: 10px;
+}
+
+.notes-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.notes-list-item:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+}
+
+.notes-article {
+  line-height: 1.75;
+  font-size: 15px;
+}
+
+.notes-article img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.notes-edit-card .field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.notes-edit-card #vditor {
+  border-radius: 10px;
+  overflow: hidden;
+}

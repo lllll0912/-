@@ -1,0 +1,77 @@
+name: Backup Fly data to GitHub
+
+# 从 Fly Volume 拉取账单/诗词/笔记等数据，打包提交到私密仓 backups/
+on:
+  schedule:
+    # 每天 UTC 16:00 ≈ 北京时间次日 00:00
+    - cron: "0 16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Pull volume and pack
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          APP: bill-private-lllll0912
+        run: |
+          set -euo pipefail
+          STAMP=$(date -u +%Y%m%d_%H%M%S)
+          OUT="backups/${STAMP}"
+          mkdir -p "$OUT"
+
+          # 确保至少有一台机器可 SSH（stopped 时尝试启动）
+          flyctl status -a "$APP" || true
+          flyctl machines list -a "$APP" -q || true
+          MID=$(flyctl machines list -a "$APP" --json | python3 -c "import sys,json; ms=json.load(sys.stdin); print(ms[0]['id'] if ms else '')")
+          if [ -n "$MID" ]; then
+            flyctl machines start "$MID" -a "$APP" || true
+            sleep 8
+          fi
+
+          # 在机器内打包（缺文件不失败）
+          flyctl ssh console -a "$APP" -C "sh -c 'cd /data && tar czf /tmp/site_data.tgz \
+            bills.db bills.db-wal bills.db-shm \
+            notes.db notes.db-wal notes.db-shm \
+            water_data.json \
+            notes_assets poems 2>/dev/null; \
+            test -f /tmp/site_data.tgz || tar czf /tmp/site_data.tgz -C /data .'"
+
+          flyctl ssh sftp get /tmp/site_data.tgz "${OUT}/site_data.tgz" -a "$APP"
+          python3 - <<'PY' "$OUT"
+          import hashlib, sys
+          from pathlib import Path
+          out = Path(sys.argv[1])
+          tgz = out / "site_data.tgz"
+          h = hashlib.sha256(tgz.read_bytes()).hexdigest()
+          (out / "SHA256.txt").write_text(h + "  site_data.tgz\n", encoding="utf-8")
+          (out / "README.txt").write_text(
+              "Fly volume snapshot\n"
+              "Contains bills.db / notes.db(+assets) / poems / water_data.json when present.\n"
+              f"sha256: {h}\n",
+              encoding="utf-8",
+          )
+          print("backup size", tgz.stat().st_size, "sha256", h)
+          PY
+
+      - name: Commit backup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f backups/
+          if git diff --staged --quiet; then
+            echo "No backup changes"
+            exit 0
+          fi
+          git commit -m "chore: backup Fly volume $(date -u +%Y-%m-%d)"
+          git push

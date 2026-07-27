@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block title %}{{ note.title }} · 笔记{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content: space-between; align-items: start; gap: 12px;">
+    <div>
+      <h2 style="margin-bottom: 6px;">{{ note.title }}</h2>
+      <p class="muted">更新于 {{ note.updated_at }} · 创建于 {{ note.created_at }}</p>
+    </div>
+    <div class="row" style="gap: 8px;">
+      <a class="btn-secondary pill-link" href="{{ url_for('notes.notes_list') }}">返回列表</a>
+      {% if can_edit %}
+      <a href="{{ url_for('notes.notes_edit', note_id=note.id) }}"><button type="button">编辑</button></a>
+      <form method="post" action="{{ url_for('notes.notes_delete', note_id=note.id) }}" onsubmit="return confirm('确定删除这篇笔记？');">
+        <button type="submit" class="btn-secondary">删除</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<article class="card notes-article markdown-body" id="notes-md-body"></article>
+<script id="note-md-json" type="application/json">{{ note.content_md|tojson }}</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.5.1/github-markdown-light.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script>
+(function () {
+  var el = document.getElementById("notes-md-body");
+  var md = "";
+  try {
+    md = JSON.parse(document.getElementById("note-md-json").textContent || '""');
+  } catch (e) {
+    md = "";
+  }
+  el.innerHTML = DOMPurify.sanitize(marked.parse(md || "*暂无内容*"));
+})();
+</script>
+{% endblock %}

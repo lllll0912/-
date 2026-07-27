@@ -18,7 +18,15 @@ for _mod in ("modules/bills", "modules/poems", "modules/water"):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from auth import auth_bp, auth_enabled, is_logged_in
+from auth import (
+    auth_bp,
+    auth_enabled,
+    guest_can_access,
+    has_site_access,
+    is_guest,
+    is_logged_in,
+    is_owner,
+)
 from db.backup import write_latest_backup_csv, create_backup_bundle
 from offline_report import collect_payload, render_report_html
 from db.repository import (
@@ -103,8 +111,10 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("BILL_COOKIE_SECURE", "").s
 app.register_blueprint(auth_bp)
 
 from modules.water import water_bp
+from modules.notes import notes_bp
 
 app.register_blueprint(water_bp)
+app.register_blueprint(notes_bp)
 
 TOOLS_DIR = BASE_DIR / "tools"
 if str(TOOLS_DIR) not in sys.path:
@@ -117,22 +127,38 @@ db_ready = False
 
 
 @app.before_request
-def _require_login():
-    if not auth_enabled():
-        return None
-    if request.endpoint and (
-        request.endpoint.startswith("auth.")
-        or request.endpoint == "static"
+def _require_access():
+    endpoint = request.endpoint
+    if endpoint and (
+        endpoint.startswith("auth.")
+        or endpoint == "static"
     ):
         return None
-    if is_logged_in():
-        return None
-    return redirect(url_for("auth.login", next=request.path))
+
+    # 未选角色 → 入口
+    if not has_site_access():
+        return redirect(url_for("auth.login", next=request.path))
+
+    # 游客白名单
+    if is_guest():
+        if guest_can_access(endpoint):
+            return None
+        flash("游客模式仅可查看诗词与笔记专栏", "error")
+        return redirect(url_for("poems_page"))
+
+    # 所有者放行
+    return None
 
 
 @app.context_processor
 def _inject_auth():
-    return {"auth_enabled": auth_enabled(), "is_logged_in": is_logged_in()}
+    return {
+        "auth_enabled": auth_enabled(),
+        "is_logged_in": is_logged_in(),
+        "is_owner": is_owner(),
+        "is_guest": is_guest(),
+        "access_role": "guest" if is_guest() else ("owner" if is_owner() else None),
+    }
 
 
 
@@ -141,6 +167,12 @@ def ensure_db():
     if not db_ready:
         init_db()
         _migrate_l1()
+        try:
+            from modules.notes.store import init_notes_db
+
+            init_notes_db()
+        except Exception:
+            pass
         db_ready = True
 
 

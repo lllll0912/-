@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block title %}笔记专栏{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content: space-between; align-items: center; gap: 12px;">
+    <div>
+      <h2>笔记专栏</h2>
+      <p class="muted">{% if can_edit %}支持 Markdown 图文编辑。{% else %}游客只读。{% endif %}</p>
+    </div>
+    {% if can_edit %}
+    <a href="{{ url_for('notes.notes_new') }}"><button type="button">新建笔记</button></a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not notes %}
+<div class="card"><p class="muted">还没有笔记。</p></div>
+{% else %}
+<section class="notes-list">
+  {% for n in notes %}
+  <a class="card notes-list-item" href="{{ url_for('notes.notes_view', note_id=n.id) }}">
+    <strong>{{ n.title }}</strong>
+    <span class="muted">更新于 {{ n.updated_at }}</span>
+  </a>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

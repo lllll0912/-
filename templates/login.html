@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>登录 · 个人账单</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+    <title>进入 · 个人网站</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r18a" />
     <style>
       body {
         min-height: 100vh;
@@ -13,89 +13,77 @@
         justify-content: center;
         padding: 24px;
       }
-      body::before { opacity: 1; }
-      .login-shell {
-        width: min(420px, 100%);
-        position: relative;
-        z-index: 1;
-      }
-      .login-brand {
-        text-align: center;
-        margin-bottom: 28px;
-      }
+      .login-shell { width: min(440px, 100%); position: relative; z-index: 1; }
+      .login-brand { text-align: center; margin-bottom: 24px; }
       .login-brand .brand-mark {
-        width: 56px;
-        height: 56px;
-        margin: 0 auto 14px;
-        font-size: 24px;
-        border-radius: 16px;
+        width: 56px; height: 56px; margin: 0 auto 14px;
+        font-size: 24px; border-radius: 16px;
       }
-      .login-brand h1 {
-        margin: 0;
-        font-size: 26px;
-        font-weight: 700;
-        letter-spacing: -0.03em;
-        color: var(--text);
-      }
-      .login-brand p {
-        margin: 8px 0 0;
-        color: var(--muted);
-        font-size: 14px;
-      }
+      .login-brand h1 { margin: 0; font-size: 26px; font-weight: 700; }
+      .login-brand p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
       .login-card {
-        background: rgba(255, 255, 255, 0.94);
+        background: rgba(255,255,255,0.94);
         border: 1px solid var(--card-border);
         border-radius: var(--radius-lg);
-        padding: 28px 26px 26px;
+        padding: 26px;
         box-shadow: var(--card-shadow);
-        backdrop-filter: blur(12px);
       }
-      .login-card label {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 8px;
+      .mode-grid { display: grid; gap: 12px; margin-bottom: 8px; }
+      .mode-card {
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        background: #f8fafc;
       }
+      .mode-card h3 { margin: 0 0 6px; font-size: 15px; }
+      .mode-card p { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+      .login-card label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
       .login-card input[type="password"] {
-        width: 100%;
-        margin-bottom: 18px;
-        padding: 12px 14px;
-        font-size: 15px;
+        width: 100%; margin-bottom: 12px; padding: 12px 14px; font-size: 15px;
       }
-      .login-card button {
-        width: 100%;
-        padding: 12px;
-        font-size: 15px;
-      }
+      .login-card button { width: 100%; padding: 11px; font-size: 14px; }
       .login-err {
-        background: var(--danger-bg);
-        color: #991b1b;
+        background: var(--danger-bg); color: #991b1b;
         border: 1px solid var(--danger-border);
-        padding: 10px 12px;
-        border-radius: var(--radius-sm);
-        font-size: 13px;
-        margin-bottom: 16px;
+        padding: 10px 12px; border-radius: var(--radius-sm);
+        font-size: 13px; margin-bottom: 14px;
       }
     </style>
   </head>
   <body>
     <div class="login-shell">
       <div class="login-brand">
-        <div class="brand-mark">账</div>
-        <h1>个人账单</h1>
-        <p>请输入访问密码以继续</p>
+        <div class="brand-mark">我</div>
+        <h1>个人网站</h1>
+        <p>请选择进入方式</p>
       </div>
       <div class="login-card">
         {% if error %}
         <div class="login-err">{{ error }}</div>
         {% endif %}
-        <form method="post">
-          <input type="hidden" name="next" value="{{ next }}" />
-          <label for="password">访问密码</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" autofocus required />
-          <button type="submit">登录</button>
-        </form>
+        <div class="mode-grid">
+          <div class="mode-card">
+            <h3>所有者模式</h3>
+            <p>可浏览并维护全部内容（账单、喝水、诗词维护、笔记编辑等）。</p>
+            <form method="post">
+              <input type="hidden" name="mode" value="owner" />
+              <input type="hidden" name="next" value="{{ next }}" />
+              {% if auth_enabled %}
+              <label for="password">访问密码</label>
+              <input id="password" name="password" type="password" autocomplete="current-password" required />
+              {% endif %}
+              <button type="submit">{% if auth_enabled %}输入密码进入{% else %}进入所有者模式{% endif %}</button>
+            </form>
+          </div>
+          <div class="mode-card">
+            <h3>游客模式</h3>
+            <p>无需密码。仅可查看诗词与笔记专栏（不可编辑）。</p>
+            <form method="post">
+              <input type="hidden" name="mode" value="guest" />
+              <button type="submit" class="btn-secondary">以游客身份进入</button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   </body>

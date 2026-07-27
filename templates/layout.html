@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}个人网站{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r17c" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r18a" />
   </head>
   <body>
     <div class="app-shell">
@@ -13,11 +13,12 @@
           <div class="brand-mark">我</div>
           <div class="brand-text">
             <div class="brand-title">个人网站</div>
-            <div class="brand-sub">Personal Hub</div>
+            <div class="brand-sub">{% if is_guest %}游客只读{% else %}所有者{% endif %}</div>
           </div>
         </div>
 
         <nav class="sidebar-nav">
+          {% if is_owner %}
           <details class="nav-group" open>
             <summary class="nav-group-title">账单财务</summary>
             <div class="nav-group-links">
@@ -36,6 +37,7 @@
               <a class="nav-link{% if request.endpoint and request.endpoint.startswith('water.') %} active{% endif %}" href="{{ url_for('water.water_home') }}">喝水提醒</a>
             </div>
           </details>
+          {% endif %}
 
           <details class="nav-group" open>
             <summary class="nav-group-title">诗意</summary>
@@ -45,19 +47,26 @@
           </details>
 
           <details class="nav-group" open>
-            <summary class="nav-group-title">数据与账户</summary>
+            <summary class="nav-group-title">笔记</summary>
             <div class="nav-group-links">
+              <a class="nav-link{% if request.endpoint and request.endpoint.startswith('notes.') %} active{% endif %}" href="{{ url_for('notes.notes_list') }}">笔记专栏</a>
+            </div>
+          </details>
+
+          <details class="nav-group" open>
+            <summary class="nav-group-title">账户</summary>
+            <div class="nav-group-links">
+              {% if is_owner %}
               <a class="nav-link" href="{{ url_for('download_backup_zip') }}">导出备份</a>
               <a class="nav-link" href="{{ url_for('download_offline_report_zip') }}">离线报告包</a>
-              {% if auth_enabled %}
-              <a class="nav-link" href="{{ url_for('auth.logout') }}">退出登录</a>
               {% endif %}
+              <a class="nav-link" href="{{ url_for('auth.logout') }}">退出 / 切换模式</a>
             </div>
           </details>
         </nav>
 
         <div class="sidebar-foot">
-          <span class="ver-badge">r17</span>
+          <span class="ver-badge">r18</span>
         </div>
       </aside>
 
@@ -68,7 +77,7 @@
           <button type="button" class="menu-toggle" id="menu-toggle" aria-label="打开菜单">☰</button>
           <h1 class="page-title">{{ self.title() }}</h1>
           <div class="topbar-spacer"></div>
-          {% if is_logged_in %}
+          {% if is_owner %}
           <button type="button" class="btn-secondary water-widget-launch" id="topbar-water-widget" title="打开喝水网页小窗">喝水小窗</button>
           {% endif %}
         </header>

@@ -1,0 +1,80 @@
+{% extends "layout.html" %}
+{% block title %}编辑笔记{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content: space-between; align-items: center;">
+    <h2 style="margin:0;">编辑笔记</h2>
+    <a class="btn-secondary pill-link" href="{{ url_for('notes.notes_view', note_id=note.id) }}">返回阅读</a>
+  </div>
+</div>
+
+<form method="post" id="notes-form" class="card notes-edit-card">
+  <label class="field-label">标题</label>
+  <input type="text" name="title" id="note-title" value="{{ note.title }}" required placeholder="笔记标题" style="width:100%; margin-bottom: 14px;" />
+  <label class="field-label">正文（Markdown / 所见即所得）</label>
+  <div id="vditor"></div>
+  <textarea name="content_md" id="content_md" hidden>{{ note.content_md }}</textarea>
+  <div class="row" style="margin-top: 16px; gap: 8px;">
+    <button type="submit">保存</button>
+  </div>
+</form>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.10.4/dist/index.css" />
+<script src="https://cdn.jsdelivr.net/npm/vditor@3.10.4/dist/index.min.js"></script>
+<script>
+(function () {
+  var uploadUrl = {{ url_for('notes.notes_upload', note_id=note.id)|tojson }};
+  var initial = document.getElementById("content_md").value || "";
+
+  var vditor = new Vditor("vditor", {
+    height: 520,
+    mode: "ir",
+    placeholder: "像文档一样写下去… 支持工具栏、预览，以及拖拽/粘贴上传图片",
+    value: initial,
+    cache: { enable: false },
+    toolbar: [
+      "emoji", "headings", "bold", "italic", "strike", "|",
+      "list", "ordered-list", "check", "|",
+      "quote", "line", "code", "inline-code", "|",
+      "upload", "link", "table", "|",
+      "undo", "redo", "|",
+      "edit-mode", "both", "preview", "fullscreen"
+    ],
+    upload: {
+      url: uploadUrl,
+      fieldName: "file",
+      max: 5 * 1024 * 1024,
+      accept: "image/*",
+      multiple: false,
+      filename: function (name) { return name; },
+      format: function (files, responseText) {
+        try {
+          var res = JSON.parse(responseText);
+          if (res.ok && res.url) {
+            var name = (files && files[0] && files[0].name) ? files[0].name : "image";
+            var map = {};
+            map[name] = res.url;
+            return JSON.stringify({
+              msg: "",
+              code: 0,
+              data: { errFiles: [], succMap: map }
+            });
+          }
+          return JSON.stringify({
+            msg: (res && res.msg) || "上传失败",
+            code: 1,
+            data: { errFiles: ["image"], succMap: {} }
+          });
+        } catch (e) {
+          return JSON.stringify({ msg: "上传失败", code: 1, data: { errFiles: ["image"], succMap: {} } });
+        }
+      }
+    }
+  });
+
+  document.getElementById("notes-form").addEventListener("submit", function () {
+    document.getElementById("content_md").value = vditor.getValue();
+  });
+})();
+</script>
+{% endblock %}

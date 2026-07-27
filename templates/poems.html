@@ -87,6 +87,7 @@
   {% endif %}
 </section>
 
+{% if is_owner %}
 <footer class="poem-foot">
   {% if is_poem_admin %}
     <a href="{{ url_for('poem_admin_page') }}">进入诗库维护</a>
@@ -96,6 +97,7 @@
     <a href="{{ url_for('poem_admin_page') }}" class="poem-foot-admin">维护者入口</a>
   {% endif %}
 </footer>
+{% endif %}
 
 <script id="poems-data" type="application/json">{{ poems|tojson }}</script>
 <script id="today-poem-data" type="application/json">{{ today_poem|tojson if today_poem else 'null' }}</script>

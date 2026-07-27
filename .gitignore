@@ -4,6 +4,10 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+Scripts/
+Lib/
+Include/
+pyvenv.cfg
 .env
 .env.*
 !.env.example
@@ -28,6 +32,9 @@ backup/**
 !backup/README.md
 !backup/原始账单/
 backup/原始账单/**
+# backups/ 由 GitHub Actions 写入（私密仓备份）；保留 README
+backups/**
+!backups/README.md
 deploy/fly/_token_once.txt
 deploy/fly/*token*
 tunnel_*.log
