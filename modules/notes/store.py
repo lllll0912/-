@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import secrets
@@ -163,3 +164,78 @@ def resolve_asset(note_id: int, filename: str) -> Optional[Path]:
     except ValueError:
         return None
     return path
+
+
+DEFAULT_MD_HINTS: list[dict[str, str]] = [
+    {"title": "一级标题", "md": "# 标题", "note": "行首一个 # 加空格"},
+    {"title": "二级标题", "md": "## 标题", "note": ""},
+    {"title": "三级标题", "md": "### 标题", "note": ""},
+    {"title": "加粗", "md": "**加粗文字**", "note": ""},
+    {"title": "斜体", "md": "*斜体文字*", "note": ""},
+    {"title": "项目符号", "md": "- 条目一\n- 条目二", "note": ""},
+    {"title": "有序号", "md": "1. 第一条\n2. 第二条", "note": ""},
+    {"title": "引用", "md": "> 引用内容", "note": ""},
+    {"title": "链接", "md": "[显示文字](https://)", "note": ""},
+    {"title": "图片", "md": "![说明](图片地址)", "note": "也可用工具栏上传"},
+    {"title": "分割线", "md": "---", "note": ""},
+    {"title": "行内代码", "md": "`代码`", "note": ""},
+]
+
+
+def md_hints_path() -> Path:
+    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
+    if data_dir:
+        return Path(data_dir) / "notes_md_hints.json"
+    return _site_root() / "data" / "notes_md_hints.json"
+
+
+def load_md_hints() -> list[dict[str, str]]:
+    path = md_hints_path()
+    if not path.is_file():
+        return [dict(x) for x in DEFAULT_MD_HINTS]
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, list):
+            return [dict(x) for x in DEFAULT_MD_HINTS]
+        out = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "").strip()
+            md = str(item.get("md") or "")
+            if not title and not md:
+                continue
+            out.append(
+                {
+                    "title": title or "未命名",
+                    "md": md,
+                    "note": str(item.get("note") or "").strip(),
+                }
+            )
+        return out or [dict(x) for x in DEFAULT_MD_HINTS]
+    except Exception:
+        return [dict(x) for x in DEFAULT_MD_HINTS]
+
+
+def save_md_hints(items: list[dict[str, str]]) -> list[dict[str, str]]:
+    cleaned = []
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "").strip()
+        md = str(item.get("md") or "")
+        if not title and not md.strip():
+            continue
+        cleaned.append(
+            {
+                "title": title or "未命名",
+                "md": md,
+                "note": str(item.get("note") or "").strip(),
+            }
+        )
+    if not cleaned:
+        cleaned = [dict(x) for x in DEFAULT_MD_HINTS]
+    path = md_hints_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2), encoding="utf-8")
+    return cleaned

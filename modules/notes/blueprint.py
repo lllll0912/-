@@ -21,7 +21,9 @@ from .store import (
     delete_note,
     get_note,
     list_notes,
+    load_md_hints,
     resolve_asset,
+    save_md_hints,
     save_note_image,
     update_note,
 )
@@ -85,7 +87,26 @@ def notes_edit(note_id: int):
         update_note(note_id, title, content)
         flash("已保存", "success")
         return redirect(url_for("notes.notes_view", note_id=note_id))
-    return render_template("notes_edit.html", note=note, can_edit=True)
+    return render_template(
+        "notes_edit.html",
+        note=note,
+        can_edit=True,
+        md_hints=load_md_hints(),
+    )
+
+
+@notes_bp.route("/md-hints", methods=["GET", "POST"])
+def notes_md_hints():
+    """Markdown 速查提示：所有者可读写，持久在 data/notes_md_hints.json。"""
+    if request.method == "GET":
+        return jsonify({"ok": True, "items": load_md_hints()})
+    _owner_or_403()
+    payload = request.get_json(silent=True) or {}
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return jsonify({"ok": False, "msg": "格式错误"}), 400
+    saved = save_md_hints(items)
+    return jsonify({"ok": True, "items": saved})
 
 
 @notes_bp.route("/<int:note_id>/delete", methods=["POST"])

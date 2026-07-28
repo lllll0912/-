@@ -1,12 +1,15 @@
 import csv
 import json
 import os
+import shutil
+import sqlite3
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
 from db.connector import get_cursor
-from rule_manager import load_rules
+from rule_manager import get_rules_path, load_rules
 
 
 BACKUP_PREFIX = "records_backup_"
@@ -22,6 +25,20 @@ def get_backup_dir() -> str:
 
 
 BACKUP_DIR = get_backup_dir()  # 兼容旧引用；运行时请用 get_backup_dir()
+
+
+def _data_root() -> Path:
+    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
+    if data_dir:
+        return Path(data_dir)
+    return Path(__file__).resolve().parents[3] / "data"
+
+
+def _poem_root() -> Path:
+    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
+    if data_dir:
+        return Path(data_dir) / "poems"
+    return Path(__file__).resolve().parents[3] / "poems_data"
 
 
 def _query_all_records() -> List[Dict[str, Any]]:
@@ -58,12 +75,152 @@ def _query_travel_profiles() -> List[Dict[str, Any]]:
         return cur.fetchall()
 
 
+def _safe_read_json(path: Path, default: Any = None) -> Any:
+    if default is None:
+        default = {}
+    if not path.is_file():
+        return default
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return default
+
+
+def _export_notes_payload() -> Dict[str, Any]:
+    root = _data_root()
+    db_path = root / "notes.db"
+    notes = []
+    if db_path.is_file():
+        try:
+            conn = sqlite3.connect(str(db_path))
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, title, content_md, created_at, updated_at FROM notes ORDER BY id"
+            )
+            notes = [dict(r) for r in cur.fetchall()]
+            conn.close()
+        except Exception:
+            notes = []
+    return {"notes": notes, "exported_at": datetime.now().isoformat(timespec="seconds")}
+
+
+def _export_poems_payload() -> Dict[str, Any]:
+    root = _poem_root()
+    out: Dict[str, Any] = {"root": str(root)}
+    for name in ("poem.txt", "stories.json", "poems.json"):
+        path = root / name
+        if not path.is_file():
+            continue
+        if name.endswith(".json"):
+            out[name] = _safe_read_json(path, {})
+        else:
+            try:
+                out[name] = path.read_text(encoding="utf-8")
+            except Exception:
+                out[name] = ""
+    return out
+
+
+def _write_site_extras(base_no_ext: str) -> List[str]:
+    """账单以外的站内数据快照（JSON 可读 + 全量 zip）。"""
+    written: List[str] = []
+    root = _data_root()
+
+    water_path = root / "water_data.json"
+    water_out = base_no_ext + "_water.json"
+    with open(water_out, "w", encoding="utf-8") as f:
+        json.dump(_safe_read_json(water_path, {}), f, ensure_ascii=False, indent=2, default=str)
+    written.append(water_out)
+
+    poems_out = base_no_ext + "_poems.json"
+    with open(poems_out, "w", encoding="utf-8") as f:
+        json.dump(_export_poems_payload(), f, ensure_ascii=False, indent=2, default=str)
+    written.append(poems_out)
+
+    notes_out = base_no_ext + "_notes.json"
+    with open(notes_out, "w", encoding="utf-8") as f:
+        json.dump(_export_notes_payload(), f, ensure_ascii=False, indent=2, default=str)
+    written.append(notes_out)
+
+    rules_src = Path(get_rules_path())
+    rules_out = base_no_ext + "_category_rules.json"
+    if rules_src.is_file():
+        shutil.copy2(rules_src, rules_out)
+    else:
+        with open(rules_out, "w", encoding="utf-8") as f:
+            json.dump(load_rules(), f, ensure_ascii=False, indent=2)
+    written.append(rules_out)
+
+    hints_src = root / "notes_md_hints.json"
+    if hints_src.is_file():
+        hints_out = base_no_ext + "_notes_md_hints.json"
+        shutil.copy2(hints_src, hints_out)
+        written.append(hints_out)
+
+    # 灾难恢复用：数据库与资源目录整包
+    ts = Path(base_no_ext).name.replace(BACKUP_PREFIX, "", 1)
+    full_zip = str(Path(base_no_ext).parent / "{}{}_fulldata.zip".format(BACKUP_PREFIX, ts))
+    with zipfile.ZipFile(full_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        manifest = {
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "includes": [],
+        }
+
+        def add_file(src: Path, arc: str) -> None:
+            if src.is_file():
+                zf.write(src, arcname=arc)
+                manifest["includes"].append(arc)
+
+        add_file(root / "bills.db", "bills.db")
+        add_file(root / "bills.db-wal", "bills.db-wal")
+        add_file(root / "bills.db-shm", "bills.db-shm")
+        add_file(root / "notes.db", "notes.db")
+        add_file(root / "notes.db-wal", "notes.db-wal")
+        add_file(root / "notes.db-shm", "notes.db-shm")
+        add_file(root / "water_data.json", "water_data.json")
+        add_file(rules_src, "category_rules.json")
+        add_file(hints_src, "notes_md_hints.json")
+
+        poem_root = _poem_root()
+        if poem_root.is_dir():
+            for p in poem_root.rglob("*"):
+                if p.is_file():
+                    rel = p.relative_to(poem_root).as_posix()
+                    add_file(p, "poems/" + rel)
+
+        assets = root / "notes_assets"
+        if assets.is_dir():
+            for p in assets.rglob("*"):
+                if p.is_file():
+                    rel = p.relative_to(assets).as_posix()
+                    add_file(p, "notes_assets/" + rel)
+
+        zf.writestr("MANIFEST.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+    written.append(full_zip)
+
+    manifest_out = base_no_ext + "_manifest.json"
+    with open(manifest_out, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "files": [Path(p).name for p in written],
+                "note": "含账单 CSV/类型/旅游，以及喝水、诗词、笔记 JSON；*_fulldata.zip 为可整站恢复的原始数据包。",
+            },
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
+    written.append(manifest_out)
+    return written
+
+
 def write_latest_backup_csv(clear_old: bool = False) -> str:
     """
     按现有命名写入 backup/：
       records_backup_YYYYMMDD_HHMMSS.csv / .txt
-      records_backup_..._types.json/.csv
-      records_backup_..._travel.json/.csv
+      records_backup_..._types/travel/water/poems/notes/...
+      records_backup_..._fulldata.zip
     默认保留历史；仅 clear_old=True 时清理旧的 records_backup_*。
     返回主 csv 路径。
     """
@@ -72,7 +229,10 @@ def write_latest_backup_csv(clear_old: bool = False) -> str:
     if clear_old:
         for name in os.listdir(backup_dir):
             if name.startswith(BACKUP_PREFIX) and (
-                name.endswith(".csv") or name.endswith(".txt") or name.endswith(".json")
+                name.endswith(".csv")
+                or name.endswith(".txt")
+                or name.endswith(".json")
+                or name.endswith(".zip")
             ):
                 try:
                     os.remove(os.path.join(backup_dir, name))
@@ -166,11 +326,13 @@ def write_latest_backup_csv(clear_old: bool = False) -> str:
         w.writeheader()
         for row in _query_travel_profiles():
             w.writerow(row)
+
+    _write_site_extras(base_no_ext)
     return backup_file
 
 
 def list_backup_bundle_files(main_csv_path: str) -> List[str]:
-    """同一时间戳的一套备份文件。"""
+    """同一时间戳的一套备份文件（含全站数据）。"""
     base = main_csv_path[:-4]
     candidates = [
         main_csv_path,
@@ -179,12 +341,21 @@ def list_backup_bundle_files(main_csv_path: str) -> List[str]:
         base + "_types.csv",
         base + "_travel.json",
         base + "_travel.csv",
+        base + "_water.json",
+        base + "_poems.json",
+        base + "_notes.json",
+        base + "_category_rules.json",
+        base + "_notes_md_hints.json",
+        base + "_manifest.json",
+        base + "_fulldata.zip",
     ]
     return [p for p in candidates if os.path.isfile(p)]
 
 
 def find_latest_main_csv() -> str:
-    """backup/ 中最新的主 csv（排除 _types/_travel）。"""
+    """backup/ 中最新的主 csv（排除附属文件）。"""
+    import re
+
     backup_dir = get_backup_dir()
     if not os.path.isdir(backup_dir):
         return ""
@@ -193,7 +364,8 @@ def find_latest_main_csv() -> str:
     for name in os.listdir(backup_dir):
         if not name.startswith(BACKUP_PREFIX) or not name.endswith(".csv"):
             continue
-        if "_types" in name or "_travel" in name:
+        rest = name[len(BACKUP_PREFIX) : -4]
+        if not re.fullmatch(r"\d{8}_\d{6}", rest):
             continue
         path = os.path.join(backup_dir, name)
         try:

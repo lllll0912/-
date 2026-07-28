@@ -14,31 +14,67 @@
   <label class="field-label">正文（Markdown / 所见即所得）</label>
   <div id="vditor"></div>
   <textarea name="content_md" id="content_md" hidden>{{ note.content_md }}</textarea>
+
+  <div class="notes-md-hints" id="notes-md-hints">
+    <div class="notes-md-hints-hd">
+      <div>
+        <strong>Markdown 速查</strong>
+        <span class="muted" style="margin-left:8px;font-size:12px;">点一下插入到光标处；可自行增删改条目</span>
+      </div>
+      <button type="button" class="btn-secondary" id="md-hints-toggle-edit">编辑速查</button>
+    </div>
+    <div class="notes-md-hints-chips" id="md-hints-chips"></div>
+    <div class="notes-md-edit-panel" id="md-hints-edit">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:18%;">名称</th>
+            <th style="width:42%;">插入内容</th>
+            <th>说明</th>
+            <th style="width:56px;"></th>
+          </tr>
+        </thead>
+        <tbody id="md-hints-edit-body"></tbody>
+      </table>
+      <div class="notes-md-edit-actions">
+        <button type="button" class="btn-secondary" id="md-hints-add">新增一行</button>
+        <button type="button" id="md-hints-save">保存速查</button>
+        <button type="button" class="btn-secondary" id="md-hints-cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
   <div class="row" style="margin-top: 16px; gap: 8px;">
-    <button type="submit">保存</button>
+    <button type="submit">保存笔记</button>
   </div>
 </form>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.10.4/dist/index.css" />
 <script src="https://cdn.jsdelivr.net/npm/vditor@3.10.4/dist/index.min.js"></script>
+<script id="md-hints-json" type="application/json">{{ md_hints|tojson }}</script>
 <script>
 (function () {
   var uploadUrl = {{ url_for('notes.notes_upload', note_id=note.id)|tojson }};
+  var hintsUrl = {{ url_for('notes.notes_md_hints')|tojson }};
   var initial = document.getElementById("content_md").value || "";
+  var hints = [];
+  try { hints = JSON.parse(document.getElementById("md-hints-json").textContent || "[]") || []; } catch (e) { hints = []; }
 
   var vditor = new Vditor("vditor", {
     height: 520,
     mode: "ir",
-    placeholder: "像文档一样写下去… 支持工具栏、预览，以及拖拽/粘贴上传图片",
+    theme: "classic",
+    icon: "ant",
+    placeholder: "像文档一样写下去… 下方速查可点选插入；支持拖拽/粘贴上传图片",
     value: initial,
     cache: { enable: false },
     toolbar: [
-      "emoji", "headings", "bold", "italic", "strike", "|",
+      "headings", "bold", "italic", "strike", "|",
       "list", "ordered-list", "check", "|",
       "quote", "line", "code", "inline-code", "|",
       "upload", "link", "table", "|",
       "undo", "redo", "|",
-      "edit-mode", "both", "preview", "fullscreen"
+      "edit-mode", "preview", "fullscreen"
     ],
     upload: {
       url: uploadUrl,
@@ -71,6 +107,110 @@
       }
     }
   });
+
+  var chips = document.getElementById("md-hints-chips");
+  var editPanel = document.getElementById("md-hints-edit");
+  var editBody = document.getElementById("md-hints-edit-body");
+  var draft = [];
+
+  function renderChips() {
+    chips.innerHTML = "";
+    (hints || []).forEach(function (h) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "notes-md-chip";
+      btn.title = h.note || h.md || "";
+      btn.innerHTML = "<span></span><code></code>";
+      btn.querySelector("span").textContent = h.title || "插入";
+      var preview = String(h.md || "").replace(/\s+/g, " ").slice(0, 28);
+      btn.querySelector("code").textContent = preview;
+      btn.addEventListener("click", function () {
+        try { vditor.focus(); } catch (e) {}
+        try { vditor.insertValue(h.md || ""); } catch (e) {
+          alert("插入失败，请点一下编辑区后再试");
+        }
+      });
+      chips.appendChild(btn);
+    });
+  }
+
+  function renderEditRows() {
+    editBody.innerHTML = "";
+    draft.forEach(function (row, idx) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td><input type="text" data-f="title" data-i="' + idx + '" /></td>' +
+        '<td><input type="text" data-f="md" data-i="' + idx + '" /></td>' +
+        '<td><input type="text" data-f="note" data-i="' + idx + '" /></td>' +
+        '<td><button type="button" class="btn-secondary" data-del="' + idx + '">删</button></td>';
+      tr.querySelector('[data-f="title"]').value = row.title || "";
+      tr.querySelector('[data-f="md"]').value = row.md || "";
+      tr.querySelector('[data-f="note"]').value = row.note || "";
+      editBody.appendChild(tr);
+    });
+  }
+
+  function syncDraftFromDom() {
+    editBody.querySelectorAll("input[data-f]").forEach(function (input) {
+      var i = Number(input.getAttribute("data-i"));
+      var f = input.getAttribute("data-f");
+      if (!draft[i]) return;
+      draft[i][f] = input.value;
+    });
+  }
+
+  document.getElementById("md-hints-toggle-edit").addEventListener("click", function () {
+    if (editPanel.classList.contains("open")) {
+      editPanel.classList.remove("open");
+      return;
+    }
+    draft = (hints || []).map(function (h) {
+      return { title: h.title || "", md: h.md || "", note: h.note || "" };
+    });
+    renderEditRows();
+    editPanel.classList.add("open");
+  });
+
+  document.getElementById("md-hints-add").addEventListener("click", function () {
+    syncDraftFromDom();
+    draft.push({ title: "", md: "", note: "" });
+    renderEditRows();
+  });
+
+  editBody.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-del]");
+    if (!btn) return;
+    syncDraftFromDom();
+    var i = Number(btn.getAttribute("data-del"));
+    draft.splice(i, 1);
+    renderEditRows();
+  });
+
+  document.getElementById("md-hints-cancel").addEventListener("click", function () {
+    editPanel.classList.remove("open");
+  });
+
+  document.getElementById("md-hints-save").addEventListener("click", function () {
+    syncDraftFromDom();
+    fetch(hintsUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: draft }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.msg || "保存失败");
+        hints = res.items || [];
+        renderChips();
+        editPanel.classList.remove("open");
+      })
+      .catch(function (err) {
+        alert(err.message || "保存失败");
+      });
+  });
+
+  renderChips();
 
   document.getElementById("notes-form").addEventListener("submit", function () {
     document.getElementById("content_md").value = vditor.getValue();

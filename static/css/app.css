@@ -1799,4 +1799,89 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
 .notes-edit-card #vditor {
   border-radius: 10px;
   overflow: hidden;
+  border: 1px solid #d8e0ea;
+}
+
+/* Vditor 工具栏：浅底深色图标，避免蓝底看不清 */
+.notes-edit-card .vditor-toolbar {
+  background: #f7f8fb !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 6px 8px !important;
+}
+.notes-edit-card .vditor-toolbar__item {
+  color: #1f2a44 !important;
+}
+.notes-edit-card .vditor-toolbar__item:hover {
+  background: #e8eef7 !important;
+}
+.notes-edit-card .vditor-toolbar__item svg,
+.notes-edit-card .vditor-toolbar__item .vditor-icon {
+  fill: #334155 !important;
+  color: #334155 !important;
+  opacity: 1 !important;
+}
+.notes-edit-card .vditor-ir,
+.notes-edit-card .vditor-reset {
+  background: #fff;
+  color: #1c2434;
+}
+
+.notes-md-hints {
+  margin-top: 16px;
+  border: 1px solid #e4ebf3;
+  border-radius: 12px;
+  background: #fbfcfe;
+  padding: 12px 14px;
+}
+.notes-md-hints-hd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.notes-md-hints-hd strong { font-size: 14px; }
+.notes-md-hints-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.notes-md-chip {
+  border: 1px solid #d5deea;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #1f2a44;
+}
+.notes-md-chip:hover { background: #f0f5ff; border-color: #b7c7e0; }
+.notes-md-chip code {
+  font-size: 12px;
+  color: #0f766e;
+  margin-left: 6px;
+}
+.notes-md-edit-panel { display: none; margin-top: 10px; }
+.notes-md-edit-panel.open { display: block; }
+.notes-md-edit-panel table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.notes-md-edit-panel th,
+.notes-md-edit-panel td {
+  border-bottom: 1px solid #eef2f6;
+  padding: 6px 4px;
+  text-align: left;
+  vertical-align: middle;
+}
+.notes-md-edit-panel input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cfd9ea;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.notes-md-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
