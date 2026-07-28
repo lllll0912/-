@@ -85,7 +85,8 @@ from rule_manager import (
     load_rules,
     peek_legacy_l2_map,
     save_rules,
-    RULE_FILE,
+    get_rules_path,
+    ensure_rules_file,
 )
 import json as _json_for_rules
 
@@ -105,7 +106,7 @@ def _uses_remote_data_dir() -> bool:
     return bool((os.environ.get("BILL_DATA_DIR") or "").strip())
 
 
-def _backup_zip_bytes(clear_old: bool = True) -> Response:
+def _backup_zip_bytes(clear_old: bool = False) -> Response:
     """强制下载 zip（未绑定本机文件夹时的回退）。"""
     from io import BytesIO
     import zipfile
@@ -132,7 +133,7 @@ def _backup_and_redirect(endpoint: str, **url_kwargs):
     - 本机运行：已直接落在项目 backup/，无需再下载
     - 正式站：标记 session，由前端写入用户绑定的本机 backup 文件夹
     """
-    main_csv, _files = create_backup_bundle(clear_old=True)
+    main_csv, _files = create_backup_bundle(clear_old=False)
     backup_dir = get_backup_dir()
     if not _uses_remote_data_dir():
         flash("已直接写入本机项目目录：{}".format(backup_dir), "success")
@@ -276,14 +277,16 @@ def _migrate_single_level_categories():
         if marker.exists():
             return
         legacy = {}
-        if os.path.exists(RULE_FILE):
-            with open(RULE_FILE, "r", encoding="utf-8") as f:
+        rules_path = get_rules_path()
+        if os.path.exists(rules_path):
+            with open(rules_path, "r", encoding="utf-8") as f:
                 raw = _json_for_rules.load(f)
             from rule_manager import _normalize_rules
 
             rules, legacy = _normalize_rules(raw)
             save_rules(rules)
         else:
+            ensure_rules_file()
             save_rules(load_rules())
         collapse_categories_to_single_level(legacy)
         marker.write_text("ok\n", encoding="utf-8")
@@ -1615,7 +1618,7 @@ def download_backup_zip():
     ensure_db()
     if request.args.get("raw") == "1":
         flash("已生成 zip，请解压到本机项目的 backup/ 文件夹。", "success")
-        return _backup_zip_bytes(clear_old=True)
+        return _backup_zip_bytes(clear_old=False)
     return _backup_and_redirect("records_page")
 
 

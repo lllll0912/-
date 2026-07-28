@@ -1,6 +1,13 @@
-# 手动应急：把本机 data/bills.db 盖到 Fly（日常以云端为准，一般不用）
+# 手动应急：把本机 data/bills.db 盖到 Fly（会覆盖线上账单！日常以云端为准，一般不用）
+# 正确方向是「线上 → 本机」：请用 拉取线上数据到本机.ps1
 $ErrorActionPreference = "Stop"
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..\.."))
+Write-Host "WARNING: This OVERWRITES production bills.db on Fly." -ForegroundColor Red
+$confirm = Read-Host "Type YES to continue"
+if ($confirm -ne "YES") {
+    Write-Host "Aborted."
+    exit 1
+}
 if (-not (Test-Path ".\data\bills.db")) {
     Write-Host "[ERROR] Missing .\data\bills.db" -ForegroundColor Red
     exit 1

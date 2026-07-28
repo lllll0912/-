@@ -123,22 +123,8 @@
     }
   }
 
-  async function clearOldInDir(dirHandle) {
-    var names = [];
-    for await (var entry of dirHandle.values()) {
-      if (entry.kind === "file" && entry.name.indexOf("records_backup_") === 0) {
-        names.push(entry.name);
-      }
-    }
-    for (var i = 0; i < names.length; i++) {
-      try {
-        await dirHandle.removeEntry(names[i]);
-      } catch (e) { /* ignore */ }
-    }
-  }
-
   async function writeFiles(dirHandle, files) {
-    await clearOldInDir(dirHandle);
+    // 保留历史备份：同名则覆盖，不删其它 records_backup_*
     for (var i = 0; i < files.length; i++) {
       var f = files[i];
       var res = await fetch(f.url, { credentials: "same-origin" });

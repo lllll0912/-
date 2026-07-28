@@ -5,10 +5,64 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 from typing import Any, Dict, List, Optional, Tuple
 
 BASE_DIR = os.path.dirname(__file__)
-RULE_FILE = os.path.join(BASE_DIR, "category_rules.json")
+# 仓库内种子文件（进 Git / Docker 镜像）；运行时真正读写的是 get_rules_path()
+PACKAGED_RULE_FILE = os.path.join(BASE_DIR, "category_rules.json")
+
+
+def get_rules_path() -> str:
+    """
+    持久化路径：
+    - Fly：/data/category_rules.json（Volume，部署不覆盖）
+    - 本机：项目 data/category_rules.json（不进 Git）
+    """
+    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
+    if data_dir:
+        return os.path.join(data_dir, "category_rules.json")
+    site_root = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
+    return os.path.join(site_root, "data", "category_rules.json")
+
+
+def ensure_rules_file() -> str:
+    """若 data 侧尚无字典：优先从同机 backup 的最新 *_types.json 恢复，再退回种子。已有文件绝不覆盖。"""
+    path = get_rules_path()
+    parent = os.path.dirname(path) or "."
+    os.makedirs(parent, exist_ok=True)
+    if os.path.isfile(path):
+        return path
+
+    # 部署迁移：Volume 上若已有自动备份的类型快照，用它初始化（避免被镜像种子盖成旧版）
+    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
+    backup_dir = os.path.join(data_dir, "backup") if data_dir else os.path.join(
+        os.path.abspath(os.path.join(BASE_DIR, "..", "..")), "backup"
+    )
+    if os.path.isdir(backup_dir):
+        try:
+            cands = [
+                os.path.join(backup_dir, n)
+                for n in os.listdir(backup_dir)
+                if n.startswith("records_backup_") and n.endswith("_types.json")
+            ]
+            cands.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+            if cands and os.path.isfile(cands[0]):
+                shutil.copy2(cands[0], path)
+                return path
+        except Exception:
+            pass
+
+    if os.path.isfile(PACKAGED_RULE_FILE) and os.path.abspath(PACKAGED_RULE_FILE) != os.path.abspath(path):
+        shutil.copy2(PACKAGED_RULE_FILE, path)
+        return path
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(DEFAULT_RULES, f, ensure_ascii=False, indent=2)
+    return path
+
+
+# 兼容旧代码：RULE_FILE 表示「当前生效路径」
+RULE_FILE = get_rules_path()
 
 # 扁平：{ 类型名: pattern }
 RulesMap = Dict[str, str]
@@ -106,11 +160,9 @@ def _normalize_rules(data: Dict[str, Any]) -> Tuple[Dict[str, RulesMap], Dict[st
 
 
 def load_rules() -> Dict[str, RulesMap]:
-    if not os.path.exists(RULE_FILE):
-        save_rules(DEFAULT_RULES)
-        return dict(DEFAULT_RULES)
+    path = ensure_rules_file()
     try:
-        with open(RULE_FILE, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         rules, _ = _normalize_rules(data)
         if not rules["CONSUME_MAP"] or not rules["INCOME_MAP"]:
@@ -137,10 +189,11 @@ def peek_legacy_l2_map() -> Dict[str, str]:
                 return {str(k): str(v) for k, v in data.items()}
         except Exception:
             pass
-    if not os.path.exists(RULE_FILE):
+    path = get_rules_path()
+    if not os.path.exists(path):
         return {}
     try:
-        with open(RULE_FILE, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         _, legacy = _normalize_rules(data)
         return legacy
@@ -150,10 +203,11 @@ def peek_legacy_l2_map() -> Dict[str, str]:
 
 def save_rules(rules: Dict[str, Any]) -> None:
     normalized, _ = _normalize_rules(rules if isinstance(rules, dict) else {})
-    tmp = RULE_FILE + ".tmp"
+    path = ensure_rules_file()
+    tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(normalized, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, RULE_FILE)
+    os.replace(tmp, path)
 
 
 # --------------- 查询 ---------------

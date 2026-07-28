@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "modules" / "bills"))
 os.chdir(ROOT)
 
-from rule_manager import RULE_FILE, _normalize_rules, save_rules  # noqa: E402
+from rule_manager import get_rules_path, _normalize_rules, save_rules  # noqa: E402
 from db.schema import init_db  # noqa: E402
 from db.repository import collapse_categories_to_single_level  # noqa: E402
 from db.connector import get_cursor  # noqa: E402
@@ -18,7 +18,8 @@ from db.connector import get_cursor  # noqa: E402
 
 def main() -> None:
     init_db()
-    raw = json.loads(Path(RULE_FILE).read_text(encoding="utf-8"))
+    rules_path = Path(get_rules_path())
+    raw = json.loads(rules_path.read_text(encoding="utf-8"))
     rules, legacy = _normalize_rules(raw)
     # 若磁盘已扁平，尝试用旁路 legacy 文件
     legacy_path = ROOT / "data" / "_legacy_l2_map.json"

@@ -58,12 +58,13 @@ def _query_travel_profiles() -> List[Dict[str, Any]]:
         return cur.fetchall()
 
 
-def write_latest_backup_csv(clear_old: bool = True) -> str:
+def write_latest_backup_csv(clear_old: bool = False) -> str:
     """
     按现有命名写入 backup/：
       records_backup_YYYYMMDD_HHMMSS.csv / .txt
       records_backup_..._types.json/.csv
       records_backup_..._travel.json/.csv
+    默认保留历史；仅 clear_old=True 时清理旧的 records_backup_*。
     返回主 csv 路径。
     """
     backup_dir = get_backup_dir()
@@ -205,7 +206,7 @@ def find_latest_main_csv() -> str:
     return best
 
 
-def create_backup_bundle(clear_old: bool = True) -> Tuple[str, List[str]]:
+def create_backup_bundle(clear_old: bool = False) -> Tuple[str, List[str]]:
     main_csv = write_latest_backup_csv(clear_old=clear_old)
     files = list_backup_bundle_files(main_csv)
     return main_csv, files
