@@ -1,61 +1,88 @@
 {% extends "layout.html" %}
 {% block title %}喝水提醒{% endblock %}
 {% block content %}
-<div class="card water-hero">
-  <div class="row" style="justify-content: space-between; align-items: center; gap: 12px;">
-    <div>
-      <h2>今日饮水</h2>
-      <p class="muted">目标 {{ goal }} ml · 单杯默认 {{ settings.cup_ml }} ml</p>
+<section class="water-stage card">
+  <div class="water-stage-bg" aria-hidden="true"></div>
+  <div class="water-stage-inner">
+    <div class="water-stage-top">
+      <div>
+        <p class="water-kicker">Hydrate · {{ weekday_label }} · {{ today_label }}</p>
+        <h2 class="water-title">给身体续一杯清澈</h2>
+        <p class="water-motivate" id="water-motivate">{{ motivate }}</p>
+      </div>
+      <div class="water-stage-actions">
+        <button type="button" class="btn-secondary" id="open-water-widget">网页小窗</button>
+        <a class="btn-secondary pill-link" href="{{ url_for('water.water_settings') }}">设置</a>
+        <a class="btn-secondary pill-link" href="{{ url_for('water.water_history') }}">历史</a>
+      </div>
     </div>
-    <div class="row" style="gap: 8px;">
-      <button type="button" class="btn-secondary" id="open-water-widget">打开网页小窗</button>
-      <a class="btn-secondary pill-link" href="{{ url_for('water.water_settings') }}">设置</a>
-      <a class="btn-secondary pill-link" href="{{ url_for('water.water_history') }}">历史</a>
+
+    <div class="water-time-grid">
+      <div class="water-time-card">
+        <div class="water-time-label">现在</div>
+        <div class="water-time-value" id="water-now-clock" data-server-now="{{ server_now }}">--:--:--</div>
+        <div class="water-time-sub">上海时间</div>
+      </div>
+      <div class="water-time-card{% if settings.reminder_enabled and next_slot %} is-next{% endif %}">
+        <div class="water-time-label">下次提醒</div>
+        {% if settings.reminder_enabled and next_slot %}
+        <div class="water-time-value" id="water-next-hm">{{ next_slot_hm }}</div>
+        <div class="water-time-sub" id="water-countdown" data-next-slot="{{ next_slot }}">计算中…</div>
+        {% elif not settings.reminder_enabled %}
+        <div class="water-time-value water-time-muted">已关闭</div>
+        <div class="water-time-sub">可在设置中开启</div>
+        {% else %}
+        <div class="water-time-value water-time-muted">—</div>
+        <div class="water-time-sub">暂无提醒点</div>
+        {% endif %}
+      </div>
     </div>
+
+    <div class="water-glass-row">
+      <div class="water-glass" aria-hidden="true">
+        <div class="water-glass-fill" style="height: {{ pct }}%;"></div>
+        <div class="water-glass-shine"></div>
+      </div>
+      <div class="water-glass-meta">
+        <div class="water-amount"><strong>{{ today_total }}</strong><span> / {{ goal }} ml</span></div>
+        <div class="water-progress-wrap">
+          <div class="water-progress-bar" style="width: {{ pct }}%;"></div>
+        </div>
+        <p class="water-progress-label">
+          完成 {{ pct }}%
+          {% if remaining_ml > 0 %}· 还差 {{ remaining_ml }} ml{% else %}· 今日达标{% endif %}
+        </p>
+        {% if slots_preview %}
+        <p class="muted water-slots">今日定点：{{ slots_preview }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('water.water_drink') }}" class="water-cta-form">
+      <div class="water-cta-fields">
+        <label class="field-label">这一杯（ml）</label>
+        <input type="number" name="amount_ml" min="1" max="5000" value="{{ settings.cup_ml }}" required />
+      </div>
+      <button type="submit" class="water-cta-btn">喝了一杯 · 马上清爽</button>
+    </form>
   </div>
+</section>
 
-  <p class="muted" style="margin-top: 0;">
-    「网页小窗」会弹出一个独立小浏览器窗，倒计时与打卡都走本站登录会话（不是本机 Tk 程序）。
-  </p>
-
-  <div class="water-progress-wrap">
-    <div class="water-progress-bar" style="width: {{ pct }}%;"></div>
+<div class="card water-records-card">
+  <div class="water-records-hd">
+    <h3>今日明细</h3>
+    <span class="muted">{{ records|length }} 笔 · 时间已按上海时区校正</span>
   </div>
-  <p class="water-progress-label"><strong>{{ today_total }}</strong> / {{ goal }} ml（{{ pct }}%）</p>
-
-  <form method="post" action="{{ url_for('water.water_drink') }}" class="row water-drink-form" style="gap: 8px; align-items: end;">
-    <div>
-      <label class="field-label">本次 ml</label>
-      <input type="number" name="amount_ml" min="1" max="5000" value="{{ settings.cup_ml }}" required />
-    </div>
-    <button type="submit">喝了一杯</button>
-  </form>
-
-  {% if settings.reminder_enabled and next_slot %}
-  <p class="muted water-next" data-next-slot="{{ next_slot }}">
-    下次提醒：<span id="water-next-label">{{ next_slot[11:16] }}</span>
-    <span id="water-countdown"></span>
-  </p>
-  {% elif not settings.reminder_enabled %}
-  <p class="muted">页内提醒已关闭（可在设置中开启）</p>
-  {% endif %}
-  {% if slots_preview %}
-  <p class="muted">今日定点：{{ slots_preview }}</p>
-  {% endif %}
-</div>
-
-<div class="card">
-  <h3>今日明细</h3>
   {% if not records %}
-  <p class="muted">还没有记录，点上面按钮开始打卡。</p>
+  <p class="muted water-empty">还没有记录。第一口水，往往最解渴。</p>
   {% else %}
   <div class="table-wrap">
-    <table>
+    <table class="water-records-table">
       <thead><tr><th>时间</th><th>水量</th><th></th></tr></thead>
       <tbody>
         {% for r in records %}
         <tr>
-          <td>{{ r.timestamp[11:19] }}</td>
+          <td class="water-rec-time">{{ r.time_label }}</td>
           <td>{{ r.amount_ml }} ml</td>
           <td>
             <form method="post" action="{{ url_for('water.water_delete_record', record_id=r.id) }}" style="display:inline;">
@@ -72,19 +99,38 @@
 
 <script>
 (function () {
-  var el = document.querySelector(".water-next");
-  if (!el) return;
-  var nextIso = el.getAttribute("data-next-slot");
-  if (!nextIso) return;
-  var nextAt = new Date(nextIso);
-  var cd = document.getElementById("water-countdown");
+  var clockEl = document.getElementById("water-now-clock");
+  var cdEl = document.getElementById("water-countdown");
+  var nextHmEl = document.getElementById("water-next-hm");
   var notified = false;
 
-  function tick() {
-    var now = new Date();
-    var ms = nextAt - now;
+  function pad(n) { return String(n).padStart(2, "0"); }
+
+  function formatHms(d) {
+    return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  }
+
+  function tickClock() {
+    if (!clockEl) return;
+    clockEl.textContent = formatHms(new Date());
+  }
+
+  function tickCountdown() {
+    if (!cdEl) return;
+    var nextIso = cdEl.getAttribute("data-next-slot");
+    if (!nextIso) return;
+    var nextAt = new Date(nextIso);
+    if (isNaN(nextAt.getTime())) {
+      cdEl.textContent = "提醒时间无效";
+      return;
+    }
+    if (nextHmEl) {
+      nextHmEl.textContent = pad(nextAt.getHours()) + ":" + pad(nextAt.getMinutes());
+    }
+    var ms = nextAt - new Date();
     if (ms <= 0) {
-      if (cd) cd.textContent = "· 到点了，该喝水啦";
+      cdEl.textContent = "到点了，该喝水啦";
+      cdEl.classList.add("is-due");
       if (!notified) {
         notified = true;
         try {
@@ -94,33 +140,23 @@
             Notification.requestPermission();
           }
         } catch (e) {}
-        if (document.getElementById("water-toast") == null) {
-          var t = document.createElement("div");
-          t.id = "water-toast";
-          t.className = "flash success";
-          t.textContent = "该喝水啦——记一笔再继续。";
-          var main = document.querySelector("main.container");
-          if (main) main.insertBefore(t, main.firstChild);
-        }
       }
       return;
     }
+    cdEl.classList.remove("is-due");
     var sec = Math.floor(ms / 1000);
     var h = Math.floor(sec / 3600);
     var m = Math.floor((sec % 3600) / 60);
     var s = sec % 60;
-    if (cd) {
-      cd.textContent = "· 还有 " +
-        (h > 0 ? h + ":" : "") +
-        String(m).padStart(2, "0") + ":" +
-        String(s).padStart(2, "0");
-    }
+    cdEl.textContent = "还有 " +
+      (h > 0 ? h + ":" : "") +
+      pad(m) + ":" + pad(s);
   }
-  tick();
-  setInterval(tick, 1000);
-  if (window.Notification && Notification.permission === "default") {
-    // 轻量请求；用户可拒绝
-  }
+
+  tickClock();
+  tickCountdown();
+  setInterval(tickClock, 1000);
+  setInterval(tickCountdown, 1000);
 })();
 </script>
 <script>
@@ -132,7 +168,7 @@
     var w = window.open(
       url,
       "waterWidget",
-      "popup=yes,width=360,height=440,left=72,top=72,resizable=yes,scrollbars=no"
+      "popup=yes,width=360,height=480,left=72,top=72,resizable=yes,scrollbars=no"
     );
     if (w) w.focus();
     else alert("浏览器拦截了弹窗，请允许本站弹窗后重试。");

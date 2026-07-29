@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
-
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 from .schedule_util import find_next_slot, parse_hhmm, today_slots_preview
 from .store import DataStore
+from .timeutil import format_hm, format_hms, format_record_clock, now_cn
 
 water_bp = Blueprint("water", __name__, url_prefix="/water")
 
@@ -16,46 +15,79 @@ def _store() -> DataStore:
     return DataStore()
 
 
-def _next_slot_iso(store: DataStore) -> str | None:
+def _next_slot_dt(store: DataStore):
     if not store.settings.reminder_enabled:
         return None
     try:
         h, m = parse_hhmm(store.settings.schedule_start)
     except ValueError:
         return None
-    nxt = find_next_slot(datetime.now(), h, m, store.settings.schedule_interval_hours)
-    return nxt.isoformat(timespec="seconds")
+    return find_next_slot(now_cn(), h, m, store.settings.schedule_interval_hours)
+
+
+def _next_slot_iso(store: DataStore) -> str | None:
+    nxt = _next_slot_dt(store)
+    return nxt.isoformat(timespec="seconds") if nxt else None
+
+
+def _motivate(pct: int, total: int, goal: int) -> str:
+    if total <= 0:
+        return "身体在等你的第一口水，现在就来一杯。"
+    if pct < 30:
+        return "开了个好头，清澈感正在回来。"
+    if pct < 60:
+        return "节奏不错，稳住，继续润一润。"
+    if pct < 90:
+        return "快满杯了，再一口就更接近目标。"
+    if pct < 100:
+        return "就差临门一脚，达标就在眼前。"
+    return "今日达标！继续保持这份清爽。"
 
 
 def _status_payload(store: DataStore) -> dict:
-    today = date.today()
+    today = now_cn().date()
     total = store.daily_total_ml(today)
     goal = store.settings.daily_goal_ml
     pct = min(100, int(round(100 * total / goal))) if goal else 0
+    nxt = _next_slot_dt(store)
+    now = now_cn()
     return {
         "today_total": total,
         "goal": goal,
         "pct": pct,
         "cup_ml": store.settings.cup_ml,
         "reminder_enabled": store.settings.reminder_enabled,
-        "next_slot": _next_slot_iso(store),
-        "server_now": datetime.now().isoformat(timespec="seconds"),
+        "next_slot": nxt.isoformat(timespec="seconds") if nxt else None,
+        "next_slot_hm": format_hm(nxt) if nxt else "",
+        "server_now": now.isoformat(timespec="seconds"),
+        "server_now_hms": format_hms(now),
+        "motivate": _motivate(pct, total, goal),
     }
 
 
 @water_bp.route("/")
 def water_home():
     store = _store()
-    today = date.today()
+    today = now_cn().date()
     total = store.daily_total_ml(today)
     goal = store.settings.daily_goal_ml
     pct = min(100, int(round(100 * total / goal))) if goal else 0
-    records = sorted(store.records_on_date(today), key=lambda r: r.timestamp, reverse=True)
+    raw_records = sorted(store.records_on_date(today), key=lambda r: r.timestamp, reverse=True)
+    records = [
+        {
+            "id": r.id,
+            "amount_ml": r.amount_ml,
+            "time_label": format_record_clock(r.timestamp),
+        }
+        for r in raw_records
+    ]
     try:
         h, m = parse_hhmm(store.settings.schedule_start)
         slots = today_slots_preview(h, m, store.settings.schedule_interval_hours)
     except ValueError:
         slots = ""
+    nxt = _next_slot_dt(store)
+    now = now_cn()
     return render_template(
         "water.html",
         settings=store.settings,
@@ -63,8 +95,14 @@ def water_home():
         goal=goal,
         pct=pct,
         records=records,
-        next_slot=_next_slot_iso(store),
+        next_slot=nxt.isoformat(timespec="seconds") if nxt else None,
+        next_slot_hm=format_hm(nxt) if nxt else "",
+        server_now=now.isoformat(timespec="seconds"),
+        today_label=now.strftime("%Y-%m-%d"),
+        weekday_label=["周一", "周二", "周三", "周四", "周五", "周六", "周日"][now.weekday()],
+        motivate=_motivate(pct, total, goal),
         slots_preview=slots,
+        remaining_ml=max(0, goal - total),
     )
 
 
@@ -110,7 +148,7 @@ def water_drink():
         flash("杯量需在 1–5000 ml", "error")
         return redirect(url_for("water.water_home"))
     store.add_record(amount)
-    flash("已记录 {} ml".format(amount), "success")
+    flash("已记录 {} ml · 清爽一点".format(amount), "success")
     nxt = (request.form.get("next") or "").strip()
     if nxt == "widget":
         return redirect(url_for("water.water_widget"))

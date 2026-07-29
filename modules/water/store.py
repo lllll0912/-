@@ -6,9 +6,11 @@ import json
 import os
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Any
+
+from .timeutil import now_cn, parse_water_ts
 
 
 def _default_data_path() -> Path:
@@ -92,7 +94,7 @@ class DataStore:
     def add_record(self, amount_ml: int, unit: str = "ml", raw_amount: float | None = None) -> WaterRecord:
         record = WaterRecord(
             id=str(uuid.uuid4()),
-            timestamp=datetime.now().isoformat(timespec="seconds"),
+            timestamp=now_cn().isoformat(timespec="seconds"),
             amount_ml=amount_ml,
             unit=unit,
             raw_amount=float(raw_amount if raw_amount is not None else amount_ml),
@@ -110,26 +112,26 @@ class DataStore:
         return True
 
     def daily_total_ml(self, target_date: date | None = None) -> int:
-        target = target_date or date.today()
+        target = target_date or now_cn().date()
         total = 0
         for record in self.records:
-            record_date = datetime.fromisoformat(record.timestamp).date()
+            record_date = parse_water_ts(record.timestamp).date()
             if record_date == target:
                 total += record.amount_ml
         return total
 
     def records_on_date(self, target_date: date | None = None) -> list[WaterRecord]:
-        target = target_date or date.today()
+        target = target_date or now_cn().date()
         return [
             r
             for r in self.records
-            if datetime.fromisoformat(r.timestamp).date() == target
+            if parse_water_ts(r.timestamp).date() == target
         ]
 
     def aggregate_by_day(self, limit: int = 30) -> list[dict[str, Any]]:
         buckets: dict[str, int] = {}
         for record in self.records:
-            key = datetime.fromisoformat(record.timestamp).strftime("%Y-%m-%d")
+            key = parse_water_ts(record.timestamp).strftime("%Y-%m-%d")
             buckets[key] = buckets.get(key, 0) + record.amount_ml
         keys = sorted(buckets.keys())[-limit:]
         return [{"label": k, "total_ml": buckets[k]} for k in keys]
