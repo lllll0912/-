@@ -38,10 +38,14 @@ def _owner_or_403():
 
 @notes_bp.route("/")
 def notes_list():
-    notes = list_notes()
+    sort = (request.args.get("sort") or "updated").strip().lower()
+    if sort not in ("updated", "created"):
+        sort = "updated"
+    notes = list_notes(sort=sort)
     return render_template(
         "notes_list.html",
         notes=notes,
+        sort=sort,
         can_edit=is_owner(),
         is_guest=is_guest(),
     )

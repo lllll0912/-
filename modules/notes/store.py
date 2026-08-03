@@ -8,12 +8,15 @@ import re
 import secrets
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 ALLOWED_IMAGE_EXT = frozenset({"jpg", "jpeg", "png", "gif", "webp"})
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+CN_TZ = ZoneInfo("Asia/Shanghai")
+_SORT_COLUMNS = {"updated": "updated_at", "created": "created_at"}
 
 
 def _site_root() -> Path:
@@ -63,17 +66,65 @@ def init_notes_db() -> None:
             )
             """
         )
+    _migrate_fly_utc_timestamps_once()
 
 
 def _now() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now(CN_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def list_notes() -> list[dict[str, Any]]:
+def _tz_marker_path() -> Path:
+    return notes_db_path().parent / ".notes_tz_shanghai_v1"
+
+
+def _shift_wall_clock_plus8(ts: str) -> str:
+    """把无时区的 UTC 墙钟时间改写成上海时间（+8 小时）。"""
+    text = str(ts or "").strip()
+    if not text:
+        return text
+    try:
+        dt = datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return text
+    return (dt + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _migrate_fly_utc_timestamps_once() -> None:
+    """Fly 上曾用 datetime.now()（UTC）写入；一次性校正为上海墙钟。本机不改历史。"""
+    marker = _tz_marker_path()
+    if marker.exists():
+        return
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    if not (os.environ.get("BILL_DATA_DIR") or "").strip():
+        marker.write_text("local-skip\n", encoding="utf-8")
+        return
+    if not notes_db_path().exists():
+        marker.write_text("empty\n", encoding="utf-8")
+        return
+    with _cursor() as cur:
+        cur.execute("SELECT id, created_at, updated_at FROM notes")
+        rows = cur.fetchall()
+        for row in rows:
+            cur.execute(
+                "UPDATE notes SET created_at = ?, updated_at = ? WHERE id = ?",
+                (
+                    _shift_wall_clock_plus8(row["created_at"]),
+                    _shift_wall_clock_plus8(row["updated_at"]),
+                    row["id"],
+                ),
+            )
+    marker.write_text(
+        "migrated-at {}\n".format(datetime.now(timezone.utc).isoformat()),
+        encoding="utf-8",
+    )
+
+
+def list_notes(sort: str = "updated") -> list[dict[str, Any]]:
     init_notes_db()
+    col = _SORT_COLUMNS.get((sort or "").strip().lower(), "updated_at")
     with _cursor() as cur:
         cur.execute(
-            "SELECT id, title, content_md, created_at, updated_at FROM notes ORDER BY updated_at DESC, id DESC"
+            f"SELECT id, title, content_md, created_at, updated_at FROM notes ORDER BY {col} DESC, id DESC"
         )
         return [dict(r) for r in cur.fetchall()]
 
@@ -145,7 +196,7 @@ def save_note_image(note_id: int, filename: str, data: bytes) -> str:
 
     note_dir = notes_assets_root() / str(note_id)
     note_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.now(CN_TZ).strftime("%Y%m%d_%H%M%S")
     name = f"{stamp}_{secrets.token_hex(4)}.{ext}"
     path = note_dir / name
     path.write_bytes(data)

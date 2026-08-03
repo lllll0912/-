@@ -1,7 +1,8 @@
 {% extends "layout.html" %}
 {% block title %}编辑笔记{% endblock %}
 {% block content %}
-<div class="card">
+<div class="notes-edit-page">
+<div class="card notes-edit-top">
   <div class="row" style="justify-content: space-between; align-items: center;">
     <h2 style="margin:0;">编辑笔记</h2>
     <a class="btn-secondary pill-link" href="{{ url_for('notes.notes_view', note_id=note.id) }}">返回阅读</a>
@@ -44,10 +45,11 @@
     </div>
   </div>
 
-  <div class="row" style="margin-top: 16px; gap: 8px;">
+  <div class="row notes-edit-actions" style="margin-top: 16px; gap: 8px;">
     <button type="submit">保存笔记</button>
   </div>
 </form>
+</div>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.10.4/dist/index.css" />
 <script src="https://cdn.jsdelivr.net/npm/vditor@3.10.4/dist/index.min.js"></script>
@@ -60,8 +62,18 @@
   var hints = [];
   try { hints = JSON.parse(document.getElementById("md-hints-json").textContent || "[]") || []; } catch (e) { hints = []; }
 
+  function editorHeight() {
+    var w = window.innerWidth || 1024;
+    var h = window.innerHeight || 800;
+    if (w <= 768) {
+      // 手机：尽量占满可视高度，少被标题/速查挤掉
+      return Math.max(Math.floor(h * 0.78), 560);
+    }
+    return Math.max(520, Math.min(720, Math.floor(h * 0.55)));
+  }
+
   var vditor = new Vditor("vditor", {
-    height: 520,
+    height: editorHeight(),
     mode: "ir",
     theme: "classic",
     icon: "ant",
@@ -214,6 +226,14 @@
 
   document.getElementById("notes-form").addEventListener("submit", function () {
     document.getElementById("content_md").value = vditor.getValue();
+  });
+
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      try { vditor.setHeight(editorHeight()); } catch (e) {}
+    }, 180);
   });
 })();
 </script>

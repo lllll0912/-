@@ -5,11 +5,18 @@
   <div class="row" style="justify-content: space-between; align-items: center; gap: 12px;">
     <div>
       <h2>笔记专栏</h2>
-      <p class="muted">{% if can_edit %}支持 Markdown 图文编辑。{% else %}游客只读。{% endif %}</p>
+      <p class="muted">{% if can_edit %}支持 Markdown 图文编辑。{% else %}游客只读。{% endif %}时间按上海时区。</p>
     </div>
     {% if can_edit %}
     <a href="{{ url_for('notes.notes_new') }}"><button type="button">新建笔记</button></a>
     {% endif %}
+  </div>
+  <div class="notes-sort-bar">
+    <span class="muted">排序</span>
+    <a class="notes-sort-link{% if sort == 'updated' %} is-active{% endif %}"
+       href="{{ url_for('notes.notes_list', sort='updated') }}">按编辑时间</a>
+    <a class="notes-sort-link{% if sort == 'created' %} is-active{% endif %}"
+       href="{{ url_for('notes.notes_list', sort='created') }}">按创建时间</a>
   </div>
 </div>
 
@@ -20,7 +27,11 @@
   {% for n in notes %}
   <a class="card notes-list-item" href="{{ url_for('notes.notes_view', note_id=n.id) }}">
     <strong>{{ n.title }}</strong>
-    <span class="muted">更新于 {{ n.updated_at }}</span>
+    <span class="muted notes-list-meta">
+      编辑 {{ n.updated_at }}
+      <span class="notes-meta-sep">·</span>
+      创建 {{ n.created_at }}
+    </span>
   </a>
   {% endfor %}
 </section>

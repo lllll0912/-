@@ -2057,6 +2057,43 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
 }
 
+.notes-sort-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.notes-sort-link {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #d5deea;
+  background: #fff;
+  color: #334155;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.notes-sort-link.is-active {
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  font-weight: 650;
+}
+
+.notes-list-meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.notes-meta-sep {
+  margin: 0 4px;
+  opacity: 0.55;
+}
+
 .notes-article {
   line-height: 1.75;
   font-size: 15px;
@@ -2079,6 +2116,32 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #d8e0ea;
+}
+
+@media (max-width: 768px) {
+  .notes-edit-page {
+    margin: 0 -4px;
+  }
+  .notes-edit-top {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .notes-edit-top h2 {
+    font-size: 1.05rem;
+  }
+  .notes-edit-card {
+    padding: 12px;
+  }
+  .notes-edit-card #vditor,
+  .notes-edit-card .vditor {
+    min-height: 70dvh;
+  }
+  .notes-edit-card .vditor {
+    height: 70dvh !important;
+  }
+  .notes-md-hints {
+    margin-top: 12px;
+  }
 }
 
 /* Vditor 工具栏：浅底深色图标，避免蓝底看不清 */
