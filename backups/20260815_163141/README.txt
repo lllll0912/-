@@ -1,0 +1,3 @@
+Fly volume snapshot
+Contains bills.db / notes.db(+assets) / poems / water_data.json / category_rules.json when present.
+sha256: 8832f0ff69212100d6b13e13a96c60312e0077fee9006c4c0e6050da0a3eb1c8
