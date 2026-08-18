@@ -2227,3 +2227,49 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   gap: 8px;
   margin-top: 10px;
 }
+
+.spend-rank-table th.num,
+.spend-rank-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 120px;
+}
+
+.spend-rank-table td.spend-items {
+  max-width: 420px;
+  line-height: 1.45;
+  color: #334155;
+  word-break: break-word;
+}
+
+.spend-cum {
+  min-width: 160px;
+}
+
+.spend-cum-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.spend-cum-pct {
+  color: #0c4a6e;
+  font-weight: 650;
+}
+
+.spend-cum-track {
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.spend-cum-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6366f1, #0ea5e9);
+}

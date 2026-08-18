@@ -444,6 +444,94 @@ def list_l1_categories(year: Optional[int] = None, direction: str = "") -> List[
         return [str(x.get("category_l1", "")) for x in cur.fetchall() if str(x.get("category_l1", "")).strip()]
 
 
+def list_expense_months(year: int) -> List[str]:
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT DATE_FORMAT(bill_date, '%Y-%m') AS month
+            FROM records
+            WHERE YEAR(bill_date)=%s AND direction='支出' AND amount > 0
+            ORDER BY month DESC
+            """,
+            (int(year),),
+        )
+        return [str(x.get("month")) for x in cur.fetchall() if x.get("month")]
+
+
+def monthly_expense_rank(month: str) -> Dict[str, Any]:
+    """某月支出按类型汇总、金额降序；事项列为该类型下去重后的合集。"""
+    month = str(month or "").strip()
+    empty = {"month": month, "total": 0.0, "rows": []}
+    if len(month) != 7 or month[4] != "-":
+        return empty
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT CASE
+                     WHEN TRIM(COALESCE(category, '')) = '' THEN '（未分类）'
+                     ELSE category
+                   END AS category,
+                   CASE
+                     WHEN TRIM(COALESCE(detail, '')) = '' THEN '（未填写事项）'
+                     ELSE detail
+                   END AS item,
+                   ROUND(SUM(amount), 2) AS amount
+            FROM records
+            WHERE DATE_FORMAT(bill_date, '%Y-%m')=%s
+              AND direction='支出'
+              AND amount > 0
+            GROUP BY
+              CASE WHEN TRIM(COALESCE(category, '')) = '' THEN '（未分类）' ELSE category END,
+              CASE WHEN TRIM(COALESCE(detail, '')) = '' THEN '（未填写事项）' ELSE detail END
+            ORDER BY amount DESC, item
+            """,
+            (month,),
+        )
+        parts = cur.fetchall()
+
+    grouped: Dict[str, Dict[str, Any]] = {}
+    order: List[str] = []
+    for row in parts:
+        cat = str(row.get("category") or "（未分类）")
+        item = str(row.get("item") or "（未填写事项）")
+        amt = round(float(row.get("amount") or 0), 2)
+        if cat not in grouped:
+            grouped[cat] = {"amount": 0.0, "details": []}
+            order.append(cat)
+        grouped[cat]["amount"] = round(grouped[cat]["amount"] + amt, 2)
+        if item not in {d[0] for d in grouped[cat]["details"]}:
+            grouped[cat]["details"].append((item, amt))
+
+    ranked = sorted(order, key=lambda c: (-grouped[c]["amount"], c))
+    total = round(sum(grouped[c]["amount"] for c in ranked), 2)
+    running = 0.0
+    rows: List[Dict[str, Any]] = []
+    n = len(ranked)
+    for i, cat in enumerate(ranked):
+        amt = grouped[cat]["amount"]
+        running = round(running + amt, 2)
+        if i == n - 1 and total > 0:
+            running = total
+            pct = 100.0
+        elif total > 0:
+            pct = round(100.0 * running / total, 1)
+        else:
+            pct = 0.0
+        rows.append(
+            {
+                "month": month,
+                "category": cat,
+                "item_names": "、".join(
+                    "{}（{:.2f}）".format(name, item_amt) for name, item_amt in grouped[cat]["details"]
+                ),
+                "amount": amt,
+                "cumulative": running,
+                "pct": pct,
+            }
+        )
+    return {"month": month, "total": total, "rows": rows}
+
+
 def summary_by_category_month(year: int, direction: str = "", categories: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     where = ["YEAR(bill_date)=%s"]
     args: List[Any] = [int(year)]

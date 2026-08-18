@@ -56,7 +56,8 @@ from db.repository import (
     list_l1_categories,
     list_records,
     list_staging_records,
-    summary_by_category_month,
+    list_expense_months,
+    monthly_expense_rank,
     set_travel_tag_by_date_range,
     clear_travel_tag_by_date_range,
     set_travel_tag_by_dates,
@@ -1092,10 +1093,13 @@ def analysis_page():
     if metric not in ("expense", "income"):
         metric = "expense"
 
-    direction_filter = request.args.get("direction", "").strip()
-    if direction_filter not in ("收入", "支出"):
-        direction_filter = ""
-    category_filters = [x.strip() for x in request.args.getlist("category") if x.strip()]
+    expense_months = list_expense_months(y)
+    spend_month = (request.args.get("spend_month") or "").strip()
+    if not (len(spend_month) == 7 and spend_month.startswith("{}-".format(y))):
+        spend_month = expense_months[0] if expense_months else "{}-{:02d}".format(
+            y, datetime.now().month if y == datetime.now().year else 12
+        )
+    spend_rank = monthly_expense_rank(spend_month)
 
     heatmap_rows = daily_heatmap_data(y)
     heatmap_map = {}
@@ -1113,22 +1117,6 @@ def analysis_page():
         if val > max_val:
             max_val = val
 
-    summary_rows = summary_by_category_month(y, direction_filter, category_filters)
-    category_options_all = list_categories(y, direction_filter)
-    consume_grouped = category_options_grouped(False)
-    income_grouped = category_options_grouped(True)
-    if direction_filter == "支出":
-        analysis_grouped = consume_grouped
-    elif direction_filter == "收入":
-        analysis_grouped = income_grouped
-    else:
-        # 方向=全部时，合并展示；同名一级类型下做并集
-        merged: dict = {}
-        for g in consume_grouped + income_grouped:
-            l1 = g.get("l1", "")
-            merged.setdefault(l1, set()).update(g.get("l2s", []))
-        analysis_grouped = [{"l1": k, "l2s": sorted(list(v))} for k, v in sorted(merged.items(), key=lambda x: x[0])]
-
     return render_template(
         "analysis.html",
         years=years,
@@ -1138,12 +1126,9 @@ def analysis_page():
         month_total_map_json=json.dumps(month_total_map, ensure_ascii=False),
         heatmap_map_json=json.dumps(heatmap_map, ensure_ascii=False),
         heatmap_max=max_val,
-        summary_rows=summary_rows,
-        show_category_dim=bool(category_filters),
-        direction_filter=direction_filter,
-        category_filters=category_filters,
-        category_options=category_options_all,
-        category_grouped=analysis_grouped,
+        spend_month=spend_month,
+        spend_months=expense_months,
+        spend_rank=spend_rank,
     )
 
 
