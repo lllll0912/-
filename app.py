@@ -33,7 +33,6 @@ from db.backup import (
     get_backup_dir,
     list_backup_bundle_files,
 )
-from offline_report import collect_payload, render_report_html
 from db.repository import (
     backfill_category_l1,
     collapse_categories_to_single_level,
@@ -1605,28 +1604,6 @@ def download_backup_zip():
         flash("已生成 zip，请解压到本机项目的 backup/ 文件夹。", "success")
         return _backup_zip_bytes(clear_old=False)
     return _backup_and_redirect("records_page")
-
-
-@app.route("/download/offline_report.zip")
-def download_offline_report_zip():
-    ensure_db()
-    from io import BytesIO
-    import zipfile
-
-    payload = collect_payload()
-    html = render_report_html(payload)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    bio = BytesIO()
-    with zipfile.ZipFile(bio, "w", compression=zipfile.ZIP_DEFLATED) as z:
-        z.writestr("report.html", html)
-        z.writestr("data.json", json.dumps(payload, ensure_ascii=False, indent=2, default=str))
-    bio.seek(0)
-    return Response(
-        bio.getvalue(),
-        mimetype="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=offline_report_{ts}.zip"},
-    )
 
 
 if __name__ == "__main__":

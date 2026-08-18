@@ -521,6 +521,9 @@ def monthly_expense_rank(month: str) -> Dict[str, Any]:
             {
                 "month": month,
                 "category": cat,
+                "item_parts": [
+                    {"name": name, "amount": item_amt} for name, item_amt in grouped[cat]["details"]
+                ],
                 "item_names": "、".join(
                     "{}（{:.2f}）".format(name, item_amt) for name, item_amt in grouped[cat]["details"]
                 ),

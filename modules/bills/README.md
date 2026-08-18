@@ -12,7 +12,6 @@ modules/bills/
 ├── parser.py
 ├── rule_manager.py
 ├── category_rules.json
-├── offline_report.py
 └── preview_store.py
 ```
 

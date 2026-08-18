@@ -331,6 +331,7 @@ body::before {
   max-width: 1560px;
   width: 100%;
   margin: 0 auto;
+  min-width: 0;
 }
 
 /* ── Cards ── */
@@ -342,6 +343,7 @@ body::before {
   margin-bottom: 18px;
   box-shadow: var(--card-shadow);
   backdrop-filter: blur(8px);
+  min-width: 0;
 }
 
 .card h2 {
@@ -716,6 +718,16 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   .topbar { padding: 0 14px; }
 
   .tree { grid-template-columns: 1fr; }
+
+  .card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .heatmap-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @media (max-width: 640px) {
@@ -823,7 +835,7 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   grid-template-columns: 120px 1fr;
   gap: 18px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .journal-day.is-focused {
@@ -918,6 +930,7 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   font-size: 18px;
   line-height: 1.7;
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .journal-footprint {
@@ -2228,23 +2241,61 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   margin-top: 10px;
 }
 
+.spend-rank-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
 .spend-rank-table th.num,
 .spend-rank-table td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  width: 120px;
+  width: 96px;
+}
+
+.spend-rank-table .spend-cat {
+  width: 22%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 650;
 }
 
 .spend-rank-table td.spend-items {
-  max-width: 420px;
+  width: auto;
   line-height: 1.45;
   color: #334155;
-  word-break: break-word;
+}
+
+.spend-item-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.spend-item-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.spend-item-chip em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: #0c4a6e;
+  font-weight: 650;
 }
 
 .spend-cum {
-  min-width: 160px;
+  min-width: 0;
 }
 
 .spend-cum-meta {
@@ -2272,4 +2323,44 @@ th.sortable-th[data-sort-order="desc"]::after { content: " ↓"; color: var(--pr
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, #6366f1, #0ea5e9);
+}
+
+.spend-rank-cards {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .spend-rank-table-wrap {
+    display: none;
+  }
+  .spend-rank-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .spend-rank-mobile {
+    padding: 12px 12px 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+  }
+  .spend-rank-mobile-hd {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .spend-rank-mobile-hd strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .spend-rank-mobile-hd .num {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 750;
+    color: #0c4a6e;
+  }
 }
