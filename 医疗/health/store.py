@@ -127,7 +127,15 @@ def normalize_result_status(value: Any) -> str:
 def enrich_record(r: dict[str, Any]) -> dict[str, Any]:
     row = dict(r)
     row["result_status"] = normalize_result_status(row.get("result_status"))
-    row["category_label"] = category_label(str(row.get("category") or ""))
+    cats = row.get("categories")
+    if not isinstance(cats, list) or not cats:
+        primary = (row.get("category") or "").strip()
+        cats = [primary] if primary else []
+    cats = [str(c).strip() for c in cats if str(c).strip()]
+    row["categories"] = cats
+    if cats and not row.get("category"):
+        row["category"] = cats[0]
+    row["category_label"] = "、".join(category_label(c) for c in cats) if cats else "未分类"
     return row
 
 
@@ -136,38 +144,47 @@ def list_records(
     person: str = "self",
     purpose: str = "",
     category: str = "",
+    categories: list[str] | None = None,
     q: str = "",
     include_empty_purpose: bool = True,
 ) -> list[dict[str, Any]]:
     rows = load_catalog().get("records") or []
     needle = (q or "").strip().lower()
+    wanted: set[str] = set()
+    if categories:
+        wanted = {c.strip() for c in categories if c and str(c).strip()}
+    elif category:
+        wanted = {category.strip()}
     out = []
     for r in rows:
         if person and r.get("person") != person:
             continue
-        if category and r.get("category") != category:
-            continue
-        p = (r.get("purpose") or "").strip()
+        enriched = enrich_record(r)
+        if wanted:
+            rec_cats = set(enriched.get("categories") or [])
+            if not (wanted & rec_cats):
+                continue
+        p = (enriched.get("purpose") or "").strip()
         if purpose:
-            if p != purpose:
+            if purpose.lower() not in p.lower():
                 continue
         elif not include_empty_purpose and not p:
             continue
         if needle:
             blob = " ".join(
                 [
-                    str(r.get("exam_name") or ""),
-                    str(r.get("purpose") or ""),
-                    str(r.get("purpose_note") or ""),
-                    str(r.get("notes") or ""),
-                    str(r.get("hospital") or ""),
-                    category_label(str(r.get("category") or "")),
-                    str(r.get("file_name") or ""),
+                    str(enriched.get("exam_name") or ""),
+                    str(enriched.get("purpose") or ""),
+                    str(enriched.get("purpose_note") or ""),
+                    str(enriched.get("notes") or ""),
+                    str(enriched.get("hospital") or ""),
+                    str(enriched.get("category_label") or ""),
+                    str(enriched.get("file_name") or ""),
                 ]
             ).lower()
             if needle not in blob:
                 continue
-        out.append(enrich_record(r))
+        out.append(enriched)
     out.sort(key=lambda x: (x.get("exam_date") or "", x.get("exam_name") or ""), reverse=True)
     return out
 
@@ -301,7 +318,14 @@ def build_year_calendar(year: int, records: list[dict[str, Any]]) -> dict[str, A
                                 "notes": x.get("notes") or "",
                                 "hospital": x.get("hospital") or "",
                                 "category": x.get("category") or "",
-                                "category_label": category_label(str(x.get("category") or "")),
+                                "categories": x.get("categories")
+                                or ([x.get("category")] if x.get("category") else []),
+                                "category_label": category_label(str(x.get("category") or ""))
+                                if not x.get("categories")
+                                else "、".join(
+                                    category_label(str(c))
+                                    for c in (x.get("categories") or [])
+                                ),
                                 "result_status": normalize_result_status(x.get("result_status")),
                                 "file_relpath": x.get("file_relpath") or "",
                                 "file_name": x.get("file_name") or "",
@@ -400,7 +424,8 @@ def add_uploaded_record(
     *,
     file_storage,
     exam_date: str,
-    category: str,
+    categories: list[str] | None = None,
+    category: str = "",
     exam_name: str = "",
     notes: str = "",
     purpose: str = "",
@@ -409,15 +434,20 @@ def add_uploaded_record(
 ) -> tuple[Optional[dict[str, Any]], str]:
     """
     保存上传文件并写入 catalog。
-    返回 (record, error_message)。成功时 error 为空。
+    命名：YYYY-MM-DD_名称_医院.ext（与档案整理规则一致）。
     """
     exam_date = (exam_date or "").strip()
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", exam_date):
         return None, "请填写正确日期（YYYY-MM-DD）"
-    category = (category or "").strip()
+
     valid_ids = {c["id"] for c in load_doc_categories()}
-    if category not in valid_ids:
-        return None, "请选择有效类别"
+    cats = [c.strip() for c in (categories or []) if c and str(c).strip()]
+    if not cats and (category or "").strip():
+        cats = [category.strip()]
+    cats = [c for c in cats if c in valid_ids]
+    if not cats:
+        return None, "请至少选择一个类别"
+    primary = cats[0]
 
     if file_storage is None or not getattr(file_storage, "filename", None):
         return None, "请选择要上传的文件"
@@ -434,18 +464,17 @@ def add_uploaded_record(
         return None, "文件过大（上限 12MB）"
 
     name = (exam_name or "").strip() or Path(original).stem
-    folder = category_folder(category)
-    file_name = f"{exam_date}_{_safe_stem(name)}_{_safe_stem(hospital or '未注医院', '未注医院')}{ext}"
-    # 医院为空时简化文件名
-    if not (hospital or "").strip():
-        file_name = f"{exam_date}_{_safe_stem(name)}{ext}"
+    hospital_s = (hospital or "").strip() or "未注医院"
+    folder = category_folder(primary)
+    # 统一命名：YYYY-MM-DD_检查名_医院.ext
+    file_name = f"{exam_date}_{_safe_stem(name)}_{_safe_stem(hospital_s)}{ext}"
 
     rel = f"{folder}/{file_name}".replace("\\", "/")
     dest_dir = data_write_root() / folder
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / file_name
     if dest.exists():
-        stem = dest.stem
+        stem = f"{exam_date}_{_safe_stem(name)}_{_safe_stem(hospital_s)}"
         n = 2
         while dest.exists():
             dest = dest_dir / f"{stem}_{n}{ext}"
@@ -455,15 +484,13 @@ def add_uploaded_record(
 
     dest.write_bytes(raw)
 
-    # 本机同时确保仓库目录有文件（data_write_root 已是仓库路径）
-    # Fly 上仅 Volume；GitHub 靠本机上传 + push，或后续同步脚本
-
-    record_id = _make_record_id(category, exam_date, name)
+    record_id = _make_record_id(primary, exam_date, name)
     event_id = f"evt-self-{exam_date}"
     rec = {
         "id": record_id,
         "person": "self",
-        "category": category,
+        "category": primary,
+        "categories": cats,
         "exam_date": exam_date,
         "exam_name": name,
         "hospital": (hospital or "").strip(),
@@ -475,7 +502,7 @@ def add_uploaded_record(
         "purpose": (purpose or "").strip(),
         "purpose_note": (purpose_note or "").strip(),
         "event_id": event_id,
-        "indicators_status": "n/a" if category != "lab" else "pending",
+        "indicators_status": "pending" if "lab" in cats else "n/a",
         "indicators_file": None,
         "result_status": RESULT_UNKNOWN,
         "github_path": f"医疗/数据/{rel}",
@@ -486,13 +513,13 @@ def add_uploaded_record(
     records.append(rec)
     catalog["records"] = records
     stats = dict(catalog.get("stats") or {})
-    stats[category] = int(stats.get(category) or 0) + 1
+    for cid in cats:
+        stats[cid] = int(stats.get(cid) or 0) + 1
     stats["total"] = len(records)
     catalog["stats"] = stats
     catalog["version"] = max(int(catalog.get("version") or 2), 2)
     save_catalog(catalog)
 
-    # 本机：若当前读的是 bundled catalog，save 已写 meta_root；再镜像一份到 bundled 以免分叉
     bundled_cat = _bundled_meta_file("catalog.json")
     writable_cat = meta_root() / "catalog.json"
     if writable_cat.resolve() != bundled_cat.resolve() and not (os.environ.get("BILL_DATA_DIR") or "").strip():
@@ -509,11 +536,13 @@ def update_record_meta(
     purpose_note: str | None = None,
     result_status: str | None = None,
     category: str | None = None,
+    categories: list[str] | None = None,
     notes: str | None = None,
     exam_name: str | None = None,
 ) -> bool:
     catalog = load_catalog()
     found = False
+    valid_ids = {c["id"] for c in load_doc_categories()}
     for r in catalog.get("records") or []:
         if r.get("id") == record_id:
             if purpose is not None:
@@ -522,10 +551,16 @@ def update_record_meta(
                 r["purpose_note"] = (purpose_note or "").strip()
             if result_status is not None:
                 r["result_status"] = normalize_result_status(result_status)
-            if category is not None:
+            if categories is not None:
+                cats = [c for c in categories if c in valid_ids]
+                if cats:
+                    r["categories"] = cats
+                    r["category"] = cats[0]
+            elif category is not None:
                 cid = (category or "").strip()
-                if cid in {c["id"] for c in load_doc_categories()}:
+                if cid in valid_ids:
                     r["category"] = cid
+                    r["categories"] = [cid]
             if notes is not None:
                 r["notes"] = (notes or "").strip()
             if exam_name is not None:

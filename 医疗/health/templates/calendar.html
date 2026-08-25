@@ -1,9 +1,8 @@
 {% extends "layout.html" %}
 {% block title %}医疗日历 {{ year }}{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('health.static', filename='health.css') }}?v=5" />
+<link rel="stylesheet" href="{{ url_for('health.static', filename='health.css') }}?v=7" />
 <style>
-  /* 内联兜底：避免 CSS 缓存导致遮罩一直挡住页面 */
   #hc-mask { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 1200; }
   #hc-mask.hc-open { display: block; }
   #hc-drawer {
@@ -19,16 +18,13 @@
     <div>
       <p class="eyebrow">Medical Year Calendar</p>
       <h2 class="hc-title">{{ year }} 年医疗日历</h2>
-      <p class="muted">点日期预览/下载；可按类别与说明筛选。</p>
+      <p class="muted">点日期预览与标注；上传、搜索都在本页完成。</p>
     </div>
     <div class="hc-head-actions">
-      <a class="pill-link" href="{{ url_for('health.health_upload') }}"><button type="button">上传材料</button></a>
-      <a class="btn-secondary pill-link" href="{{ url_for('health.health_records') }}">搜索档案</a>
-      <form class="hc-year-nav" method="get" action="{{ url_for('health.health_calendar') }}" id="hc-year-form">
-        <input type="hidden" name="category" value="{{ filters.category }}" />
-        <input type="hidden" name="q" value="{{ filters.q }}" />
-        <input type="hidden" name="purpose" value="{{ filters.purpose }}" />
-        <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=year-1, category=filters.category or none, q=filters.q or none, purpose=filters.purpose or none) }}" title="上一年">‹</a>
+      <button type="button" class="hc-btn" id="hc-btn-upload" aria-expanded="{{ 'true' if panel == 'upload' else 'false' }}">上传</button>
+      <button type="button" class="hc-btn" id="hc-btn-search" aria-expanded="{{ 'true' if panel == 'search' else 'false' }}">搜索</button>
+      <div class="hc-year-nav" id="hc-year-form">
+        <button type="button" class="hc-btn" id="hc-year-prev" title="上一年">‹</button>
         <label class="hc-year-label">
           <span class="muted">年份</span>
           <select name="year" id="hc-year-select" aria-label="选择年份">
@@ -40,40 +36,91 @@
             {% endif %}
           </select>
         </label>
-        <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=year+1, category=filters.category or none, q=filters.q or none, purpose=filters.purpose or none) }}" title="下一年">›</a>
-      </form>
+        <button type="button" class="hc-btn" id="hc-year-next" title="下一年">›</button>
+      </div>
     </div>
   </div>
 
-  <form method="get" class="row journal-toolbar hc-filter-bar" action="{{ url_for('health.health_calendar') }}">
-    <input type="hidden" name="year" value="{{ year }}" />
-    <div style="flex:1;min-width:140px;">
-      <label class="field-label">搜索说明/名称</label>
-      <input type="search" name="q" value="{{ filters.q }}" placeholder="说明、目的、医院…" />
-    </div>
-    <div>
-      <label class="field-label">类别</label>
-      <select name="category">
-        <option value="">全部</option>
-        {% for c in doc_categories %}
-        <option value="{{ c.id }}" {% if filters.category == c.id %}selected{% endif %}>{{ c.label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label class="field-label">看病目的</label>
-      <select name="purpose">
-        <option value="">全部</option>
-        {% for t in purpose_tags %}
-        <option value="{{ t.label }}" {% if filters.purpose == t.label %}selected{% endif %}>{{ t.label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label class="field-label">&nbsp;</label>
-      <button type="submit">筛选</button>
-    </div>
-  </form>
+  <div class="hc-panel card-inset{% if panel == 'upload' %} is-open{% endif %}" id="hc-upload-panel">
+    <h3 class="hc-panel-title">上传材料</h3>
+    <p class="muted" style="margin-top:0;">文件会按 <code>YYYY-MM-DD_名称_医院.ext</code> 重命名，并写入 <code>医疗/数据/</code>{% if is_local %}；随后 git push 进 GitHub{% endif %}。</p>
+    <form method="post" enctype="multipart/form-data" class="health-upload-form" action="{{ url_for('health.health_calendar') }}">
+      <input type="hidden" name="action" value="upload" />
+      <div class="health-upload-grid">
+        <div>
+          <label class="field-label">文件 *</label>
+          <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/*" required />
+        </div>
+        <div>
+          <label class="field-label">日期 *</label>
+          <input type="date" name="exam_date" required />
+        </div>
+        <div>
+          <label class="field-label">名称（可选）</label>
+          <input type="text" name="exam_name" placeholder="如：尿常规 / 门诊病历" />
+        </div>
+        <div>
+          <label class="field-label">医院（可选）</label>
+          <input type="text" name="hospital" placeholder="空则记为未注医院" />
+        </div>
+        <div class="health-upload-span">
+          <label class="field-label">类别 *（可多选）</label>
+          <div class="hc-check-row">
+            {% for c in upload_categories %}
+            <label class="hc-check"><input type="checkbox" name="category" value="{{ c.id }}" {% if loop.first %}checked{% endif %} /> {{ c.label }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="health-upload-span">
+          <label class="field-label">看病目的（可选）</label>
+          <input type="text" name="purpose" placeholder="自由填写，如：过敏性紫癜随访" list="hc-purpose-suggest" />
+          <datalist id="hc-purpose-suggest">
+            {% for t in purpose_tags %}
+            <option value="{{ t.label }}"></option>
+            {% endfor %}
+          </datalist>
+        </div>
+      </div>
+      <label class="field-label" style="margin-top:12px;">说明（可选，可搜索）</label>
+      <textarea name="notes" rows="2" placeholder="症状、医嘱摘要…"></textarea>
+      <label class="field-label" style="margin-top:12px;">目的补充（可选）</label>
+      <textarea name="purpose_note" rows="2"></textarea>
+      <div class="hc-panel-actions">
+        <button type="submit" class="hc-btn hc-btn-primary">上传并入库</button>
+        <button type="button" class="hc-btn" data-close-panel="upload">收起</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="hc-panel card-inset{% if panel == 'search' %} is-open{% endif %}" id="hc-search-panel">
+    <h3 class="hc-panel-title">搜索 / 筛选</h3>
+    <form method="get" class="health-upload-form" action="{{ url_for('health.health_calendar') }}">
+      <input type="hidden" name="year" value="{{ year }}" />
+      <div class="health-upload-grid">
+        <div class="health-upload-span">
+          <label class="field-label">关键词</label>
+          <input type="search" name="q" value="{{ filters.q }}" placeholder="说明、名称、目的、医院…" />
+        </div>
+        <div class="health-upload-span">
+          <label class="field-label">看病目的</label>
+          <input type="text" name="purpose" value="{{ filters.purpose }}" placeholder="包含匹配" list="hc-purpose-suggest" />
+        </div>
+        <div class="health-upload-span">
+          <label class="field-label">类别（可多选，不选=全部）</label>
+          <div class="hc-check-row">
+            {% for c in doc_categories %}
+            <label class="hc-check"><input type="checkbox" name="category" value="{{ c.id }}" {% if c.id in filters.categories %}checked{% endif %} /> {{ c.label }}</label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="hc-panel-actions">
+        <button type="submit" class="hc-btn hc-btn-primary">应用筛选</button>
+        <a class="hc-btn" href="{{ url_for('health.health_calendar', year=year) }}">清空</a>
+        <button type="button" class="hc-btn" data-close-panel="search">收起</button>
+      </div>
+    </form>
+  </div>
 
   <div class="hc-legend">
     <span class="hc-leg"><i class="hc-dot is-empty"></i>无检查</span>
@@ -133,7 +180,7 @@
       <p class="eyebrow" id="hc-drawer-date">—</p>
       <h3 id="hc-drawer-title">检查材料</h3>
     </div>
-    <button type="button" class="btn-secondary hc-close-btn" id="hc-drawer-close">关闭</button>
+    <button type="button" class="hc-btn" id="hc-drawer-close">关闭</button>
   </div>
   <div class="hc-drawer-body">
     <div class="hc-drawer-list" id="hc-drawer-list"></div>
@@ -144,12 +191,12 @@
       <h4>编辑标注</h4>
       <label class="field-label">名称</label>
       <input type="text" name="exam_name" id="hc-edit-name" />
-      <label class="field-label">类别</label>
-      <select name="category" id="hc-edit-category">
+      <label class="field-label">类别（可多选）</label>
+      <div class="hc-check-row" id="hc-edit-categories">
         {% for c in doc_categories %}
-        <option value="{{ c.id }}">{{ c.label }}</option>
+        <label class="hc-check"><input type="checkbox" name="category" value="{{ c.id }}" data-cat="{{ c.id }}" /> {{ c.label }}</label>
         {% endfor %}
-      </select>
+      </div>
       <label class="field-label">检查结果</label>
       <select name="result_status" id="hc-edit-result">
         <option value="unknown">未标注</option>
@@ -157,17 +204,12 @@
         <option value="abnormal">有异常</option>
       </select>
       <label class="field-label">看病目的</label>
-      <select name="purpose" id="hc-edit-purpose">
-        <option value="">（空）</option>
-        {% for t in purpose_tags %}
-        <option value="{{ t.label }}">{{ t.label }}</option>
-        {% endfor %}
-      </select>
+      <input type="text" name="purpose" id="hc-edit-purpose" list="hc-purpose-suggest" />
       <label class="field-label">说明（可搜索）</label>
       <textarea name="notes" id="hc-edit-notes" rows="2"></textarea>
       <label class="field-label">目的补充</label>
       <textarea name="purpose_note" id="hc-edit-note" rows="2"></textarea>
-      <div class="hc-edit-actions"><button type="submit">保存标注</button></div>
+      <div class="hc-edit-actions"><button type="submit" class="hc-btn hc-btn-primary">保存标注</button></div>
     </form>
   </div>
 </aside>
@@ -184,7 +226,6 @@
 
   var yearSelect = document.getElementById("hc-year-select");
   var calUrl = {{ url_for('health.health_calendar')|tojson }};
-
   var mask = document.getElementById("hc-mask");
   var drawer = document.getElementById("hc-drawer");
   var listEl = document.getElementById("hc-drawer-list");
@@ -197,13 +238,16 @@
   var editPurpose = document.getElementById("hc-edit-purpose");
   var editNote = document.getElementById("hc-edit-note");
   var editNotes = document.getElementById("hc-edit-notes");
-  var editCategory = document.getElementById("hc-edit-category");
   var editName = document.getElementById("hc-edit-name");
   var saveTpl = {{ save_url_template|tojson }};
   var calYear = {{ year|tojson }};
   var filterQ = {{ filters.q|tojson }};
-  var filterCat = {{ filters.category|tojson }};
+  var filterCats = {{ filters.categories|tojson }};
   var filterPurpose = {{ filters.purpose|tojson }};
+  var uploadPanel = document.getElementById("hc-upload-panel");
+  var searchPanel = document.getElementById("hc-search-panel");
+  var btnUpload = document.getElementById("hc-btn-upload");
+  var btnSearch = document.getElementById("hc-btn-search");
 
   function fileUrl(rel, download) {
     var parts = String(rel || "").replace(/^\/+/, "").split("/");
@@ -222,17 +266,44 @@
   }
   function calLink(y) {
     var u = calUrl + "?year=" + encodeURIComponent(y);
-    if (filterCat) u += "&category=" + encodeURIComponent(filterCat);
+    (filterCats || []).forEach(function (c) {
+      u += "&category=" + encodeURIComponent(c);
+    });
     if (filterQ) u += "&q=" + encodeURIComponent(filterQ);
     if (filterPurpose) u += "&purpose=" + encodeURIComponent(filterPurpose);
     return u;
   }
+  function setPanel(name, open) {
+    var panel = name === "upload" ? uploadPanel : searchPanel;
+    var btn = name === "upload" ? btnUpload : btnSearch;
+    var other = name === "upload" ? searchPanel : uploadPanel;
+    var otherBtn = name === "upload" ? btnSearch : btnUpload;
+    if (other) other.classList.remove("is-open");
+    if (otherBtn) otherBtn.setAttribute("aria-expanded", "false");
+    if (!panel) return;
+    if (open === false) panel.classList.remove("is-open");
+    else if (open === true) panel.classList.add("is-open");
+    else panel.classList.toggle("is-open");
+    if (btn) btn.setAttribute("aria-expanded", panel.classList.contains("is-open") ? "true" : "false");
+  }
+
+  if (btnUpload) btnUpload.addEventListener("click", function () { setPanel("upload"); });
+  if (btnSearch) btnSearch.addEventListener("click", function () { setPanel("search"); });
+  document.querySelectorAll("[data-close-panel]").forEach(function (el) {
+    el.addEventListener("click", function () {
+      setPanel(el.getAttribute("data-close-panel"), false);
+    });
+  });
 
   if (yearSelect) {
     yearSelect.addEventListener("change", function () {
       window.location = calLink(yearSelect.value);
     });
   }
+  var yPrev = document.getElementById("hc-year-prev");
+  var yNext = document.getElementById("hc-year-next");
+  if (yPrev) yPrev.addEventListener("click", function () { window.location = calLink(calYear - 1); });
+  if (yNext) yNext.addEventListener("click", function () { window.location = calLink(calYear + 1); });
 
   function closeDrawer(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -256,8 +327,8 @@
     }
     body += '<div class="hc-preview-actions">';
     if (rel) {
-      body += '<a class="btn-secondary pill-link" href="' + fileUrl(rel, false) + '" target="_blank" rel="noopener">新窗口</a>';
-      body += '<a class="btn-secondary pill-link" href="' + fileUrl(rel, true) + '">下载</a>';
+      body += '<a class="hc-btn" href="' + fileUrl(rel, false) + '" target="_blank" rel="noopener">新窗口</a>';
+      body += '<a class="hc-btn" href="' + fileUrl(rel, true) + '">下载</a>';
     }
     body += "</div>";
     previewEl.innerHTML = body;
@@ -269,8 +340,11 @@
     editPurpose.value = rec.purpose || "";
     editNote.value = rec.purpose_note || "";
     if (editNotes) editNotes.value = rec.notes || "";
-    if (editCategory) editCategory.value = rec.category || "lab";
     if (editName) editName.value = rec.exam_name || "";
+    var selected = rec.categories && rec.categories.length ? rec.categories : (rec.category ? [rec.category] : []);
+    document.querySelectorAll("#hc-edit-categories input[type=checkbox]").forEach(function (cb) {
+      cb.checked = selected.indexOf(cb.value) >= 0;
+    });
   }
 
   function openDrawer(date, records) {

@@ -315,12 +315,103 @@
   gap: 2px;
   font-size: 12px;
 }
+.hc-year-label select {
+  height: 36px;
+  min-width: 88px;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
 .hc-head-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 10px;
+  gap: 8px;
   justify-content: flex-end;
+}
+.hc-year-nav {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+button.hc-btn,
+a.hc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-width: 36px;
+  padding: 0 14px;
+  margin: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  filter: none;
+  transform: none;
+}
+button.hc-btn:hover,
+a.hc-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  filter: none;
+  transform: none;
+  box-shadow: none;
+  color: #0f172a;
+}
+button.hc-btn.hc-btn-primary,
+a.hc-btn.hc-btn-primary {
+  background: #0c4a6e;
+  border-color: #0c4a6e;
+  color: #fff;
+  box-shadow: none;
+}
+button.hc-btn.hc-btn-primary:hover,
+a.hc-btn.hc-btn-primary:hover {
+  background: #075985;
+  border-color: #075985;
+  color: #fff;
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+.hc-panel {
+  display: none;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.hc-panel.is-open { display: block; }
+.hc-panel-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.hc-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.hc-check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+.hc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
 }
 .hc-filter-bar {
   margin-top: 14px;
@@ -330,6 +421,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.health-upload-span { grid-column: 1 / -1; }
 .health-upload-form input[type="text"],
 .health-upload-form input[type="date"],
 .health-upload-form input[type="search"],

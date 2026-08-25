@@ -23,7 +23,6 @@ from .store import (
     add_uploaded_record,
     build_year_calendar,
     get_record,
-    group_events,
     list_records,
     load_doc_categories,
     load_purpose_tags,
@@ -54,17 +53,49 @@ def _guard():
     _owner_or_403()
 
 
+def _filter_args():
+    purpose = (request.args.get("purpose") or request.form.get("purpose") or "").strip()
+    q = (request.args.get("q") or "").strip()
+    cats = [c.strip() for c in request.args.getlist("category") if c.strip()]
+    if not cats:
+        one = (request.args.get("category") or "").strip()
+        if one:
+            cats = [one]
+    return purpose, q, cats
+
+
 @health_bp.route("/")
 def health_home():
     return redirect(url_for("health.health_calendar"))
 
 
-@health_bp.route("/calendar")
+@health_bp.route("/calendar", methods=["GET", "POST"])
 def health_calendar():
-    purpose = (request.args.get("purpose") or "").strip()
-    category = (request.args.get("category") or "").strip()
-    q = (request.args.get("q") or "").strip()
-    records = list_records(person="self", purpose=purpose, category=category, q=q)
+    # 上传表单 POST 到本页
+    if request.method == "POST" and (request.form.get("action") or "") == "upload":
+        cats = [c.strip() for c in request.form.getlist("category") if c.strip()]
+        rec, err = add_uploaded_record(
+            file_storage=request.files.get("file"),
+            exam_date=(request.form.get("exam_date") or "").strip(),
+            categories=cats,
+            exam_name=(request.form.get("exam_name") or "").strip(),
+            notes=(request.form.get("notes") or "").strip(),
+            purpose=(request.form.get("purpose") or "").strip(),
+            purpose_note=(request.form.get("purpose_note") or "").strip(),
+            hospital=(request.form.get("hospital") or "").strip(),
+        )
+        if err:
+            flash(err, "error")
+            return redirect(url_for("health.health_calendar", panel="upload"))
+        flash(
+            f"已上传并重命名为 {rec.get('file_name')}（{rec.get('github_path')}）。本机请 git push 同步 GitHub。",
+            "success",
+        )
+        y = (rec.get("exam_date") or "")[:4]
+        return redirect(url_for("health.health_calendar", year=y or None))
+
+    purpose, q, cats = _filter_args()
+    records = list_records(person="self", purpose=purpose, categories=cats, q=q)
     choices = year_choices(list_records(person="self"))
     raw = (request.args.get("year") or "").strip()
     if raw.isdigit():
@@ -79,6 +110,7 @@ def health_calendar():
                 if day.get("empty") or not day.get("count"):
                     continue
                 by_date[day["date"]] = day["records"]
+    panel = (request.args.get("panel") or "").strip()
     return render_template(
         "calendar.html",
         cal=cal,
@@ -86,8 +118,10 @@ def health_calendar():
         year=year,
         purpose_tags=load_purpose_tags(),
         doc_categories=load_doc_categories(),
+        upload_categories=[c for c in load_doc_categories() if c.get("upload")],
         day_data=by_date,
-        filters={"purpose": purpose, "category": category, "q": q},
+        filters={"purpose": purpose, "categories": cats, "q": q},
+        panel=panel,
         save_url_template=url_for("health.health_record_save", record_id="__ID__"),
         is_local=not bool((os.environ.get("BILL_DATA_DIR") or "").strip()),
     )
@@ -95,12 +129,13 @@ def health_calendar():
 
 @health_bp.route("/upload", methods=["GET", "POST"])
 def health_upload():
-    cats = [c for c in load_doc_categories() if c.get("upload")]
+    # 兼容旧链接：并入日历页
     if request.method == "POST":
+        cats = [c.strip() for c in request.form.getlist("category") if c.strip()]
         rec, err = add_uploaded_record(
             file_storage=request.files.get("file"),
             exam_date=(request.form.get("exam_date") or "").strip(),
-            category=(request.form.get("category") or "").strip(),
+            categories=cats,
             exam_name=(request.form.get("exam_name") or "").strip(),
             notes=(request.form.get("notes") or "").strip(),
             purpose=(request.form.get("purpose") or "").strip(),
@@ -109,57 +144,21 @@ def health_upload():
         )
         if err:
             flash(err, "error")
-            return render_template(
-                "upload.html",
-                purpose_tags=load_purpose_tags(),
-                doc_categories=cats,
-                form=request.form,
-                is_local=not bool((os.environ.get("BILL_DATA_DIR") or "").strip()),
-            )
-        flash(
-            f"已上传：{rec.get('exam_name')}（{rec.get('github_path')}）。本机请 git push 同步到 GitHub。",
-            "success",
-        )
+            return redirect(url_for("health.health_calendar", panel="upload"))
+        flash(f"已上传：{rec.get('file_name')}", "success")
         y = (rec.get("exam_date") or "")[:4]
         return redirect(url_for("health.health_calendar", year=y or None))
-    return render_template(
-        "upload.html",
-        purpose_tags=load_purpose_tags(),
-        doc_categories=cats,
-        form={},
-        is_local=not bool((os.environ.get("BILL_DATA_DIR") or "").strip()),
-    )
-
-
-@health_bp.route("/timeline")
-def health_timeline():
-    purpose = (request.args.get("purpose") or "").strip()
-    category = (request.args.get("category") or "").strip()
-    q = (request.args.get("q") or "").strip()
-    records = list_records(person="self", purpose=purpose, category=category, q=q)
-    events = group_events(records)
-    return render_template(
-        "timeline.html",
-        events=events,
-        filters={"purpose": purpose, "category": category, "q": q},
-        purpose_tags=load_purpose_tags(),
-        doc_categories=load_doc_categories(),
-    )
+    return redirect(url_for("health.health_calendar", panel="upload"))
 
 
 @health_bp.route("/records")
 def health_records():
-    purpose = (request.args.get("purpose") or "").strip()
-    category = (request.args.get("category") or "").strip()
-    q = (request.args.get("q") or "").strip()
-    records = list_records(person="self", purpose=purpose, category=category, q=q)
-    return render_template(
-        "records.html",
-        records=records,
-        filters={"purpose": purpose, "category": category, "q": q},
-        purpose_tags=load_purpose_tags(),
-        doc_categories=load_doc_categories(),
-    )
+    return redirect(url_for("health.health_calendar", panel="search"))
+
+
+@health_bp.route("/timeline")
+def health_timeline():
+    return redirect(url_for("health.health_calendar"))
 
 
 @health_bp.route("/records/<record_id>/save", methods=["POST"])
@@ -170,12 +169,13 @@ def health_record_save(record_id: str):
     if not rec:
         flash("未找到该档案", "error")
         return redirect(url_for("health.health_calendar", year=year or None))
+    cats = [c.strip() for c in request.form.getlist("category") if c.strip()]
     if update_record_meta(
         record_id,
         purpose=(request.form.get("purpose") or "").strip(),
         purpose_note=(request.form.get("purpose_note") or "").strip(),
         result_status=(request.form.get("result_status") or "").strip(),
-        category=(request.form.get("category") or "").strip() or None,
+        categories=cats or None,
         notes=(request.form.get("notes") or "").strip(),
         exam_name=(request.form.get("exam_name") or "").strip() or None,
     ):
@@ -189,31 +189,7 @@ def health_record_save(record_id: str):
 
 @health_bp.route("/records/<record_id>", methods=["GET", "POST"])
 def health_record_detail(record_id: str):
-    rec = get_record(record_id)
-    if not rec:
-        flash("未找到该档案", "error")
-        return redirect(url_for("health.health_calendar"))
-    if request.method == "POST":
-        if update_record_meta(
-            record_id,
-            purpose=(request.form.get("purpose") or "").strip(),
-            purpose_note=(request.form.get("purpose_note") or "").strip(),
-            result_status=(request.form.get("result_status") or "").strip(),
-            category=(request.form.get("category") or "").strip() or None,
-            notes=(request.form.get("notes") or "").strip(),
-            exam_name=(request.form.get("exam_name") or "").strip() or None,
-        ):
-            flash("已保存", "success")
-        else:
-            flash("更新失败", "error")
-        y = (rec.get("exam_date") or "")[:4]
-        return redirect(url_for("health.health_calendar", year=y or None))
-    return render_template(
-        "detail.html",
-        record=rec,
-        purpose_tags=load_purpose_tags(),
-        doc_categories=load_doc_categories(),
-    )
+    return redirect(url_for("health.health_calendar"))
 
 
 @health_bp.route("/file/<path:relpath>")
