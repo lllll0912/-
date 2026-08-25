@@ -41,7 +41,9 @@
           <details class="nav-group" open>
             <summary class="nav-group-title">健康</summary>
             <div class="nav-group-links">
-              <a class="nav-link{% if request.endpoint and request.endpoint.startswith('health.') %} active{% endif %}" href="{{ url_for('health.health_calendar') }}">医疗日历</a>
+              <a class="nav-link{% if request.endpoint == 'health.health_calendar' %} active{% endif %}" href="{{ url_for('health.health_calendar') }}">医疗日历</a>
+              <a class="nav-link{% if request.endpoint == 'health.health_upload' %} active{% endif %}" href="{{ url_for('health.health_upload') }}">上传材料</a>
+              <a class="nav-link{% if request.endpoint == 'health.health_records' %} active{% endif %}" href="{{ url_for('health.health_records') }}">搜索档案</a>
             </div>
           </details>
           {% endif %}

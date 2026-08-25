@@ -315,12 +315,34 @@
   gap: 2px;
   font-size: 12px;
 }
-.hc-year-input {
-  width: 88px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--line, #dbe4f0);
-  font: inherit;
+.hc-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.hc-filter-bar {
+  margin-top: 14px;
+}
+.health-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.health-upload-form input[type="text"],
+.health-upload-form input[type="date"],
+.health-upload-form input[type="search"],
+.health-upload-form select,
+.health-upload-form textarea,
+.hc-edit-form input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 700px) {
+  .health-upload-grid {
+    grid-template-columns: 1fr;
+  }
 }
 body.hc-drawer-open {
   overflow: hidden;

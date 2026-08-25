@@ -1,0 +1,11 @@
+{
+  "categories": [
+    {"id": "lab", "label": "检验单", "folder": "01_本人_检验单", "upload": true},
+    {"id": "outpatient", "label": "门诊单", "folder": "05_本人_门诊单", "upload": true},
+    {"id": "medication", "label": "用药", "folder": "06_本人_用药", "upload": true},
+    {"id": "herb", "label": "中药方", "folder": "02_本人_中药方", "upload": true},
+    {"id": "checkup", "label": "体检", "folder": "03_本人_体检与病史", "upload": false},
+    {"id": "history", "label": "病史", "folder": "03_本人_体检与病史", "upload": false},
+    {"id": "other", "label": "其他", "folder": "01_本人_检验单", "upload": false}
+  ]
+}

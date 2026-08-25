@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}医疗日历 {{ year }}{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('health.static', filename='health.css') }}?v=4" />
+<link rel="stylesheet" href="{{ url_for('health.static', filename='health.css') }}?v=5" />
 <style>
   /* 内联兜底：避免 CSS 缓存导致遮罩一直挡住页面 */
   #hc-mask { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 1200; }
@@ -19,24 +19,61 @@
     <div>
       <p class="eyebrow">Medical Year Calendar</p>
       <h2 class="hc-title">{{ year }} 年医疗日历</h2>
-      <p class="muted">选年份查看全年；点有检查的日期可预览、下载，并编辑目的 / 结果。</p>
+      <p class="muted">点日期预览/下载；可按类别与说明筛选。</p>
     </div>
-    <form class="hc-year-nav" method="get" action="{{ url_for('health.health_calendar') }}" id="hc-year-form">
-      <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=year-1) }}" title="上一年">‹</a>
-      <label class="hc-year-label">
-        <span class="muted">年份</span>
-        <select name="year" id="hc-year-select" aria-label="选择年份">
-          {% for y in years %}
-          <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
-          {% endfor %}
-          {% if year not in years %}
-          <option value="{{ year }}" selected>{{ year }}</option>
-          {% endif %}
-        </select>
-      </label>
-      <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=year+1) }}" title="下一年">›</a>
-    </form>
+    <div class="hc-head-actions">
+      <a class="pill-link" href="{{ url_for('health.health_upload') }}"><button type="button">上传材料</button></a>
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_records') }}">搜索档案</a>
+      <form class="hc-year-nav" method="get" action="{{ url_for('health.health_calendar') }}" id="hc-year-form">
+        <input type="hidden" name="category" value="{{ filters.category }}" />
+        <input type="hidden" name="q" value="{{ filters.q }}" />
+        <input type="hidden" name="purpose" value="{{ filters.purpose }}" />
+        <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=year-1, category=filters.category or none, q=filters.q or none, purpose=filters.purpose or none) }}" title="上一年">‹</a>
+        <label class="hc-year-label">
+          <span class="muted">年份</span>
+          <select name="year" id="hc-year-select" aria-label="选择年份">
+            {% for y in years %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+            {% if year not in years %}
+            <option value="{{ year }}" selected>{{ year }}</option>
+            {% endif %}
+          </select>
+        </label>
+        <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=year+1, category=filters.category or none, q=filters.q or none, purpose=filters.purpose or none) }}" title="下一年">›</a>
+      </form>
+    </div>
   </div>
+
+  <form method="get" class="row journal-toolbar hc-filter-bar" action="{{ url_for('health.health_calendar') }}">
+    <input type="hidden" name="year" value="{{ year }}" />
+    <div style="flex:1;min-width:140px;">
+      <label class="field-label">搜索说明/名称</label>
+      <input type="search" name="q" value="{{ filters.q }}" placeholder="说明、目的、医院…" />
+    </div>
+    <div>
+      <label class="field-label">类别</label>
+      <select name="category">
+        <option value="">全部</option>
+        {% for c in doc_categories %}
+        <option value="{{ c.id }}" {% if filters.category == c.id %}selected{% endif %}>{{ c.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label">看病目的</label>
+      <select name="purpose">
+        <option value="">全部</option>
+        {% for t in purpose_tags %}
+        <option value="{{ t.label }}" {% if filters.purpose == t.label %}selected{% endif %}>{{ t.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label">&nbsp;</label>
+      <button type="submit">筛选</button>
+    </div>
+  </form>
 
   <div class="hc-legend">
     <span class="hc-leg"><i class="hc-dot is-empty"></i>无检查</span>
@@ -105,6 +142,14 @@
       <input type="hidden" name="next" id="hc-edit-next" value="" />
       <input type="hidden" name="year" value="{{ year }}" />
       <h4>编辑标注</h4>
+      <label class="field-label">名称</label>
+      <input type="text" name="exam_name" id="hc-edit-name" />
+      <label class="field-label">类别</label>
+      <select name="category" id="hc-edit-category">
+        {% for c in doc_categories %}
+        <option value="{{ c.id }}">{{ c.label }}</option>
+        {% endfor %}
+      </select>
       <label class="field-label">检查结果</label>
       <select name="result_status" id="hc-edit-result">
         <option value="unknown">未标注</option>
@@ -118,7 +163,9 @@
         <option value="{{ t.label }}">{{ t.label }}</option>
         {% endfor %}
       </select>
-      <label class="field-label">说明</label>
+      <label class="field-label">说明（可搜索）</label>
+      <textarea name="notes" id="hc-edit-notes" rows="2"></textarea>
+      <label class="field-label">目的补充</label>
       <textarea name="purpose_note" id="hc-edit-note" rows="2"></textarea>
       <div class="hc-edit-actions"><button type="submit">保存标注</button></div>
     </form>
@@ -137,11 +184,6 @@
 
   var yearSelect = document.getElementById("hc-year-select");
   var calUrl = {{ url_for('health.health_calendar')|tojson }};
-  if (yearSelect) {
-    yearSelect.addEventListener("change", function () {
-      window.location = calUrl + "?year=" + encodeURIComponent(yearSelect.value);
-    });
-  }
 
   var mask = document.getElementById("hc-mask");
   var drawer = document.getElementById("hc-drawer");
@@ -154,8 +196,14 @@
   var editResult = document.getElementById("hc-edit-result");
   var editPurpose = document.getElementById("hc-edit-purpose");
   var editNote = document.getElementById("hc-edit-note");
+  var editNotes = document.getElementById("hc-edit-notes");
+  var editCategory = document.getElementById("hc-edit-category");
+  var editName = document.getElementById("hc-edit-name");
   var saveTpl = {{ save_url_template|tojson }};
   var calYear = {{ year|tojson }};
+  var filterQ = {{ filters.q|tojson }};
+  var filterCat = {{ filters.category|tojson }};
+  var filterPurpose = {{ filters.purpose|tojson }};
 
   function fileUrl(rel, download) {
     var parts = String(rel || "").replace(/^\/+/, "").split("/");
@@ -171,6 +219,19 @@
   function isImage(name) {
     var n = String(name || "").toLowerCase();
     return [".jpg", ".jpeg", ".png", ".webp", ".gif"].some(function (x) { return n.slice(-x.length) === x; });
+  }
+  function calLink(y) {
+    var u = calUrl + "?year=" + encodeURIComponent(y);
+    if (filterCat) u += "&category=" + encodeURIComponent(filterCat);
+    if (filterQ) u += "&q=" + encodeURIComponent(filterQ);
+    if (filterPurpose) u += "&purpose=" + encodeURIComponent(filterPurpose);
+    return u;
+  }
+
+  if (yearSelect) {
+    yearSelect.addEventListener("change", function () {
+      window.location = calLink(yearSelect.value);
+    });
   }
 
   function closeDrawer(e) {
@@ -203,10 +264,13 @@
 
     editForm.action = saveTpl.replace("__ID__", encodeURIComponent(rec.id));
     var monthNum = parseInt(String(date || "").split("-")[1] || "1", 10);
-    editNext.value = calUrl + "?year=" + encodeURIComponent(calYear) + "#month-" + monthNum;
+    editNext.value = calLink(calYear) + "#month-" + monthNum;
     editResult.value = rec.result_status || "unknown";
     editPurpose.value = rec.purpose || "";
     editNote.value = rec.purpose_note || "";
+    if (editNotes) editNotes.value = rec.notes || "";
+    if (editCategory) editCategory.value = rec.category || "lab";
+    if (editName) editName.value = rec.exam_name || "";
   }
 
   function openDrawer(date, records) {
@@ -223,7 +287,8 @@
       btn.className = "hc-item status-" + (rec.result_status || "unknown");
       btn.innerHTML =
         "<strong>" + (rec.exam_name || "未命名") + "</strong>" +
-        "<span class='muted'>" + (rec.purpose || "未标目的") + " · " + statusLabel(rec.result_status) + "</span>";
+        "<span class='muted'>" + (rec.category_label || rec.category || "") +
+        " · " + (rec.purpose || "未标目的") + " · " + statusLabel(rec.result_status) + "</span>";
       btn.addEventListener("click", function () {
         listEl.querySelectorAll(".hc-item").forEach(function (el) { el.classList.remove("active"); });
         btn.classList.add("active");

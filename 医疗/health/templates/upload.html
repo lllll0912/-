@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% block title %}上传医疗材料{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('health.static', filename='health.css') }}?v=5" />
+
+<section class="card">
+  <div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px;">
+    <div>
+      <p class="eyebrow">Upload</p>
+      <h2 style="margin:0 0 6px;">上传医疗材料</h2>
+      <p class="muted">填写日期、类别与说明后上传。文件落到 <code>医疗/数据/…</code>，catalog 一并更新{% if is_local %}；随后 <strong>git push</strong> 即可进 GitHub{% else %}。正式站上传先保存在云端可写目录，建议重要材料在本机上传再推送{% endif %}。</p>
+    </div>
+    <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar') }}">返回日历</a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="health-upload-form" style="margin-top:16px;">
+    <div class="health-upload-grid">
+      <div>
+        <label class="field-label">文件 *</label>
+        <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/*" required />
+      </div>
+      <div>
+        <label class="field-label">日期 *</label>
+        <input type="date" name="exam_date" value="{{ form.get('exam_date','') }}" required />
+      </div>
+      <div>
+        <label class="field-label">类别 *</label>
+        <select name="category" required>
+          {% for c in doc_categories %}
+          <option value="{{ c.id }}" {% if form.get('category')==c.id %}selected{% endif %}>{{ c.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="field-label">名称（可选）</label>
+        <input type="text" name="exam_name" placeholder="如：尿常规 / 门诊病历" value="{{ form.get('exam_name','') }}" />
+      </div>
+      <div>
+        <label class="field-label">医院（可选）</label>
+        <input type="text" name="hospital" value="{{ form.get('hospital','') }}" />
+      </div>
+      <div>
+        <label class="field-label">看病目的（可选）</label>
+        <select name="purpose">
+          <option value="">（空）</option>
+          {% for t in purpose_tags %}
+          <option value="{{ t.label }}" {% if form.get('purpose')==t.label %}selected{% endif %}>{{ t.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <label class="field-label" style="margin-top:12px;">说明（可选，可搜索）</label>
+    <textarea name="notes" rows="3" placeholder="症状、医嘱摘要、备注…">{{ form.get('notes','') }}</textarea>
+    <label class="field-label" style="margin-top:12px;">目的补充说明（可选）</label>
+    <textarea name="purpose_note" rows="2">{{ form.get('purpose_note','') }}</textarea>
+    <div style="margin-top:14px;">
+      <button type="submit">上传并入库</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
