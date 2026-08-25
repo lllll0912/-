@@ -176,5 +176,5 @@ def health_file(relpath: str):
         mimetype=mime,
         as_attachment=download,
         download_name=path.name if download else None,
-        max_age=0,
+        max_age=86400 if not download else 0,
     )

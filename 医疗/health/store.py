@@ -17,20 +17,46 @@ RESULT_ABNORMAL = "abnormal"
 RESULT_STATUSES = (RESULT_UNKNOWN, RESULT_NORMAL, RESULT_ABNORMAL)
 
 
-def _site_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def health_root() -> Path:
-    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
-    if data_dir:
-        return Path(data_dir) / "health"
-    # 本地：医疗/数据（与代码同功能目录，可进私密 Git）
+def bundled_health_root() -> Path:
+    """仓库/镜像内的医疗数据（含检验单原件）。正式站从这里读图，不进 Fly Volume。"""
     return Path(__file__).resolve().parents[1] / "数据"
 
 
+def meta_root() -> Path:
+    """
+    可写元数据（catalog / 目的标注）。
+    - 本机：直接写 医疗/数据/_meta
+    - Fly：只写 Volume 上很小的 JSON（/data/health/_meta），不存照片
+    """
+    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
+    if data_dir:
+        return Path(data_dir) / "health" / "_meta"
+    return bundled_health_root() / "_meta"
+
+
+def health_root() -> Path:
+    """原件根目录：始终用镜像/仓库里的数据，避免照片占云盘。"""
+    return bundled_health_root()
+
+
+def _bundled_meta_file(name: str) -> Path:
+    return bundled_health_root() / "_meta" / name
+
+
 def catalog_path() -> Path:
-    return health_root() / "_meta" / "catalog.json"
+    """优先用 Volume 里已有标注的 catalog；否则用镜像自带的（含 2024/2025 全部记录）。"""
+    writable = meta_root() / "catalog.json"
+    bundled = _bundled_meta_file("catalog.json")
+    if writable.is_file():
+        try:
+            data = json.loads(writable.read_text(encoding="utf-8"))
+            if data.get("records"):
+                return writable
+        except Exception:
+            pass
+    if bundled.is_file():
+        return bundled
+    return writable
 
 
 def load_catalog() -> dict[str, Any]:
@@ -46,7 +72,8 @@ def load_catalog() -> dict[str, Any]:
 
 
 def save_catalog(catalog: dict[str, Any]) -> None:
-    path = catalog_path()
+    """标注只写到 meta_root（Fly 上仅小 JSON）。"""
+    path = meta_root() / "catalog.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(catalog, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -257,13 +284,14 @@ def build_year_calendar(year: int, records: list[dict[str, Any]]) -> dict[str, A
 
 
 def resolve_asset(relpath: str) -> Optional[Path]:
-    """relpath 相对 health 根，如 01_本人_检验单/xxx.jpg"""
+    """原件只从镜像/仓库 医疗/数据 读取（不占 Fly 云盘）。"""
     rel = (relpath or "").replace("\\", "/").lstrip("/")
     if not rel or ".." in rel.split("/"):
         return None
-    path = (health_root() / rel).resolve()
+    root = bundled_health_root().resolve()
+    path = (root / rel).resolve()
     try:
-        path.relative_to(health_root().resolve())
+        path.relative_to(root)
     except ValueError:
         return None
     if not path.is_file():
@@ -272,17 +300,17 @@ def resolve_asset(relpath: str) -> Optional[Path]:
 
 
 def load_watchlist() -> dict[str, Any]:
-    path = health_root() / "_meta" / "watchlist.json"
-    if not path.is_file():
-        return {"items": []}
-    return json.loads(path.read_text(encoding="utf-8"))
+    for path in (meta_root() / "watchlist.json", _bundled_meta_file("watchlist.json")):
+        if path.is_file():
+            return json.loads(path.read_text(encoding="utf-8"))
+    return {"items": []}
 
 
 def load_purpose_tags() -> list[dict[str, str]]:
-    path = health_root() / "_meta" / "purposes.json"
-    if path.is_file():
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data.get("tags") or []
+    for path in (meta_root() / "purposes.json", _bundled_meta_file("purposes.json")):
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return data.get("tags") or []
     return load_catalog().get("purpose_tags") or []
 
 
