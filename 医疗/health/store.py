@@ -24,9 +24,9 @@ def bundled_health_root() -> Path:
 
 def data_write_root() -> Path:
     """
-    新上传落盘目录（相对路径仍按 Git 结构，便于 push 进私密仓）。
-    - 本机：医疗/数据/（直接进仓库）
-    - Fly：/data/health/（立刻可看；大图不进镜像，可用同步脚本拉回 Git）
+    新上传落盘目录（相对路径与 Git 一致）。
+    - 本机：医疗/数据/（直接进仓库，再 git push）
+    - Fly：/data/health/（临时缓存立刻可看；同时尽量 commit 进 GitHub）
     """
     data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
     if data_dir:
@@ -486,6 +486,7 @@ def add_uploaded_record(
 
     record_id = _make_record_id(primary, exam_date, name)
     event_id = f"evt-self-{exam_date}"
+    github_path = f"医疗/数据/{rel}"
     rec = {
         "id": record_id,
         "person": "self",
@@ -505,7 +506,7 @@ def add_uploaded_record(
         "indicators_status": "pending" if "lab" in cats else "n/a",
         "indicators_file": None,
         "result_status": RESULT_UNKNOWN,
-        "github_path": f"医疗/数据/{rel}",
+        "github_path": github_path,
     }
 
     catalog = load_catalog()
@@ -525,6 +526,23 @@ def add_uploaded_record(
     if writable_cat.resolve() != bundled_cat.resolve() and not (os.environ.get("BILL_DATA_DIR") or "").strip():
         bundled_cat.parent.mkdir(parents=True, exist_ok=True)
         bundled_cat.write_text(writable_cat.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # 正式站：额外 commit 进私密 GitHub（Volume 仅作立刻预览缓存）
+    from .github_sync import github_sync_enabled, sync_upload_to_github
+
+    if github_sync_enabled():
+        ok, detail = sync_upload_to_github(
+            github_path=github_path,
+            file_bytes=raw,
+            catalog=catalog,
+            exam_name=name,
+        )
+        enriched = enrich_record(rec)
+        enriched["github_synced"] = ok
+        enriched["github_sync_detail"] = detail
+        if not ok:
+            return enriched, f"已暂存到服务器，但写入 GitHub 失败：{detail}"
+        return enriched, ""
 
     return enrich_record(rec), ""
 
@@ -569,6 +587,10 @@ def update_record_meta(
             break
     if found:
         save_catalog(catalog)
+        from .github_sync import github_sync_enabled, sync_catalog_to_github
+
+        if github_sync_enabled():
+            sync_catalog_to_github(catalog, reason=f"annotate {record_id}")
     return found
 
 

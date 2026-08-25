@@ -30,6 +30,8 @@ from .store import (
     update_record_meta,
     year_choices,
 )
+from .github_sync import sync_status_label
+
 
 health_bp = Blueprint(
     "health",
@@ -44,6 +46,20 @@ health_bp = Blueprint(
 def _owner_or_403():
     if not is_owner():
         abort(403)
+
+
+def _flash_upload_ok(rec: dict) -> None:
+    path = rec.get("github_path") or rec.get("file_name") or ""
+    mode = sync_status_label()
+    if mode == "github":
+        flash(f"已上传并写入 GitHub：{path}", "success")
+    elif mode == "local":
+        flash(f"已上传到本机 {path}。请 git push 同步私密仓。", "success")
+    else:
+        flash(
+            f"已上传到服务器缓存：{path}。尚未配置 HEALTH_GITHUB_TOKEN，文件还没进 GitHub。",
+            "error",
+        )
 
 
 @health_bp.before_request
@@ -87,10 +103,7 @@ def health_calendar():
         if err:
             flash(err, "error")
             return redirect(url_for("health.health_calendar", panel="upload"))
-        flash(
-            f"已上传并重命名为 {rec.get('file_name')}（{rec.get('github_path')}）。本机请 git push 同步 GitHub。",
-            "success",
-        )
+        _flash_upload_ok(rec or {})
         y = (rec.get("exam_date") or "")[:4]
         return redirect(url_for("health.health_calendar", year=y or None))
 
@@ -124,6 +137,7 @@ def health_calendar():
         panel=panel,
         save_url_template=url_for("health.health_record_save", record_id="__ID__"),
         is_local=not bool((os.environ.get("BILL_DATA_DIR") or "").strip()),
+        sync_mode=sync_status_label(),
     )
 
 
@@ -145,7 +159,7 @@ def health_upload():
         if err:
             flash(err, "error")
             return redirect(url_for("health.health_calendar", panel="upload"))
-        flash(f"已上传：{rec.get('file_name')}", "success")
+        _flash_upload_ok(rec or {})
         y = (rec.get("exam_date") or "")[:4]
         return redirect(url_for("health.health_calendar", year=y or None))
     return redirect(url_for("health.health_calendar", panel="upload"))

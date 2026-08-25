@@ -10,6 +10,8 @@ primary_region = "nrt"
   BILL_DATA_DIR = "/data"
   PORT = "8501"
   BILL_COOKIE_SECURE = "1"
+  HEALTH_GITHUB_REPO = "lllll0912/-"
+  HEALTH_GITHUB_BRANCH = "main"
 
 [http_service]
   internal_port = 8501

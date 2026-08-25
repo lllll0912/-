@@ -43,7 +43,16 @@
 
   <div class="hc-panel card-inset{% if panel == 'upload' %} is-open{% endif %}" id="hc-upload-panel">
     <h3 class="hc-panel-title">上传材料</h3>
-    <p class="muted" style="margin-top:0;">文件会按 <code>YYYY-MM-DD_名称_医院.ext</code> 重命名，并写入 <code>医疗/数据/</code>{% if is_local %}；随后 git push 进 GitHub{% endif %}。</p>
+    <p class="muted" style="margin-top:0;">
+      文件按 <code>YYYY-MM-DD_名称_医院.ext</code> 重命名。
+      {% if sync_mode == 'github' %}
+      正式站会<strong>自动写入私密 GitHub</strong>（<code>医疗/数据/</code>），Volume 仅作立刻预览缓存。
+      {% elif is_local %}
+      本机写入 <code>医疗/数据/</code>；随后 <code>git push</code> 进 GitHub。
+      {% else %}
+      当前未配置 <code>HEALTH_GITHUB_TOKEN</code>，文件只会暂存在服务器，还进不了 GitHub。
+      {% endif %}
+    </p>
     <form method="post" enctype="multipart/form-data" class="health-upload-form" action="{{ url_for('health.health_calendar') }}">
       <input type="hidden" name="action" value="upload" />
       <div class="health-upload-grid">
