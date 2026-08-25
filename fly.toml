@@ -1,8 +1,10 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/fly-apps/flyctl/master/api/schemas/fly.v1.json
+# 部署入口（须在仓库根，供 GitHub Actions / flyctl 使用）
 app = "bill-private-lllll0912"
 primary_region = "nrt"
 
 [build]
+  dockerfile = "脚本/Dockerfile"
 
 [env]
   BILL_DATA_DIR = "/data"

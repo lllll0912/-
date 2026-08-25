@@ -4,15 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - "app.py"
-      - "auth.py"
-      - "modules/**"
-      - "templates/**"
-      - "static/**"
-      - "tools/**"
-      - "poems_data/**"
-      - "requirements.txt"
-      - "Dockerfile"
+      - "医疗/**"
+      - "喝水/**"
+      - "诗词/**"
+      - "日志/**"
+      - "账单/**"
+      - "脚本/**"
       - "fly.toml"
       - ".github/workflows/deploy-bill-fly.yml"
   workflow_dispatch:

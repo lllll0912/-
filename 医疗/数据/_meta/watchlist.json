@@ -1,0 +1,84 @@
+{
+  "updated_at": "2026-08-25 15:43:20",
+  "items": [
+    {
+      "name": "蛋白质",
+      "aliases": [
+        "PRO",
+        "蛋白",
+        "蛋白质(干化学)"
+      ],
+      "exam_hint": "尿常规"
+    },
+    {
+      "name": "潜血",
+      "aliases": [
+        "BLD",
+        "ERY",
+        "潜血"
+      ],
+      "exam_hint": "尿常规"
+    },
+    {
+      "name": "红细胞",
+      "aliases": [
+        "RBC",
+        "红细胞(尿流式)"
+      ],
+      "exam_hint": "尿常规"
+    },
+    {
+      "name": "尿蛋白肌酐比",
+      "aliases": [
+        "TP/CRE",
+        "尿蛋白/尿肌酐",
+        "m-ALB/UCREA"
+      ],
+      "exam_hint": "尿蛋白肌酐比"
+    },
+    {
+      "name": "尿微量白蛋白肌酐比",
+      "aliases": [
+        "ACR",
+        "m-ALB/UCREA"
+      ],
+      "exam_hint": "尿微量白蛋白肌酐比"
+    },
+    {
+      "name": "IgA",
+      "aliases": [
+        "IgA"
+      ],
+      "exam_hint": "免疫8"
+    },
+    {
+      "name": "C1q",
+      "aliases": [
+        "C1q"
+      ],
+      "exam_hint": "免疫8"
+    },
+    {
+      "name": "总胆红素",
+      "aliases": [
+        "TBIL"
+      ],
+      "exam_hint": "生化21"
+    },
+    {
+      "name": "直接胆红素",
+      "aliases": [
+        "DBIL"
+      ],
+      "exam_hint": "生化21"
+    },
+    {
+      "name": "CRP",
+      "aliases": [
+        "CRP",
+        "C反应蛋白"
+      ],
+      "exam_hint": "CRP"
+    }
+  ]
+}

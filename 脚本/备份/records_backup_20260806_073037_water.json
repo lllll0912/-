@@ -1,0 +1,389 @@
+{
+  "settings": {
+    "schedule_start": "09:30",
+    "schedule_interval_hours": 1.5,
+    "cup_ml": 450,
+    "daily_goal_ml": 2000,
+    "reminder_enabled": true
+  },
+  "records": [
+    {
+      "id": "c4fbcec7-591b-47c4-8f79-d959bb6d0340",
+      "timestamp": "2026-07-09T15:15:48",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "1ea77e4d-c23c-42a5-b208-8bb19607646e",
+      "timestamp": "2026-07-09T15:55:47",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "0712a094-61fb-414b-beb6-bcc1613332f5",
+      "timestamp": "2026-07-09T17:33:52",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "be78a985-a3b4-4f2d-be02-811875bd14d7",
+      "timestamp": "2026-07-10T11:09:19",
+      "amount_ml": 225,
+      "unit": "cup",
+      "raw_amount": 0.5
+    },
+    {
+      "id": "375189e8-9927-494a-b0cf-f537e86c3d73",
+      "timestamp": "2026-07-13T13:36:37",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "9ab52b29-63e9-4e3a-a287-10d651872e64",
+      "timestamp": "2026-07-13T16:13:45",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "ef35724b-dc4d-4dbb-8021-e265bdb5fe12",
+      "timestamp": "2026-07-13T18:20:59",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "0a0e289e-a6a4-48c5-9571-7acdd73c3726",
+      "timestamp": "2026-07-13T18:21:01",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "668a8ad3-b186-40ec-8504-98e2f467fc3a",
+      "timestamp": "2026-07-14T13:35:41",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "530e76e2-2bb8-4b73-a47e-9c9ffb566094",
+      "timestamp": "2026-07-14T15:09:07",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "77696a5f-620f-4cb6-92b4-a8f75141dde3",
+      "timestamp": "2026-07-14T17:39:39",
+      "amount_ml": 900,
+      "unit": "cup",
+      "raw_amount": 2.0
+    },
+    {
+      "id": "ba772bb6-b537-4803-bbc5-624bd4d914ce",
+      "timestamp": "2026-07-15T11:48:02",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "4cd642d6-aa6a-4bc5-aa6f-eea6b68207b0",
+      "timestamp": "2026-07-15T14:18:44",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "a9f6c560-5da6-4b5f-8700-504825c24fac",
+      "timestamp": "2026-07-15T15:06:10",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "a45e32a9-2e82-4788-9d1b-9e06554a1468",
+      "timestamp": "2026-07-15T17:47:18",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "c6e2e366-9cc3-4226-b6db-0e42895ade58",
+      "timestamp": "2026-07-16T11:16:02",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "ea8562b6-ba90-4adf-a532-4aef8298c099",
+      "timestamp": "2026-07-16T14:48:43",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "b4dc9cd7-0a24-4b78-b28b-155e00d7d979",
+      "timestamp": "2026-07-16T16:33:16",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "7f20099c-40bc-439f-be77-8df68e497272",
+      "timestamp": "2026-07-17T13:32:15",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "1e91abcf-bbd2-4c4e-9ac9-017f57b2eb1d",
+      "timestamp": "2026-07-20T11:10:16",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "0afcc01a-6c69-4afd-975e-acd053a7c263",
+      "timestamp": "2026-07-20T14:17:22",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "d92a48e7-d043-496c-8547-de1d0343ce34",
+      "timestamp": "2026-07-20T16:24:04",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "23fd9533-07c5-4b81-82f4-404d03540224",
+      "timestamp": "2026-07-21T17:55:10",
+      "amount_ml": 450,
+      "unit": "cup",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "f8172a8e-92ec-4a4b-b7bf-a28c7edec057",
+      "timestamp": "2026-07-24T15:48:19",
+      "amount_ml": 250,
+      "unit": "ml",
+      "raw_amount": 250.0
+    },
+    {
+      "id": "477becb0-cbae-4430-ab7a-d1397478e2b0",
+      "timestamp": "2026-07-24T17:44:01",
+      "amount_ml": 900,
+      "unit": "ml",
+      "raw_amount": 900.0
+    },
+    {
+      "id": "0e4fcee3-8956-4656-8998-c3e4110151b9",
+      "timestamp": "2026-07-24T17:51:49",
+      "amount_ml": 1,
+      "unit": "ml",
+      "raw_amount": 1.0
+    },
+    {
+      "id": "9337084c-ef42-4c4e-94b4-eba10f7cedb3",
+      "timestamp": "2026-07-24T17:58:10",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "b5c0228d-d995-40d5-aeda-f8e672a82c5e",
+      "timestamp": "2026-07-24T18:23:37",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "65e8afed-8508-403a-a856-1ed51dd846d2",
+      "timestamp": "2026-07-27T09:55:36",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "8615e256-325f-443a-b1d1-2706d763293e",
+      "timestamp": "2026-07-28T03:48:57",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "79e6c08c-15f6-4b3b-bfdc-4e93ca4bedcd",
+      "timestamp": "2026-07-28T06:41:11",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "aba9f088-b211-456d-a8c1-5dd01d150400",
+      "timestamp": "2026-07-28T08:09:26",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "24994590-bfcb-4ea2-acc4-454c09e59364",
+      "timestamp": "2026-07-28T10:29:15",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "5470122f-e0c3-4455-8eb3-17d08ce3a2a6",
+      "timestamp": "2026-07-29T06:22:54",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "96586496-2085-4849-810e-c8db7dc20f3a",
+      "timestamp": "2026-07-29T06:22:55",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "0c0605c7-01ea-49c4-969f-8edf742f75f5",
+      "timestamp": "2026-07-29T06:29:36",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "479de248-5e81-4e03-840e-f5658b4b75ad",
+      "timestamp": "2026-07-29T07:28:12",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "8627e8cb-1ed7-495f-80cc-41a1013eaae3",
+      "timestamp": "2026-07-29T08:16:05",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "12f822f4-3b88-4d50-a844-ad11e0e146c6",
+      "timestamp": "2026-07-30T11:10:12+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "49c1c552-955e-4abe-8c93-fd98249b17b1",
+      "timestamp": "2026-07-30T15:06:51+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "6eebcb7d-3b38-4743-92d8-fb7a0a92425d",
+      "timestamp": "2026-07-30T15:22:49+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "87fd9168-685f-4622-a677-1c121c0f1a91",
+      "timestamp": "2026-07-30T15:44:17+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "0449c409-8bdc-4206-ac3b-446d7058608e",
+      "timestamp": "2026-07-30T17:45:16+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "69f19bf1-c59b-4182-9b16-0eea99702ad3",
+      "timestamp": "2026-07-31T15:52:33+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "d649922c-f88c-435e-be74-782d21efbed3",
+      "timestamp": "2026-07-31T16:49:09+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "a9e7c60b-1712-4920-b2a7-6cf6e9a63510",
+      "timestamp": "2026-08-03T11:11:44+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "c0bac1d1-f01d-4012-9173-dcd1c498fd2b",
+      "timestamp": "2026-08-03T14:54:55+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "0ef26994-3443-4fca-9f67-6ce7f88a6fca",
+      "timestamp": "2026-08-03T14:54:59+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "c8181eb5-ce33-4114-8f0d-97c2b767ab72",
+      "timestamp": "2026-08-03T15:40:10+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "25484e4e-9cd0-460d-8e64-6c482c924fd7",
+      "timestamp": "2026-08-04T10:47:03+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "728e1186-f4bb-462d-a652-332b9b4fc344",
+      "timestamp": "2026-08-04T11:53:51+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "c3cec022-66f3-4655-87dd-f719dde9c102",
+      "timestamp": "2026-08-04T16:32:21+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "f9e5d695-58da-44f6-98cd-b855aac9938c",
+      "timestamp": "2026-08-05T15:07:20+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    },
+    {
+      "id": "72138ec4-2ea0-43f6-bc37-0a58f589dfdc",
+      "timestamp": "2026-08-05T16:14:31+08:00",
+      "amount_ml": 450,
+      "unit": "ml",
+      "raw_amount": 450.0
+    }
+  ]
+}

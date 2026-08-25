@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-08-06T07:29:50",
+  "files": [
+    "records_backup_20260806_072950_water.json",
+    "records_backup_20260806_072950_poems.json",
+    "records_backup_20260806_072950_notes.json",
+    "records_backup_20260806_072950_category_rules.json",
+    "records_backup_20260806_072950_fulldata.zip"
+  ],
+  "note": "含账单 CSV/类型/旅游，以及喝水、诗词、笔记 JSON；*_fulldata.zip 为可整站恢复的原始数据包。"
+}

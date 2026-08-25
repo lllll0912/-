@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% block title %}健康档案库{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center;gap:12px;">
+    <div>
+      <h2 style="margin:0;">档案库</h2>
+      <p class="muted" style="margin:6px 0 0;">本人材料列表 · 可点进详情改看病目的</p>
+    </div>
+    <div class="row" style="gap:8px;">
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar') }}">医疗日历</a>
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_timeline') }}">时间线</a>
+    </div>
+  </div>
+  <form method="get" class="row journal-toolbar" style="margin-top:14px;">
+    <div>
+      <label class="field-label">看病目的</label>
+      <select name="purpose">
+        <option value="">全部</option>
+        {% for t in purpose_tags %}
+        <option value="{{ t.label }}" {% if filters.purpose == t.label %}selected{% endif %}>{{ t.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label">类型</label>
+      <select name="category">
+        <option value="">全部</option>
+        <option value="lab" {% if filters.category == 'lab' %}selected{% endif %}>检验</option>
+        <option value="herb" {% if filters.category == 'herb' %}selected{% endif %}>中药方</option>
+        <option value="checkup" {% if filters.category == 'checkup' %}selected{% endif %}>体检</option>
+        <option value="history" {% if filters.category == 'history' %}selected{% endif %}>病史</option>
+      </select>
+    </div>
+    <div>
+      <label class="field-label">&nbsp;</label>
+      <button type="submit">筛选</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="health-records-table">
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th>目的</th>
+          <th>检查/材料</th>
+          <th>医院</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td>{{ r.exam_date }}</td>
+          <td>{{ r.purpose or '—' }}</td>
+          <td>{{ r.exam_name }}</td>
+          <td>{{ r.hospital or '—' }}</td>
+          <td><a href="{{ url_for('health.health_record_detail', record_id=r.id) }}">详情</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="muted">无匹配记录</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block title %}{{ record.exam_name }} · 健康档案{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px;">
+    <div>
+      <p class="eyebrow">{{ record.exam_date }} · {{ record.category }}</p>
+      <h2 style="margin:0 0 6px;">{{ record.exam_name }}</h2>
+      <p class="muted">{{ record.hospital or '医院未标注' }}{% if record.specimen %} · {{ record.specimen }}{% endif %}</p>
+    </div>
+    <div class="row" style="gap:8px;">
+      {% if record.exam_date and record.exam_date|length >= 4 %}
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=record.exam_date[:4]|int) }}">日历</a>
+      {% endif %}
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_records') }}">档案库</a>
+    </div>
+  </div>
+</div>
+
+<div class="health-detail-grid">
+  <div class="card">
+    <h3>原件</h3>
+    {% set fname = (record.file_name or '')|lower %}
+    {% if fname.endswith('.jpg') or fname.endswith('.jpeg') or fname.endswith('.png') or fname.endswith('.webp') or fname.endswith('.gif') %}
+    <img class="health-preview" src="{{ url_for('health.health_file', relpath=record.file_relpath) }}" alt="{{ record.exam_name }}" />
+    {% elif fname.endswith('.pdf') %}
+    <p><a href="{{ url_for('health.health_file', relpath=record.file_relpath) }}" target="_blank" rel="noopener">打开 PDF</a></p>
+    {% else %}
+    <p><a href="{{ url_for('health.health_file', relpath=record.file_relpath) }}" target="_blank" rel="noopener">下载 / 打开原件</a></p>
+    {% endif %}
+    <div class="row" style="margin-top:12px;gap:8px;">
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_file', relpath=record.file_relpath, download=1) }}">下载原件</a>
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_file', relpath=record.file_relpath) }}" target="_blank" rel="noopener">新窗口</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>标注</h3>
+    <form method="post" class="health-purpose-form">
+      <label class="field-label">检查结果（日历着色用）</label>
+      <select name="result_status">
+        <option value="unknown" {% if record.result_status == 'unknown' %}selected{% endif %}>未标注</option>
+        <option value="normal" {% if record.result_status == 'normal' %}selected{% endif %}>正常</option>
+        <option value="abnormal" {% if record.result_status == 'abnormal' %}selected{% endif %}>有异常</option>
+      </select>
+      <label class="field-label" style="margin-top:12px;">看病目的</label>
+      <select name="purpose">
+        <option value="">（空）</option>
+        {% for t in purpose_tags %}
+        <option value="{{ t.label }}" {% if record.purpose == t.label %}selected{% endif %}>{{ t.label }}</option>
+        {% endfor %}
+      </select>
+      <label class="field-label" style="margin-top:12px;">说明</label>
+      <textarea name="purpose_note" rows="3" style="width:100%;">{{ record.purpose_note or '' }}</textarea>
+      <div style="margin-top:12px;">
+        <button type="submit">保存</button>
+      </div>
+    </form>
+    {% if record.notes %}
+    <p class="muted" style="margin-top:16px;">建档备注：{{ record.notes }}</p>
+    {% endif %}
+    <p class="muted" style="margin-top:8px;">事件 ID：{{ record.event_id or '—' }} · OCR：{{ record.indicators_status }}</p>
+  </div>
+</div>
+{% endblock %}

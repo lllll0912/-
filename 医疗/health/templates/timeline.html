@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+{% block title %}健康时间线{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center;gap:12px;">
+    <div>
+      <h2 style="margin:0;">健康时间线</h2>
+      <p class="muted" style="margin:6px 0 0;">按就诊日聚合 · 看病目的为主标题</p>
+    </div>
+    <div class="row" style="gap:8px;">
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar') }}">医疗日历</a>
+    </div>
+  </div>
+  <form method="get" class="row journal-toolbar" style="margin-top:14px;">
+    <div>
+      <label class="field-label">看病目的</label>
+      <select name="purpose">
+        <option value="">全部</option>
+        {% for t in purpose_tags %}
+        <option value="{{ t.label }}" {% if filters.purpose == t.label %}selected{% endif %}>{{ t.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label">类型</label>
+      <select name="category">
+        <option value="" {% if not filters.category %}selected{% endif %}>全部</option>
+        <option value="lab" {% if filters.category == 'lab' %}selected{% endif %}>检验</option>
+        <option value="herb" {% if filters.category == 'herb' %}selected{% endif %}>中药方</option>
+        <option value="checkup" {% if filters.category == 'checkup' %}selected{% endif %}>体检</option>
+        <option value="history" {% if filters.category == 'history' %}selected{% endif %}>病史</option>
+      </select>
+    </div>
+    <div>
+      <label class="field-label">&nbsp;</label>
+      <button type="submit">筛选</button>
+    </div>
+  </form>
+</div>
+
+{% if not events %}
+<div class="card"><p class="muted">没有匹配的事件。</p></div>
+{% else %}
+<section class="health-timeline">
+  {% for ev in events %}
+  <article class="card health-day" id="event-{{ ev.event_id }}">
+    <div class="health-day-side">
+      <div class="health-date-badge">{{ ev.exam_date[5:7] if ev.exam_date|length >= 7 else '--' }}-{{ ev.exam_date[8:10] if ev.exam_date|length >= 10 else '--' }}</div>
+      <div class="muted">{{ ev.exam_date[:4] if ev.exam_date else '' }}</div>
+    </div>
+    <div class="health-day-body">
+      <h3 class="health-purpose-title">{{ ev.purpose or '未标注目的' }}</h3>
+      {% if ev.purpose_note %}<p class="muted">{{ ev.purpose_note }}</p>{% endif %}
+      <div class="health-material-chips">
+        {% for r in ev.records %}
+        <a class="health-mat-chip" href="{{ url_for('health.health_record_detail', record_id=r.id) }}">
+          <span class="cat">{{ r.exam_name }}</span>
+          {% if r.hospital %}<span class="muted">{{ r.hospital }}</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,74 @@
+{
+  "travel_profiles": [
+    {
+      "travel_tag": "天津",
+      "travel_companions": "李佳乐、李佳乐、李佳乐、李佳乐、李佳乐、李佳乐",
+      "start_date": "2024-07-12",
+      "end_date": "2024-07-14",
+      "duration_days": 3,
+      "record_count": 6,
+      "expense": 1315.21,
+      "income": 200.0
+    },
+    {
+      "travel_tag": "秦皇岛",
+      "travel_companions": null,
+      "start_date": "2024-07-26",
+      "end_date": "2024-07-29",
+      "duration_days": 4,
+      "record_count": 22,
+      "expense": 2027.37,
+      "income": 0.0
+    },
+    {
+      "travel_tag": "烟台",
+      "travel_companions": null,
+      "start_date": "2024-09-27",
+      "end_date": "2024-10-01",
+      "duration_days": 5,
+      "record_count": 44,
+      "expense": 5455.85,
+      "income": 0.0
+    },
+    {
+      "travel_tag": "洛阳",
+      "travel_companions": "江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁、江中宇，李菁菁",
+      "start_date": "2024-12-21",
+      "end_date": "2024-12-25",
+      "duration_days": 5,
+      "record_count": 17,
+      "expense": 2264.2,
+      "income": 200.0
+    },
+    {
+      "travel_tag": "清明沈阳",
+      "travel_companions": "黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁、黄丞城，黄丞城对象，江中宇，李菁菁",
+      "start_date": "2025-04-03",
+      "end_date": "2025-04-07",
+      "duration_days": 5,
+      "record_count": 14,
+      "expense": 2678.0,
+      "income": 0.0
+    },
+    {
+      "travel_tag": "五一珠海、澳门",
+      "travel_companions": "肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞、肖勋忞",
+      "start_date": "2025-05-01",
+      "end_date": "2025-05-08",
+      "duration_days": 8,
+      "record_count": 35,
+      "expense": 8580.27,
+      "income": 204.0
+    },
+    {
+      "travel_tag": "毕业旅行乌兰察布、呼和浩特",
+      "travel_companions": "gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay、gaygay",
+      "start_date": "2025-06-25",
+      "end_date": "2025-06-30",
+      "duration_days": 6,
+      "record_count": 28,
+      "expense": 4964.74,
+      "income": 0.0
+    }
+  ]
+}

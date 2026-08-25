@@ -1,0 +1,25 @@
+{
+  "tags": [
+    {
+      "id": "hsp_followup",
+      "label": "过敏性紫癜随访"
+    },
+    {
+      "id": "rheum_screen",
+      "label": "风湿免疫排查"
+    },
+    {
+      "id": "tcm_cold_sweat",
+      "label": "中药调理-怕冷手足汗"
+    },
+    {
+      "id": "annual_checkup",
+      "label": "年度体检"
+    },
+    {
+      "id": "history_doc",
+      "label": "病史资料"
+    }
+  ],
+  "updated_at": "2026-08-25 15:43:20"
+}

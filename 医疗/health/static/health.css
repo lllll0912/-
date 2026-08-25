@@ -1,0 +1,344 @@
+/* 医疗日历 — 功能内静态样式 */
+.hc-head-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.hc-title {
+  margin: 4px 0 8px;
+  font-size: 1.65rem;
+  letter-spacing: 0.02em;
+}
+.hc-year-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hc-year-nav select {
+  min-width: 96px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #dbe4f0);
+  background: #fff;
+  font: inherit;
+}
+.hc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #475569;
+}
+.hc-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hc-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  display: inline-block;
+  border: 1px solid transparent;
+}
+.hc-dot.is-empty {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+.hc-dot.is-unknown {
+  background: #bae6fd;
+  border-color: #7dd3fc;
+}
+.hc-dot.is-normal {
+  background: #a7f3d0;
+  border-color: #6ee7b7;
+}
+.hc-dot.is-abnormal {
+  background: #fecaca;
+  border-color: #f87171;
+}
+.hc-year-strip {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 16px;
+}
+.hc-strip-cell {
+  text-decoration: none;
+  color: inherit;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+.hc-strip-cell em {
+  display: block;
+  font-style: normal;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+.hc-strip-cell strong {
+  font-variant-numeric: tabular-nums;
+  color: #0c4a6e;
+}
+.hc-strip-cell.has {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+.hc-strip-cell.abn {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+.hc-statline {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.hc-months {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.hc-month {
+  padding: 14px 14px 12px;
+}
+.hc-month-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.hc-month-hd h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.hc-month-meta {
+  font-size: 12px;
+  color: #0c4a6e;
+  font-variant-numeric: tabular-nums;
+}
+.hc-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+}
+.hc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.hc-day {
+  position: relative;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155;
+  font: inherit;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hc-day.is-pad {
+  visibility: hidden;
+}
+.hc-day-n {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  z-index: 1;
+}
+.hc-day.has-rec {
+  cursor: pointer;
+  font-weight: 650;
+}
+.hc-day.has-rec:hover {
+  outline: 2px solid rgba(14, 116, 144, 0.35);
+  outline-offset: 1px;
+}
+.hc-day-mark {
+  position: absolute;
+  inset: 3px;
+  border-radius: 7px;
+  z-index: 0;
+}
+.hc-day.status-unknown .hc-day-mark {
+  background: linear-gradient(160deg, #e0f2fe, #bae6fd);
+}
+.hc-day.status-normal .hc-day-mark {
+  background: linear-gradient(160deg, #d1fae5, #a7f3d0);
+}
+.hc-day.status-abnormal .hc-day-mark {
+  background: linear-gradient(160deg, #fee2e2, #fecaca);
+  box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.25);
+}
+.hc-day-cnt {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 700;
+  color: #0c4a6e;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 抽屉预览：默认隐藏，.is-open 才显示（避免 display:flex 盖掉 hidden） */
+.hc-drawer-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1200;
+  display: none;
+}
+.hc-drawer-mask.is-open {
+  display: block;
+}
+.hc-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(560px, 100vw);
+  height: 100vh;
+  background: #fff;
+  z-index: 1210;
+  display: none;
+  flex-direction: column;
+  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.18);
+}
+.hc-drawer.is-open {
+  display: flex;
+}
+.hc-close-btn {
+  cursor: pointer;
+  z-index: 2;
+}
+.hc-drawer-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.hc-drawer-hd h3 {
+  margin: 4px 0 0;
+}
+.hc-drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+.hc-drawer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  max-height: 28vh;
+  overflow: auto;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.hc-item {
+  text-align: left;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: inherit;
+}
+.hc-item.active {
+  border-color: #38bdf8;
+  background: #f0f9ff;
+}
+.hc-item.status-abnormal {
+  border-left: 3px solid #ef4444;
+}
+.hc-item.status-normal {
+  border-left: 3px solid #10b981;
+}
+.hc-drawer-preview {
+  padding: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.hc-preview-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #0f172a08;
+}
+.hc-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.hc-edit-form {
+  padding: 14px 18px 24px;
+}
+.hc-edit-form h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.hc-edit-form select,
+.hc-edit-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+.hc-edit-actions {
+  margin-top: 4px;
+}
+.hc-year-label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.hc-year-input {
+  width: 88px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #dbe4f0);
+  font: inherit;
+}
+body.hc-drawer-open {
+  overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+  .hc-months {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hc-year-strip {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .hc-months {
+    grid-template-columns: 1fr;
+  }
+  .hc-drawer {
+    width: 100vw;
+  }
+}

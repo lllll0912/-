@@ -1,0 +1,262 @@
+{% extends "layout.html" %}
+{% block title %}医疗日历 {{ year }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('health.static', filename='health.css') }}?v=4" />
+<style>
+  /* 内联兜底：避免 CSS 缓存导致遮罩一直挡住页面 */
+  #hc-mask { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 1200; }
+  #hc-mask.hc-open { display: block; }
+  #hc-drawer {
+    display: none; position: fixed; top: 0; right: 0; width: min(560px, 100vw); height: 100vh;
+    background: #fff; z-index: 1210; flex-direction: column; box-shadow: -12px 0 40px rgba(15,23,42,.18);
+  }
+  #hc-drawer.hc-open { display: flex; }
+  body.hc-drawer-open { overflow: hidden; }
+</style>
+
+<section class="hc-head card">
+  <div class="hc-head-row">
+    <div>
+      <p class="eyebrow">Medical Year Calendar</p>
+      <h2 class="hc-title">{{ year }} 年医疗日历</h2>
+      <p class="muted">选年份查看全年；点有检查的日期可预览、下载，并编辑目的 / 结果。</p>
+    </div>
+    <form class="hc-year-nav" method="get" action="{{ url_for('health.health_calendar') }}" id="hc-year-form">
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=year-1) }}" title="上一年">‹</a>
+      <label class="hc-year-label">
+        <span class="muted">年份</span>
+        <select name="year" id="hc-year-select" aria-label="选择年份">
+          {% for y in years %}
+          <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+          {% if year not in years %}
+          <option value="{{ year }}" selected>{{ year }}</option>
+          {% endif %}
+        </select>
+      </label>
+      <a class="btn-secondary pill-link" href="{{ url_for('health.health_calendar', year=year+1) }}" title="下一年">›</a>
+    </form>
+  </div>
+
+  <div class="hc-legend">
+    <span class="hc-leg"><i class="hc-dot is-empty"></i>无检查</span>
+    <span class="hc-leg"><i class="hc-dot is-unknown"></i>有检查 · 结果未标</span>
+    <span class="hc-leg"><i class="hc-dot is-normal"></i>正常</span>
+    <span class="hc-leg"><i class="hc-dot is-abnormal"></i>有异常</span>
+  </div>
+
+  <div class="hc-year-strip">
+    {% for m in cal.month_summaries %}
+    <a class="hc-strip-cell {% if m.has_records %}has{% endif %} {% if m.abnormal_days %}abn{% endif %}" href="#month-{{ m.month }}">
+      <em>{{ m.month }}月</em>
+      {% if m.has_records %}<strong>{{ m.count }}</strong>{% else %}<span>—</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  <p class="muted hc-statline">本年 {{ cal.record_count }} 份材料 · {{ cal.days_with_records }} 个检查日{% if cal.abnormal_days %} · {{ cal.abnormal_days }} 天含异常{% endif %}</p>
+</section>
+
+<div class="hc-months">
+  {% for month in cal.months %}
+  <section class="hc-month card" id="month-{{ month.month }}">
+    <header class="hc-month-hd">
+      <h3>{{ month.label }}</h3>
+      {% if month.count %}
+      <span class="hc-month-meta">{{ month.count }} 份{% if month.abnormal_days %} · {{ month.abnormal_days }} 天异常{% endif %}</span>
+      {% else %}
+      <span class="hc-month-meta muted">无检查</span>
+      {% endif %}
+    </header>
+    <div class="hc-weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+    <div class="hc-grid">
+      {% for week in month.weeks %}
+        {% for day in week %}
+          {% if day.empty %}
+          <div class="hc-day is-pad"></div>
+          {% elif day.count %}
+          <button type="button" class="hc-day has-rec status-{{ day.status }}" data-date="{{ day.date }}" title="{{ day.date }} · {{ day.count }} 份">
+            <span class="hc-day-n">{{ day.day }}</span>
+            <span class="hc-day-mark"></span>
+            {% if day.count > 1 %}<span class="hc-day-cnt">{{ day.count }}</span>{% endif %}
+          </button>
+          {% else %}
+          <div class="hc-day"><span class="hc-day-n">{{ day.day }}</span></div>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+<div id="hc-mask" aria-hidden="true"></div>
+<aside id="hc-drawer" aria-hidden="true">
+  <div class="hc-drawer-hd">
+    <div>
+      <p class="eyebrow" id="hc-drawer-date">—</p>
+      <h3 id="hc-drawer-title">检查材料</h3>
+    </div>
+    <button type="button" class="btn-secondary hc-close-btn" id="hc-drawer-close">关闭</button>
+  </div>
+  <div class="hc-drawer-body">
+    <div class="hc-drawer-list" id="hc-drawer-list"></div>
+    <div class="hc-drawer-preview" id="hc-drawer-preview"><p class="muted">选择材料预览原件</p></div>
+    <form class="hc-edit-form" id="hc-edit-form" method="post" action="#">
+      <input type="hidden" name="next" id="hc-edit-next" value="" />
+      <input type="hidden" name="year" value="{{ year }}" />
+      <h4>编辑标注</h4>
+      <label class="field-label">检查结果</label>
+      <select name="result_status" id="hc-edit-result">
+        <option value="unknown">未标注</option>
+        <option value="normal">正常</option>
+        <option value="abnormal">有异常</option>
+      </select>
+      <label class="field-label">看病目的</label>
+      <select name="purpose" id="hc-edit-purpose">
+        <option value="">（空）</option>
+        {% for t in purpose_tags %}
+        <option value="{{ t.label }}">{{ t.label }}</option>
+        {% endfor %}
+      </select>
+      <label class="field-label">说明</label>
+      <textarea name="purpose_note" id="hc-edit-note" rows="2"></textarea>
+      <div class="hc-edit-actions"><button type="submit">保存标注</button></div>
+    </form>
+  </div>
+</aside>
+
+<script id="hc-day-data" type="application/json">{{ day_data|tojson }}</script>
+<script>
+(function () {
+  var dayData = {};
+  try {
+    dayData = JSON.parse(document.getElementById("hc-day-data").textContent || "{}");
+  } catch (e) {
+    dayData = {};
+  }
+
+  var yearSelect = document.getElementById("hc-year-select");
+  var calUrl = {{ url_for('health.health_calendar')|tojson }};
+  if (yearSelect) {
+    yearSelect.addEventListener("change", function () {
+      window.location = calUrl + "?year=" + encodeURIComponent(yearSelect.value);
+    });
+  }
+
+  var mask = document.getElementById("hc-mask");
+  var drawer = document.getElementById("hc-drawer");
+  var listEl = document.getElementById("hc-drawer-list");
+  var previewEl = document.getElementById("hc-drawer-preview");
+  var dateEl = document.getElementById("hc-drawer-date");
+  var titleEl = document.getElementById("hc-drawer-title");
+  var editForm = document.getElementById("hc-edit-form");
+  var editNext = document.getElementById("hc-edit-next");
+  var editResult = document.getElementById("hc-edit-result");
+  var editPurpose = document.getElementById("hc-edit-purpose");
+  var editNote = document.getElementById("hc-edit-note");
+  var saveTpl = {{ save_url_template|tojson }};
+  var calYear = {{ year|tojson }};
+
+  function fileUrl(rel, download) {
+    var parts = String(rel || "").replace(/^\/+/, "").split("/");
+    var u = "/health/file/" + parts.map(encodeURIComponent).join("/");
+    if (download) u += "?download=1";
+    return u;
+  }
+  function statusLabel(s) {
+    if (s === "abnormal") return "异常";
+    if (s === "normal") return "正常";
+    return "未标注";
+  }
+  function isImage(name) {
+    var n = String(name || "").toLowerCase();
+    return [".jpg", ".jpeg", ".png", ".webp", ".gif"].some(function (x) { return n.slice(-x.length) === x; });
+  }
+
+  function closeDrawer(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    mask.classList.remove("hc-open");
+    drawer.classList.remove("hc-open");
+    mask.setAttribute("aria-hidden", "true");
+    drawer.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("hc-drawer-open");
+  }
+
+  function showRecord(rec, date) {
+    var rel = rec.file_relpath || "";
+    var name = rec.file_name || "";
+    var body = "";
+    if (rel && isImage(name)) {
+      body = '<img class="hc-preview-img" src="' + fileUrl(rel, false) + '" alt="" />';
+    } else if (rel) {
+      body = '<p class="muted">此类型请下载或新窗口打开。</p>';
+    } else {
+      body = '<p class="muted">未找到原件</p>';
+    }
+    body += '<div class="hc-preview-actions">';
+    if (rel) {
+      body += '<a class="btn-secondary pill-link" href="' + fileUrl(rel, false) + '" target="_blank" rel="noopener">新窗口</a>';
+      body += '<a class="btn-secondary pill-link" href="' + fileUrl(rel, true) + '">下载</a>';
+    }
+    body += "</div>";
+    previewEl.innerHTML = body;
+
+    editForm.action = saveTpl.replace("__ID__", encodeURIComponent(rec.id));
+    var monthNum = parseInt(String(date || "").split("-")[1] || "1", 10);
+    editNext.value = calUrl + "?year=" + encodeURIComponent(calYear) + "#month-" + monthNum;
+    editResult.value = rec.result_status || "unknown";
+    editPurpose.value = rec.purpose || "";
+    editNote.value = rec.purpose_note || "";
+  }
+
+  function openDrawer(date, records) {
+    records = records || [];
+    dateEl.textContent = date;
+    titleEl.textContent = records.length + " 份检查材料";
+    listEl.innerHTML = "";
+    if (!records.length) {
+      listEl.innerHTML = '<p class="muted">这一天没有材料</p>';
+    }
+    records.forEach(function (rec, idx) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hc-item status-" + (rec.result_status || "unknown");
+      btn.innerHTML =
+        "<strong>" + (rec.exam_name || "未命名") + "</strong>" +
+        "<span class='muted'>" + (rec.purpose || "未标目的") + " · " + statusLabel(rec.result_status) + "</span>";
+      btn.addEventListener("click", function () {
+        listEl.querySelectorAll(".hc-item").forEach(function (el) { el.classList.remove("active"); });
+        btn.classList.add("active");
+        showRecord(rec, date);
+      });
+      listEl.appendChild(btn);
+      if (idx === 0) {
+        btn.classList.add("active");
+        showRecord(rec, date);
+      }
+    });
+    mask.classList.add("hc-open");
+    drawer.classList.add("hc-open");
+    mask.setAttribute("aria-hidden", "false");
+    drawer.setAttribute("aria-hidden", "false");
+    document.body.classList.add("hc-drawer-open");
+  }
+
+  document.querySelectorAll(".hc-day.has-rec").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var date = btn.getAttribute("data-date");
+      openDrawer(date, dayData[date] || []);
+    });
+  });
+
+  document.getElementById("hc-drawer-close").addEventListener("click", closeDrawer);
+  mask.addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeDrawer(e);
+  });
+
+  // 若上次异常留下遮罩，进入页面先清掉
+  closeDrawer();
+})();
+</script>
+{% endblock %}
