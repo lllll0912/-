@@ -3,7 +3,7 @@
   "generated_at": "2026-08-25 15:43:20",
   "person_self_label": "本人",
   "stats": {
-    "total": 46,
+    "total": 47,
     "lab": 33,
     "herb": 7,
     "checkup": 1,
@@ -19,7 +19,7 @@
       "(空)": 4
     },
     "events": 22,
-    "outpatient": 0
+    "outpatient": 1
   },
   "records": [
     {
@@ -849,6 +849,29 @@
       "purpose": "",
       "purpose_note": "非本人档案，默认不进本人时间线",
       "event_id": "evt-zhangyue-2026-03-07"
+    },
+    {
+      "id": "outpatient-20260821-针灸按摩",
+      "person": "self",
+      "category": "outpatient",
+      "categories": [
+        "outpatient"
+      ],
+      "exam_date": "2026-08-21",
+      "exam_name": "针灸按摩",
+      "hospital": "安苑北里社区医院",
+      "specimen": "",
+      "file_name": "2026-08-21_针灸按摩_安苑北里社区医院.jpg",
+      "file_relpath": "05_本人_门诊单/2026-08-21_针灸按摩_安苑北里社区医院.jpg",
+      "source_original": "IMG_20260826_171400.jpg",
+      "notes": "腰部针灸",
+      "purpose": "腰部针灸",
+      "purpose_note": "腰部针灸",
+      "event_id": "evt-self-2026-08-21",
+      "indicators_status": "n/a",
+      "indicators_file": null,
+      "result_status": "unknown",
+      "github_path": "医疗/数据/05_本人_门诊单/2026-08-21_针灸按摩_安苑北里社区医院.jpg"
     }
   ],
   "purpose_tags": [
