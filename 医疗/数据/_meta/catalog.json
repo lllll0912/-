@@ -3,7 +3,7 @@
   "generated_at": "2026-08-25 15:43:20",
   "person_self_label": "本人",
   "stats": {
-    "total": 51,
+    "total": 52,
     "lab": 36,
     "herb": 7,
     "checkup": 1,
@@ -19,7 +19,7 @@
       "(空)": 4
     },
     "events": 22,
-    "outpatient": 2
+    "outpatient": 3
   },
   "records": [
     {
@@ -964,6 +964,29 @@
       "indicators_file": null,
       "result_status": "unknown",
       "github_path": "医疗/数据/01_本人_检验单/2026-08-29_青光眼筛查-相干断层成像_北京海淀医院_2.jpg"
+    },
+    {
+      "id": "outpatient-20260829-青光眼筛查门诊病历",
+      "person": "self",
+      "category": "outpatient",
+      "categories": [
+        "outpatient"
+      ],
+      "exam_date": "2026-08-29",
+      "exam_name": "青光眼筛查门诊病历",
+      "hospital": "北京海淀医院",
+      "specimen": "",
+      "file_name": "2026-08-29_青光眼筛查门诊病历_北京海淀医院.jpg",
+      "file_relpath": "05_本人_门诊单/2026-08-29_青光眼筛查门诊病历_北京海淀医院.jpg",
+      "source_original": "IMG_20260829_112137.jpg",
+      "notes": "",
+      "purpose": "",
+      "purpose_note": "",
+      "event_id": "evt-self-2026-08-29",
+      "indicators_status": "n/a",
+      "indicators_file": null,
+      "result_status": "unknown",
+      "github_path": "医疗/数据/05_本人_门诊单/2026-08-29_青光眼筛查门诊病历_北京海淀医院.jpg"
     }
   ],
   "purpose_tags": [
