@@ -3,7 +3,7 @@
   "generated_at": "2026-08-25 15:43:20",
   "person_self_label": "本人",
   "stats": {
-    "total": 47,
+    "total": 48,
     "lab": 33,
     "herb": 7,
     "checkup": 1,
@@ -19,7 +19,7 @@
       "(空)": 4
     },
     "events": 22,
-    "outpatient": 1
+    "outpatient": 2
   },
   "records": [
     {
@@ -872,6 +872,29 @@
       "indicators_file": null,
       "result_status": "unknown",
       "github_path": "医疗/数据/05_本人_门诊单/2026-08-21_针灸按摩_安苑北里社区医院.jpg"
+    },
+    {
+      "id": "outpatient-20260829-青光眼筛查门诊单",
+      "person": "self",
+      "category": "outpatient",
+      "categories": [
+        "outpatient"
+      ],
+      "exam_date": "2026-08-29",
+      "exam_name": "青光眼筛查门诊单",
+      "hospital": "北京海淀医院",
+      "specimen": "",
+      "file_name": "2026-08-29_青光眼筛查门诊单_北京海淀医院.jpg",
+      "file_relpath": "05_本人_门诊单/2026-08-29_青光眼筛查门诊单_北京海淀医院.jpg",
+      "source_original": "IMG_20260829_110226.jpg",
+      "notes": "",
+      "purpose": "",
+      "purpose_note": "",
+      "event_id": "evt-self-2026-08-29",
+      "indicators_status": "n/a",
+      "indicators_file": null,
+      "result_status": "unknown",
+      "github_path": "医疗/数据/05_本人_门诊单/2026-08-29_青光眼筛查门诊单_北京海淀医院.jpg"
     }
   ],
   "purpose_tags": [
