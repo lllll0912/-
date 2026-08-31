@@ -26,6 +26,9 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        run: flyctl deploy --remote-only --app bill-private-lllll0912
+        # 1) Depot 远程构建机常超时 → 不用 Depot
+        # 2) Fly remote builder 无法处理中文路径（followpaths / dockerignore）
+        #    → 在 Actions 自带 Docker 上本地构建再推送
+        run: flyctl deploy --local-only --app bill-private-lllll0912
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
