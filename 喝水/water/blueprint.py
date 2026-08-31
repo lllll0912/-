@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
+
+from auth import can_write, has_module_access, is_owner
 
 from .schedule_util import find_next_slot, parse_hhmm, today_slots_preview
 from .store import DataStore
@@ -16,6 +18,17 @@ water_bp = Blueprint(
     static_folder="static",
     static_url_path="/water-static",
 )
+
+
+@water_bp.before_request
+def _guard():
+    if request.endpoint and str(request.endpoint).endswith(".static"):
+        return None
+    if not has_module_access("water"):
+        abort(403)
+    # 写操作仅所有者（分享/游客不可改）
+    if request.method not in ("GET", "HEAD") and not can_write():
+        abort(403)
 
 
 def _store() -> DataStore:

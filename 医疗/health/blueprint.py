@@ -17,7 +17,7 @@ from flask import (
     url_for,
 )
 
-from auth import can_write, has_module_access, is_owner
+from auth import can_write, has_module_access
 
 from .store import (
     add_uploaded_record,
@@ -48,7 +48,7 @@ health_bp = Blueprint(
 
 
 def _owner_or_403():
-    if not is_owner():
+    if not can_write():
         abort(403)
 
 
@@ -73,7 +73,7 @@ def _guard():
         return None
     if not has_module_access("health"):
         abort(403)
-    if request.method not in ("GET", "HEAD") and not is_owner():
+    if request.method not in ("GET", "HEAD") and not can_write():
         abort(403)
 
 

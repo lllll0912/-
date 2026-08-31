@@ -14,7 +14,7 @@ from flask import (
     url_for,
 )
 
-from auth import is_guest, is_owner
+from auth import can_write, is_guest
 
 from .store import (
     create_note,
@@ -39,7 +39,7 @@ notes_bp = Blueprint(
 
 
 def _owner_or_403():
-    if not is_owner():
+    if not can_write():
         abort(403)
 
 
@@ -53,7 +53,7 @@ def notes_list():
         "notes/list.html",
         notes=notes,
         sort=sort,
-        can_edit=is_owner(),
+        can_edit=can_write(),
         is_guest=is_guest(),
     )
 
@@ -81,7 +81,7 @@ def notes_view(note_id: int):
     return render_template(
         "notes/view.html",
         note=note,
-        can_edit=is_owner(),
+        can_edit=can_write(),
     )
 
 

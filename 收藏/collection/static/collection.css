@@ -459,7 +459,22 @@ button.col-btn-danger {
   flex-wrap: wrap;
   gap: 6px;
   margin: 6px 0 8px;
+  align-items: center;
 }
+.col-star-row { gap: 2px; }
+.col-star-chip {
+  border: 0;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  box-shadow: none;
+}
+.col-star-chip:hover { filter: none; transform: none; color: #fbbf24; }
+.col-star-chip.is-on { color: #f59e0b; }
+.col-stars { color: #d97706; letter-spacing: 1px; font-style: normal; }
 .col-score-chip {
   min-width: 32px;
   height: 32px;
@@ -534,7 +549,14 @@ button.col-btn-danger {
   align-items: center;
   min-height: 320px;
 }
-.col-gallery-stage img {
+.col-gallery-main-wrap {
+  position: relative;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.col-gallery-stage img#col-gal-main {
   max-width: 100%;
   max-height: 58vh;
   margin: 0 auto;
@@ -542,6 +564,17 @@ button.col-btn-danger {
   object-fit: contain;
   background: #020617;
   border-radius: 8px;
+}
+.col-gal-counter {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.75);
+  color: #e2e8f0;
+  font-size: 12px;
 }
 .col-nav {
   height: 44px;
@@ -554,26 +587,35 @@ button.col-btn-danger {
   box-shadow: none;
 }
 .col-nav:hover { filter: none; transform: none; }
+.col-thumbs-wrap {
+  margin-top: 14px;
+  border-top: 1px solid #1e293b;
+  padding-top: 12px;
+}
 .col-thumbs {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  margin-top: 12px;
-  padding-bottom: 4px;
+  padding: 4px 2px 8px;
+  scroll-snap-type: x mandatory;
 }
 .col-thumbs button {
   flex: 0 0 auto;
-  width: 64px;
-  height: 80px;
+  width: 72px;
+  height: 90px;
   padding: 0;
-  border: 2px solid transparent;
+  border: 2px solid #334155;
   border-radius: 8px;
   overflow: hidden;
   background: #1e293b;
   cursor: pointer;
   box-shadow: none;
+  scroll-snap-align: start;
 }
-.col-thumbs button.is-active { border-color: #38bdf8; }
+.col-thumbs button.is-active {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px #38bdf8;
+}
 .col-thumbs img {
   width: 100%;
   height: 100%;

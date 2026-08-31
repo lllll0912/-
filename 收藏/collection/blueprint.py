@@ -16,7 +16,7 @@ from flask import (
     url_for,
 )
 
-from auth import can_write, has_module_access, is_owner
+from auth import can_write, has_module_access
 
 from .store import (
     backfill_catalog_dates,
@@ -56,7 +56,7 @@ def _guard():
         return None
     if not has_module_access("collection"):
         abort(403)
-    if request.method not in ("GET", "HEAD") and not is_owner():
+    if request.method not in ("GET", "HEAD") and not can_write():
         abort(403)
 
 

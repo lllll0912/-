@@ -263,7 +263,8 @@ def _require_access():
         if not share_can_access(endpoint, request.path):
             flash("您的分享权限不包含此页面", "error")
             return redirect(share_home_url())
-        if request.method not in ("GET", "HEAD") and not is_owner():
+        # 分享身份：仅允许安全读方法
+        if request.method not in ("GET", "HEAD"):
             flash("分享访问仅可浏览，不可修改", "error")
             return redirect(request.referrer or share_home_url())
         return None

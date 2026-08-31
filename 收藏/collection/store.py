@@ -172,29 +172,33 @@ def backfill_catalog_dates() -> int:
 
 
 def list_images(folder_id: str) -> list[dict[str, Any]]:
-    folder = pics_root() / folder_name(folder_id)
-    out = []
-    if folder.is_dir():
-        for p in sorted(folder.iterdir()):
-            if p.is_file() and p.suffix.lower() in IMAGE_EXTS:
-                out.append({"name": p.name, "size": p.stat().st_size})
-    if out:
-        return out
-    # 正式站 Volume 缓存空时，从 GitHub 列目录（不整库拉图）
-    try:
-        from .github_sync import github_sync_enabled, list_github_pics
+    """合并本机/Volume 与 GitHub 索引，避免缓存里只有封面时丢掉其余图。"""
+    fid = folder_name(folder_id)
+    by_name: dict[str, dict[str, Any]] = {}
 
-        if github_sync_enabled():
-            return list_github_pics(folder_name(folder_id))
+    def _add_from_dir(folder: Path) -> None:
+        if not folder.is_dir():
+            return
+        for p in folder.iterdir():
+            if p.is_file() and p.suffix.lower() in IMAGE_EXTS:
+                by_name[p.name] = {"name": p.name, "size": p.stat().st_size}
+
+    _add_from_dir(pics_root() / fid)
+    bundled = bundled_root() / "pics" / fid
+    if bundled.resolve() != (pics_root() / fid).resolve():
+        _add_from_dir(bundled)
+
+    try:
+        from .github_sync import list_github_pics
+
+        for item in list_github_pics(fid):
+            name = item.get("name") or ""
+            if name and name not in by_name:
+                by_name[name] = {"name": name, "size": int(item.get("size") or 0)}
     except Exception:
         pass
-    # 本机：再查 bundled
-    bundled = bundled_root() / "pics" / folder_name(folder_id)
-    if bundled.is_dir() and bundled.resolve() != folder.resolve():
-        for p in sorted(bundled.iterdir()):
-            if p.is_file() and p.suffix.lower() in IMAGE_EXTS:
-                out.append({"name": p.name, "size": p.stat().st_size})
-    return out
+
+    return sorted(by_name.values(), key=lambda x: x["name"])
 
 
 def images_payload(folder_id: str) -> dict[str, Any]:
@@ -215,6 +219,8 @@ def enrich_movie(row: dict[str, Any]) -> dict[str, Any]:
     r["cover"] = imgs[0]["name"] if imgs else ""
     r["pic_folder"] = folder_name(str(fid)) if fid else ""
     r["incomplete"] = is_incomplete_movie(r)
+    r["stars"] = format_stars(r.get("score"))
+    r["stars_n"] = stars_count(r.get("score"))
     return r
 
 
@@ -226,6 +232,8 @@ def enrich_person(row: dict[str, Any]) -> dict[str, Any]:
     r["cover"] = imgs[0]["name"] if imgs else ""
     r["pic_folder"] = folder_name(str(fid)) if fid else ""
     r["incomplete"] = is_incomplete_person(r)
+    r["stars"] = format_stars(r.get("score"))
+    r["stars_n"] = stars_count(r.get("score"))
     return r
 
 
@@ -318,6 +326,40 @@ def _score(v: Any) -> float:
         return 0.0
 
 
+def normalize_score(value: str) -> tuple[str, str]:
+    """评分改为 1–5 星整数。返回 (规范化分数, 错误信息)。空字符串表示未评分。"""
+    s = (value or "").strip()
+    if not s:
+        return "", ""
+    try:
+        val = float(s)
+    except ValueError:
+        return "", "评分须为 1–5 的星级"
+    # 兼容旧 0–10：自动折算到 1–5
+    if val > 5:
+        val = round(val / 2)
+    val = int(round(val))
+    if val < 1 or val > 5:
+        return "", "请选择 1–5 星"
+    return str(val), ""
+
+
+def format_stars(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    s, err = normalize_score(raw)
+    if err or not s:
+        return ""
+    n = int(s)
+    return "★" * n + "☆" * (5 - n)
+
+
+def stars_count(value: Any) -> int:
+    s, _ = normalize_score(str(value or "").strip())
+    return int(s) if s else 0
+
+
 def get_movie(mov_id: str) -> Optional[dict[str, Any]]:
     mid = (mov_id or "").strip()
     for m in load_catalog().get("movies") or []:
@@ -347,14 +389,9 @@ def upsert_movie(data: dict[str, Any], *, old_id: str = "") -> tuple[Optional[di
     mov_id = normalize_movie_id(data.get("id") or "")
     if not mov_id:
         return None, "番号 / ID 必填"
-    score = (data.get("score") or "").strip()
-    if score:
-        try:
-            val = float(score)
-        except ValueError:
-            return None, "评分须为数字"
-        if not (0 <= val <= 10):
-            return None, "评分请在 0–10 之间"
+    score, score_err = normalize_score(str(data.get("score") or ""))
+    if score_err:
+        return None, score_err
 
     person = (data.get("person") or "").strip()
     title = (data.get("title") or "").strip()
@@ -426,14 +463,9 @@ def upsert_person(data: dict[str, Any], *, old_name: str = "") -> tuple[Optional
     name = (data.get("name") or "").strip()
     if not name:
         return None, "名称必填"
-    score = (data.get("score") or "").strip()
-    if score:
-        try:
-            val = float(score)
-        except ValueError:
-            return None, "评分须为数字"
-        if not (0 <= val <= 10):
-            return None, "评分请在 0–10 之间"
+    score, score_err = normalize_score(str(data.get("score") or ""))
+    if score_err:
+        return None, score_err
 
     catalog = load_catalog()
     people = list(catalog.get("people") or [])
@@ -695,6 +727,7 @@ def build_collection_timeline(year: int, movies: list[dict[str, Any]]) -> dict[s
                                     "person": it.get("person") or "",
                                     "title": it.get("title") or "",
                                     "score": it.get("score") or "",
+                                    "stars": it.get("stars") or format_stars(it.get("score")),
                                     "cover": it.get("cover") or "",
                                     "pic_folder": it.get("pic_folder") or "",
                                     "image_count": it.get("image_count") or 0,

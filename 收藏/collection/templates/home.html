@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}收藏{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('collection.static', filename='collection.css') }}?v=4" />
+<link rel="stylesheet" href="{{ url_for('collection.static', filename='collection.css') }}?v=5" />
 
 <section class="col-head card">
   <div class="col-head-row">
@@ -101,7 +101,7 @@
           {% for it in month.works %}
           <li>
             <button type="button" class="col-item-chip col-open-movie" data-id="{{ it.id }}" title="{{ it.id }}{% if it.person %} · {{ it.person }}{% endif %}">
-              <em>{{ it.day }}</em>{{ it.id }}{% if it.person %} · {{ it.person }}{% endif %}{% if it.score %} · ★{{ it.score }}{% endif %}
+              <em>{{ it.day }}</em>{{ it.id }}{% if it.person %} · {{ it.person }}{% endif %}{% if it.stars %} · {{ it.stars }}{% elif it.score %} · ★{{ it.score }}{% endif %}
             </button>
           </li>
           {% endfor %}
@@ -172,7 +172,7 @@
           <strong>{{ m.id }}</strong>
           <span class="muted">{{ m.title or '未填标题' }}{% if m.person %} · {{ m.person }}{% endif %}</span>
           <div class="col-card-meta">
-            {% if m.score %}<em>★ {{ m.score }}</em>{% else %}<em class="muted">未评分</em>{% endif %}
+            {% if m.stars %}<em class="col-stars">{{ m.stars }}</em>{% else %}<em class="muted">未评分</em>{% endif %}
             <span class="col-date">{{ m.added_date or '—' }}</span>
           </div>
           <div class="col-card-actions">
@@ -199,7 +199,7 @@
         {% endif %}
         <span>
           <strong>{{ m.id }}</strong>
-          <em class="muted">{% if m.person %}{{ m.person }} · {% endif %}{% if m.score %}★ {{ m.score }}{% else %}未评分{% endif %}</em>
+          <em class="muted">{% if m.person %}{{ m.person }} · {% endif %}{% if m.stars %}{{ m.stars }}{% else %}未评分{% endif %}</em>
         </span>
       </button>
       {% else %}
@@ -229,7 +229,7 @@
         <strong>{{ p.name }}</strong>
         <span class="muted">{{ p.kind or '未分类' }}{% if p.classic %} · {{ p.classic }}{% endif %}</span>
         <div class="col-card-meta">
-          {% if p.score %}<em>★ {{ p.score }}</em>{% else %}<em class="muted">未评分</em>{% endif %}
+          {% if p.stars %}<em class="col-stars">{{ p.stars }}</em>{% else %}<em class="muted">未评分</em>{% endif %}
           <span class="col-date">{{ p.added_date or '—' }}</span>
         </div>
         <div class="col-card-actions">
@@ -272,14 +272,14 @@
       <input type="text" name="id" id="mf-id" required autocomplete="off" />
       <p class="muted col-lookup-hint" id="mf-lookup-hint">输入番号后将自动查询女优与标题，你只需补评分和说明。</p>
 
-      <label class="field-label">评分（0–10，点选或手填）</label>
-      <div class="col-score-row" data-score-for="mf-score">
-        {% for n in range(1, 11) %}
-        <button type="button" class="col-score-chip" data-v="{{ n }}">{{ n }}</button>
+      <label class="field-label">评分（1–5 星）</label>
+      <div class="col-score-row col-star-row" data-score-for="mf-score">
+        {% for n in range(1, 6) %}
+        <button type="button" class="col-star-chip" data-v="{{ n }}" aria-label="{{ n }} 星">★</button>
         {% endfor %}
         <button type="button" class="col-score-chip col-score-clear" data-v="">清</button>
       </div>
-      <input type="number" name="score" id="mf-score" min="0" max="10" step="0.5" placeholder="如 8 或 8.5" inputmode="decimal" />
+      <input type="hidden" name="score" id="mf-score" value="" />
 
       <label class="field-label">作品说明</label>
       <textarea name="description" id="mf-description" rows="4" placeholder="观感、看点、备忘…"></textarea>
@@ -317,14 +317,14 @@
       <p class="col-section-label">必填核心</p>
       <label class="field-label">名称 *</label>
       <input type="text" name="name" id="pf-name" required />
-      <label class="field-label">评分（0–10）</label>
-      <div class="col-score-row" data-score-for="pf-score">
-        {% for n in range(1, 11) %}
-        <button type="button" class="col-score-chip" data-v="{{ n }}">{{ n }}</button>
+      <label class="field-label">评分（1–5 星）</label>
+      <div class="col-score-row col-star-row" data-score-for="pf-score">
+        {% for n in range(1, 6) %}
+        <button type="button" class="col-star-chip" data-v="{{ n }}" aria-label="{{ n }} 星">★</button>
         {% endfor %}
         <button type="button" class="col-score-chip col-score-clear" data-v="">清</button>
       </div>
-      <input type="number" name="score" id="pf-score" min="0" max="10" step="0.5" inputmode="decimal" />
+      <input type="hidden" name="score" id="pf-score" value="" />
       <label class="field-label">人物说明</label>
       <textarea name="description" id="pf-description" rows="4" placeholder="印象、特点…"></textarea>
     </div>
@@ -374,11 +374,16 @@
       </div>
     </div>
     <div class="col-gallery-stage">
-      <button type="button" class="col-nav" id="col-gal-prev">‹</button>
-      <img id="col-gal-main" alt="" />
-      <button type="button" class="col-nav" id="col-gal-next">›</button>
+      <button type="button" class="col-nav" id="col-gal-prev" aria-label="上一张">‹</button>
+      <div class="col-gallery-main-wrap">
+        <img id="col-gal-main" alt="" />
+        <p class="col-gal-counter" id="col-gal-counter">0 / 0</p>
+      </div>
+      <button type="button" class="col-nav" id="col-gal-next" aria-label="下一张">›</button>
     </div>
-    <div class="col-thumbs" id="col-gal-thumbs"></div>
+    <div class="col-thumbs-wrap">
+      <div class="col-thumbs" id="col-gal-thumbs" role="listbox" aria-label="缩略图"></div>
+    </div>
     {% if can_edit %}
     <div class="col-gallery-tools">
       <input type="file" id="col-gal-files" accept="image/*" multiple />
@@ -434,26 +439,28 @@
     var input = document.getElementById(inputId);
     var row = document.querySelector('[data-score-for="' + inputId + '"]');
     if (!input || !row) return;
-    var v = String(input.value || "");
-    row.querySelectorAll(".col-score-chip").forEach(function (chip) {
-      var cv = chip.getAttribute("data-v");
-      chip.classList.toggle("is-on", cv !== "" && (v === cv || Number(v) === Number(cv)));
+    var v = parseInt(String(input.value || ""), 10);
+    if (v > 5) v = Math.round(v / 2);
+    row.querySelectorAll(".col-star-chip").forEach(function (chip) {
+      var n = parseInt(chip.getAttribute("data-v") || "0", 10);
+      chip.classList.toggle("is-on", !!v && n <= v);
     });
   }
 
   document.querySelectorAll(".col-score-row").forEach(function (row) {
     var target = row.getAttribute("data-score-for");
-    row.querySelectorAll(".col-score-chip").forEach(function (chip) {
+    row.querySelectorAll(".col-star-chip, .col-score-clear").forEach(function (chip) {
       chip.addEventListener("click", function () {
         var input = document.getElementById(target);
         if (!input) return;
         input.value = chip.getAttribute("data-v") || "";
         syncScoreChips(target);
-        if (input.value) document.getElementById(target === "mf-score" ? "mf-description" : "pf-description").focus();
+        if (input.value) {
+          var next = document.getElementById(target === "mf-score" ? "mf-description" : "pf-description");
+          if (next) next.focus();
+        }
       });
     });
-    var input = document.getElementById(target);
-    if (input) input.addEventListener("input", function () { syncScoreChips(target); });
   });
 
   function setLookupHint(text, ok) {
@@ -679,12 +686,21 @@
   var state = { kind: "", id: "", folder: "", images: [], idx: 0 };
 
   function showGal(i) {
-    state.idx = i;
-    var img = state.images[i];
-    if (!img) { galMain.removeAttribute("src"); galMain.alt = "无图片"; return; }
+    if (!state.images.length) {
+      galMain.removeAttribute("src");
+      galMain.alt = "无图片";
+      document.getElementById("col-gal-counter").textContent = "0 / 0";
+      return;
+    }
+    state.idx = ((i % state.images.length) + state.images.length) % state.images.length;
+    var img = state.images[state.idx];
     galMain.src = picUrl(state.folder, img.name);
+    galMain.alt = img.name || "";
+    document.getElementById("col-gal-counter").textContent =
+      (state.idx + 1) + " / " + state.images.length;
     galThumbs.querySelectorAll("button").forEach(function (b, j) {
-      b.classList.toggle("is-active", j === i);
+      b.classList.toggle("is-active", j === state.idx);
+      if (j === state.idx) b.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
     });
   }
   function renderGal(payload) {
@@ -692,12 +708,15 @@
     state.folder = payload.folder || state.folder;
     document.getElementById("col-gal-id").textContent = state.id;
     document.getElementById("col-gal-stat").textContent =
-      (payload.count || 0) + " 张 · " + Math.round((payload.total_bytes || 0) / 1024) + " KB";
+      (payload.count || state.images.length || 0) + " 张" +
+      (payload.total_bytes ? " · " + Math.round((payload.total_bytes || 0) / 1024) + " KB" : "");
     galThumbs.innerHTML = "";
     state.images.forEach(function (img, i) {
       var b = document.createElement("button");
       b.type = "button";
-      b.innerHTML = '<img src="' + picUrl(state.folder, img.name) + '" alt="" />';
+      b.setAttribute("role", "option");
+      b.title = img.name || ("图 " + (i + 1));
+      b.innerHTML = '<img src="' + picUrl(state.folder, img.name) + '" alt="" loading="lazy" />';
       b.addEventListener("click", function () { showGal(i); });
       galThumbs.appendChild(b);
     });
@@ -706,8 +725,26 @@
   function openGallery(kind, id, folder) {
     state = { kind: kind, id: id, folder: folder, images: [], idx: 0 };
     gal.hidden = false;
-    fetch(apiList(kind, id)).then(function (r) { return r.json(); }).then(renderGal);
+    document.getElementById("col-gal-stat").textContent = "加载中…";
+    fetch(apiList(kind, id))
+      .then(function (r) { return r.json(); })
+      .then(renderGal)
+      .catch(function () {
+        document.getElementById("col-gal-stat").textContent = "加载失败";
+      });
   }
+  document.querySelectorAll(".col-card").forEach(function (card) {
+    card.addEventListener("click", function (e) {
+      if (e.target.closest(".col-edit, .col-link, a, input, select, textarea, button.col-edit")) return;
+      if (e.target.closest(".col-open-gallery") || e.target.closest(".col-card-media") || e.target.closest(".col-card-body")) {
+        openGallery(
+          card.getAttribute("data-kind") || "movie",
+          card.getAttribute("data-id"),
+          card.getAttribute("data-folder") || card.getAttribute("data-id")
+        );
+      }
+    });
+  });
   document.querySelectorAll(".col-open-gallery").forEach(function (el) {
     el.addEventListener("click", function (e) {
       e.stopPropagation();
@@ -754,14 +791,20 @@
   }
   document.getElementById("col-gal-prev").addEventListener("click", function () {
     if (!state.images.length) return;
-    showGal((state.idx - 1 + state.images.length) % state.images.length);
+    showGal(state.idx - 1);
   });
   document.getElementById("col-gal-next").addEventListener("click", function () {
     if (!state.images.length) return;
-    showGal((state.idx + 1) % state.images.length);
+    showGal(state.idx + 1);
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { closeDrawer(); gal.hidden = true; }
+    if (gal.hidden) {
+      if (e.key === "Escape") closeDrawer();
+      return;
+    }
+    if (e.key === "Escape") { gal.hidden = true; return; }
+    if (e.key === "ArrowLeft") showGal(state.idx - 1);
+    if (e.key === "ArrowRight") showGal(state.idx + 1);
   });
 })();
 </script>
