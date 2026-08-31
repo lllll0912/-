@@ -29,6 +29,22 @@ _MOVIE_LINK_RE = re.compile(
     r'href="(https://www\.javdatabase\.com/movies/([^"/]+)/)"',
     re.I,
 )
+_OG_IMAGE_RE = re.compile(
+    r'<meta[^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\'][^>]+content=["\']([^"\']+)["\']',
+    re.I,
+)
+_OG_IMAGE_RE2 = re.compile(
+    r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\']',
+    re.I,
+)
+_DMM_IMG_RE = re.compile(
+    r'https://pics\.dmm\.co\.jp/digital/video/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+\.(?:jpg|jpeg|webp)',
+    re.I,
+)
+_JAVDB_COVER_RE = re.compile(
+    r'https://www\.javdatabase\.com/covers/full/[^"\'\s>]+\.(?:webp|jpg|jpeg|png)',
+    re.I,
+)
 
 
 def lookup_cache_path() -> Path:
@@ -98,32 +114,95 @@ def _fetch_html(url: str) -> tuple[int, str]:
         return 0, ""
 
 
-def _parse_movie_page(html: str, code: str) -> Optional[dict[str, str]]:
+def _parse_image_urls(html: str) -> tuple[str, list[str]]:
+    """从作品页提取封面 URL + 剧照/样图 URL 列表。"""
+    cover = ""
+    for rx in (_OG_IMAGE_RE, _OG_IMAGE_RE2):
+        m = rx.search(html or "")
+        if m:
+            cover = m.group(1).strip()
+            break
+    if not cover:
+        covers = _JAVDB_COVER_RE.findall(html or "")
+        if covers:
+            cover = covers[0]
+
+    samples: list[str] = []
+    seen = set()
+    for url in _DMM_IMG_RE.findall(html or ""):
+        u = url.strip()
+        if u in seen:
+            continue
+        seen.add(u)
+        # 排除过小的 ps 缩略图，优先 pl / jp
+        if u.lower().endswith("ps.jpg"):
+            continue
+        samples.append(u)
+
+    # 由 DMM 封面推导 jp-1..jp-12 样图
+    m = re.match(
+        r"(https://pics\.dmm\.co\.jp/digital/video/[^/]+/[^/]+?)pl\.jpe?g$",
+        cover,
+        re.I,
+    )
+    if m:
+        base = m.group(1)
+        for i in range(1, 13):
+            u = f"{base}jp-{i}.jpg"
+            if u not in seen:
+                samples.append(u)
+                seen.add(u)
+
+    # 封面放最前
+    out: list[str] = []
+    if cover:
+        out.append(cover)
+    for u in samples:
+        if u != cover and u not in out:
+            out.append(u)
+    return cover, out
+
+
+def _parse_movie_page(html: str, code: str) -> Optional[dict[str, Any]]:
     if not html or "404" in (re.findall(r"<h1[^>]*>([^<]+)", html, re.I)[:1] or [""])[0]:
         return None
     idols = _IDOL_RE.findall(html)
     if not idols:
-        return None
+        # 仍尝试只取图（少数页女优结构不同）
+        cover, images = _parse_image_urls(html)
+        h1 = (_H1_RE.findall(html) or [""])[0]
+        title = _parse_title(h1, code)
+        if not cover and not title:
+            return None
+        return {
+            "person": "",
+            "title": title,
+            "cover_url": cover,
+            "image_urls": images,
+        }
     names: list[str] = []
     for _, name in idols:
         n = name.strip()
         if n and n not in names:
             names.append(n)
     h1 = (_H1_RE.findall(html) or [""])[0]
+    cover, images = _parse_image_urls(html)
     return {
         "person": "、".join(names),
         "title": _parse_title(h1, code),
+        "cover_url": cover,
+        "image_urls": images,
     }
 
 
-def _lookup_remote(code: str) -> Optional[dict[str, str]]:
+def _lookup_remote(code: str) -> Optional[dict[str, Any]]:
     for slug in _slug_variants(code):
         status, html = _fetch_html(f"https://www.javdatabase.com/movies/{slug}/")
         time.sleep(_FETCH_GAP_SEC)
         if status != 200:
             continue
         parsed = _parse_movie_page(html, code)
-        if parsed:
+        if parsed and (parsed.get("person") or parsed.get("cover_url") or parsed.get("title")):
             return parsed
 
     norm = normalize_movie_id(code)
@@ -159,7 +238,7 @@ def _cache_fresh(entry: dict[str, Any]) -> bool:
 
 
 def lookup_movie_metadata(code: str, *, use_cache: bool = True) -> dict[str, Any]:
-    """返回 {ok, id, person, title, source, error, cached}。"""
+    """返回 {ok, id, person, title, cover_url, image_urls, source, error, cached}。"""
     mov_id = normalize_movie_id(code)
     if not mov_id:
         return {"ok": False, "id": "", "error": "invalid_code"}
@@ -175,6 +254,8 @@ def lookup_movie_metadata(code: str, *, use_cache: bool = True) -> dict[str, Any
             "id": mov_id,
             "person": hit.get("person") or "",
             "title": hit.get("title") or "",
+            "cover_url": hit.get("cover_url") or "",
+            "image_urls": list(hit.get("image_urls") or []),
             "source": hit.get("source") or "cache",
             "cached": True,
         }
@@ -187,8 +268,10 @@ def lookup_movie_metadata(code: str, *, use_cache: bool = True) -> dict[str, Any
         return {"ok": False, "id": mov_id, "error": "not_found", "cached": False}
 
     cache[key] = {
-        "person": remote["person"],
-        "title": remote["title"],
+        "person": remote.get("person") or "",
+        "title": remote.get("title") or "",
+        "cover_url": remote.get("cover_url") or "",
+        "image_urls": list(remote.get("image_urls") or [])[:20],
         "source": "javdatabase",
         "fetched_at": today,
     }
@@ -196,10 +279,81 @@ def lookup_movie_metadata(code: str, *, use_cache: bool = True) -> dict[str, Any
     return {
         "ok": True,
         "id": mov_id,
-        "person": remote["person"],
-        "title": remote["title"],
+        "person": remote.get("person") or "",
+        "title": remote.get("title") or "",
+        "cover_url": remote.get("cover_url") or "",
+        "image_urls": list(remote.get("image_urls") or []),
         "source": "javdatabase",
         "cached": False,
+    }
+
+
+def download_image_bytes(url: str) -> Optional[bytes]:
+    try:
+        resp = requests.get(
+            url,
+            headers={"User-Agent": _USER_AGENT, "Referer": "https://www.javdatabase.com/"},
+            timeout=25,
+            allow_redirects=True,
+        )
+        if resp.status_code != 200:
+            return None
+        raw = resp.content or b""
+        if len(raw) < 4000:
+            return None
+        ctype = (resp.headers.get("Content-Type") or "").lower()
+        if "image" not in ctype and not url.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+            return None
+        return raw
+    except requests.RequestException:
+        return None
+
+
+def fetch_movie_artwork(code: str, *, max_images: int = 10) -> dict[str, Any]:
+    """查询并下载封面+剧照字节。返回 {ok, id, person, title, files:[(filename,bytes),...], error}。"""
+    meta = lookup_movie_metadata(code, use_cache=True)
+    mov_id = meta.get("id") or normalize_movie_id(code)
+    # 旧缓存可能没有封面字段，强制刷新一次
+    if meta.get("ok") and not (meta.get("cover_url") or meta.get("image_urls")):
+        meta = lookup_movie_metadata(code, use_cache=False)
+        mov_id = meta.get("id") or mov_id
+    if not meta.get("ok"):
+        return {
+            "ok": False,
+            "id": mov_id,
+            "person": "",
+            "title": "",
+            "files": [],
+            "error": meta.get("error") or "not_found",
+        }
+
+    urls = list(meta.get("image_urls") or [])
+    cover = (meta.get("cover_url") or "").strip()
+    if cover and cover not in urls:
+        urls.insert(0, cover)
+
+    files: list[tuple[str, bytes]] = []
+    for i, url in enumerate(urls[: max(1, max_images)]):
+        raw = download_image_bytes(url)
+        if not raw:
+            continue
+        ext = ".jpg"
+        low = url.lower()
+        if ".webp" in low:
+            ext = ".webp"
+        elif ".png" in low:
+            ext = ".png"
+        prefix = "cover" if i == 0 else f"sample_{i:02d}"
+        files.append((f"{prefix}{ext}", raw))
+        time.sleep(0.15)
+
+    return {
+        "ok": True,
+        "id": mov_id,
+        "person": meta.get("person") or "",
+        "title": meta.get("title") or "",
+        "files": files,
+        "error": "" if files else "no_images",
     }
 
 

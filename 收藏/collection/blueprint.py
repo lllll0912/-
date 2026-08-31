@@ -25,20 +25,26 @@ from .store import (
     delete_image,
     delete_movie,
     delete_person,
+    format_stars,
     get_movie,
     get_person,
     images_payload,
+    list_images,
     list_movies,
     list_people,
     movie_stats,
+    normalize_score,
     random_movies,
     resolve_image,
+    save_catalog,
+    save_image_bytes,
     save_uploads,
     today_str,
     upsert_movie,
     upsert_person,
+    load_catalog,
 )
-from .metadata import backfill_missing_metadata, lookup_movie_metadata
+from .metadata import backfill_missing_metadata, fetch_movie_artwork, lookup_movie_metadata
 
 collection_bp = Blueprint(
     "collection",
@@ -147,6 +153,20 @@ def movie_save():
                 flash(f"已保存，并上传 {n} 张图", "success")
             else:
                 flash("已保存", "success")
+        elif not list_images(rec["id"]):
+            art = fetch_movie_artwork(rec["id"], max_images=10)
+            files_bytes = art.get("files") or []
+            if files_bytes:
+                n, uerr = save_image_bytes(rec["id"], files_bytes)
+                if uerr and n == 0:
+                    flash(f"已保存条目，自动抓图失败：{uerr}", "error")
+                elif n:
+                    flash(f"已保存，并自动抓取 {n} 张封面/剧照", "success")
+                else:
+                    flash("已保存", "success")
+            else:
+                hint = art.get("error") or "未找到封面"
+                flash(f"已保存（未能自动抓图：{hint}）", "success")
         else:
             flash("已保存", "success")
     return redirect(
@@ -237,6 +257,62 @@ def api_movie_lookup():
     payload = lookup_movie_metadata(code)
     status = 200 if payload.get("ok") else 404
     return jsonify(payload), status
+
+
+@collection_bp.route("/api/movies/<path:mov_id>/score", methods=["POST", "PATCH"])
+def api_movie_score(mov_id: str):
+    """图库内快速点星评分。"""
+    movie = get_movie(mov_id)
+    if not movie:
+        abort(404)
+    body = request.get_json(silent=True) or {}
+    raw = body.get("score")
+    if raw is None:
+        raw = request.form.get("score") or ""
+    score, score_err = normalize_score(str(raw))
+    if score_err:
+        return jsonify({"ok": False, "error": score_err}), 400
+
+    catalog = load_catalog()
+    updated = None
+    for i, m in enumerate(catalog.get("movies") or []):
+        if (m.get("id") or "").strip() == mov_id:
+            catalog["movies"][i] = {**m, "score": score}
+            updated = catalog["movies"][i]
+            break
+    if updated is None:
+        abort(404)
+    save_catalog(catalog)
+    return jsonify(
+        {
+            "ok": True,
+            "id": mov_id,
+            "score": score,
+            "stars": format_stars(score),
+        }
+    )
+
+
+@collection_bp.route("/api/movies/<path:mov_id>/fetch-artwork", methods=["POST"])
+def api_movie_fetch_artwork(mov_id: str):
+    """对已有作品补抓封面/剧照（仅当本地还没有图，或强制 force=1）。"""
+    if not get_movie(mov_id):
+        abort(404)
+    force = (request.args.get("force") or request.form.get("force") or "").strip() in ("1", "true", "yes")
+    if list_images(mov_id) and not force:
+        payload = images_payload(mov_id)
+        payload.update({"ok": True, "saved": 0, "skipped": True, "error": ""})
+        return jsonify(payload)
+    art = fetch_movie_artwork(mov_id, max_images=10)
+    files_bytes = art.get("files") or []
+    if not files_bytes:
+        payload = images_payload(mov_id)
+        payload.update({"ok": False, "saved": 0, "error": art.get("error") or "no_images"})
+        return jsonify(payload), 404
+    n, err = save_image_bytes(mov_id, files_bytes)
+    payload = images_payload(mov_id)
+    payload.update({"ok": n > 0, "saved": n, "error": err})
+    return jsonify(payload), (200 if n else 400)
 
 
 @collection_bp.route("/api/movies/<path:mov_id>/images")

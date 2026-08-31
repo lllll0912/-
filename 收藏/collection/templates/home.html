@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}收藏{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('collection.static', filename='collection.css') }}?v=5" />
+<link rel="stylesheet" href="{{ url_for('collection.static', filename='collection.css') }}?v=6" />
 
 <section class="col-head card">
   <div class="col-head-row">
@@ -270,7 +270,7 @@
       <p class="col-section-label">必填核心</p>
       <label class="field-label">番号 / ID *</label>
       <input type="text" name="id" id="mf-id" required autocomplete="off" />
-      <p class="muted col-lookup-hint" id="mf-lookup-hint">输入番号后将自动查询女优与标题，你只需补评分和说明。</p>
+      <p class="muted col-lookup-hint" id="mf-lookup-hint">输入番号后将自动查询女优与标题；保存时若未上传图片，会自动抓取封面与剧照。</p>
 
       <label class="field-label">评分（1–5 星）</label>
       <div class="col-score-row col-star-row" data-score-for="mf-score">
@@ -381,6 +381,19 @@
       </div>
       <button type="button" class="col-nav" id="col-gal-next" aria-label="下一张">›</button>
     </div>
+    {% if can_edit %}
+    <div class="col-gal-score" id="col-gal-score" aria-label="快速评分">
+      <p class="col-gal-score-label">快速评分</p>
+      <div class="col-score-row col-star-row" data-score-for="col-gal-score-value">
+        {% for n in range(1, 6) %}
+        <button type="button" class="col-score-chip col-star-chip" data-v="{{ n }}" title="{{ n }} 星">★</button>
+        {% endfor %}
+        <button type="button" class="col-score-chip col-score-clear" data-v="">清</button>
+      </div>
+      <input type="hidden" id="col-gal-score-value" value="" />
+      <p class="col-gal-score-msg" id="col-gal-score-msg"></p>
+    </div>
+    {% endif %}
     <div class="col-thumbs-wrap">
       <div class="col-thumbs" id="col-gal-thumbs" role="listbox" aria-label="缩略图"></div>
     </div>
@@ -388,6 +401,7 @@
     <div class="col-gallery-tools">
       <input type="file" id="col-gal-files" accept="image/*" multiple />
       <button type="button" class="col-btn col-btn-primary" id="col-gal-upload">上传</button>
+      <button type="button" class="col-btn" id="col-gal-fetch" hidden>抓取封面/剧照</button>
       <button type="button" class="col-btn col-btn-danger" id="col-gal-delete">删除当前图</button>
     </div>
     {% endif %}
@@ -401,6 +415,8 @@
   var today = {{ today|tojson }};
   var picBase = {{ url_for('collection.serve_pic', folder_id='__F__', filename='__N__')|tojson }};
   var lookupApi = {{ url_for('collection.api_movie_lookup')|tojson }};
+  var movieScoreApi = {{ url_for('collection.api_movie_score', mov_id='__ID__')|tojson }};
+  var movieFetchApi = {{ url_for('collection.api_movie_fetch_artwork', mov_id='__ID__')|tojson }};
   var movieImgApi = {{ url_for('collection.api_movie_images', mov_id='__ID__')|tojson }};
   var personImgApi = {{ url_for('collection.api_person_images', name='__ID__')|tojson }};
   var movieDelApi = {{ url_for('collection.api_movie_delete_image', mov_id='__ID__', filename='__N__')|tojson }};
@@ -449,6 +465,7 @@
 
   document.querySelectorAll(".col-score-row").forEach(function (row) {
     var target = row.getAttribute("data-score-for");
+    if (target === "col-gal-score-value") return;
     row.querySelectorAll(".col-star-chip, .col-score-clear").forEach(function (chip) {
       chip.addEventListener("click", function () {
         var input = document.getElementById(target);
@@ -490,7 +507,7 @@
         if (!(document.getElementById("mf-title").value || "").trim() && data.title) {
           document.getElementById("mf-title").value = data.title;
         }
-        setLookupHint("已自动补全：" + (data.person || "—") + (data.cached ? "（缓存）" : ""), true);
+        setLookupHint("已自动补全：" + (data.person || "—") + (data.cover_url || (data.image_urls && data.image_urls.length) ? " · 保存时将自动抓图" : "") + (data.cached ? "（缓存）" : ""), true);
       })
       .catch(function () { setLookupHint("查询失败，请稍后重试或手动填写。", false); });
   }
@@ -599,7 +616,7 @@
         formDelete.action = movieDelForm.replace("__ID__", encodeURIComponent(card.getAttribute("data-id")));
         setLookupHint("可修改评分与说明；女优名已自动补全。", true);
       } else {
-        setLookupHint("输入番号后将自动查询女优与标题。", null);
+        setLookupHint("输入番号后将自动查询女优与标题；未上传图时会自动抓封面/剧照。", null);
         if (autoLookup) lookupMovieMeta(document.getElementById("mf-id").value);
       }
       if (card) {
@@ -683,15 +700,63 @@
   var gal = document.getElementById("col-gallery");
   var galMain = document.getElementById("col-gal-main");
   var galThumbs = document.getElementById("col-gal-thumbs");
+  var galScoreBox = document.getElementById("col-gal-score");
+  var galScoreMsg = document.getElementById("col-gal-score-msg");
+  var galFetchBtn = document.getElementById("col-gal-fetch");
   var state = { kind: "", id: "", folder: "", images: [], idx: 0 };
+
+  function starsText(score) {
+    var n = parseInt(String(score || ""), 10);
+    if (!n || n < 1) return "";
+    if (n > 5) n = Math.round(n / 2);
+    n = Math.max(1, Math.min(5, n));
+    return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n);
+  }
+
+  function applyScoreToCards(id, score, stars) {
+    document.querySelectorAll('.col-card[data-id="' + CSS.escape(id) + '"]').forEach(function (card) {
+      card.setAttribute("data-score", score || "");
+      var meta = card.querySelector(".col-card-meta");
+      if (!meta) return;
+      var em = meta.querySelector(".col-stars, em.muted");
+      if (!em) return;
+      if (stars) {
+        em.className = "col-stars";
+        em.textContent = stars;
+      } else {
+        em.className = "muted";
+        em.textContent = "未评分";
+      }
+    });
+  }
+
+  function syncGalScoreUI() {
+    if (!galScoreBox) return;
+    var show = canEdit && state.kind === "movie" && !!state.id;
+    galScoreBox.classList.toggle("is-visible", show);
+    if (!show) return;
+    var card = findMovieCard(state.id) || document.querySelector('.col-card[data-id="' + CSS.escape(state.id) + '"]');
+    var score = card ? (card.getAttribute("data-score") || "") : "";
+    var input = document.getElementById("col-gal-score-value");
+    if (input) input.value = score;
+    syncScoreChips("col-gal-score-value");
+    if (galScoreMsg) galScoreMsg.textContent = "";
+  }
+
+  function setGalFetchVisible(show) {
+    if (!galFetchBtn) return;
+    galFetchBtn.hidden = !(canEdit && state.kind === "movie" && show);
+  }
 
   function showGal(i) {
     if (!state.images.length) {
       galMain.removeAttribute("src");
       galMain.alt = "无图片";
       document.getElementById("col-gal-counter").textContent = "0 / 0";
+      setGalFetchVisible(true);
       return;
     }
+    setGalFetchVisible(false);
     state.idx = ((i % state.images.length) + state.images.length) % state.images.length;
     var img = state.images[state.idx];
     galMain.src = picUrl(state.folder, img.name);
@@ -721,11 +786,22 @@
       galThumbs.appendChild(b);
     });
     showGal(Math.min(state.idx, Math.max(0, state.images.length - 1)));
+    syncGalScoreUI();
+    // 若卡片无封面，刷新后尝试更新封面预览属性（下次重载页面会完整更新）
+    if (state.images.length && state.kind === "movie") {
+      var coverName = state.images[0].name || "";
+      document.querySelectorAll('.col-card[data-id="' + CSS.escape(state.id) + '"]').forEach(function (card) {
+        if (!(card.getAttribute("data-cover") || "") && coverName) {
+          card.setAttribute("data-cover", coverName);
+        }
+      });
+    }
   }
   function openGallery(kind, id, folder) {
     state = { kind: kind, id: id, folder: folder, images: [], idx: 0 };
     gal.hidden = false;
     document.getElementById("col-gal-stat").textContent = "加载中…";
+    syncGalScoreUI();
     fetch(apiList(kind, id))
       .then(function (r) { return r.json(); })
       .then(renderGal)
@@ -779,6 +855,27 @@
           renderGal(data);
         });
     });
+    if (galFetchBtn) {
+      galFetchBtn.addEventListener("click", function () {
+        galFetchBtn.disabled = true;
+        document.getElementById("col-gal-stat").textContent = "正在抓取封面/剧照…";
+        fetch(movieFetchApi.replace("__ID__", encodeURIComponent(state.id)), { method: "POST" })
+          .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+          .then(function (res) {
+            galFetchBtn.disabled = false;
+            if (!res.data.ok && !res.data.images) {
+              alert(res.data.error || "抓取失败");
+              document.getElementById("col-gal-stat").textContent = "抓取失败";
+              return;
+            }
+            renderGal(res.data);
+          })
+          .catch(function () {
+            galFetchBtn.disabled = false;
+            alert("抓取失败");
+          });
+      });
+    }
     var galDelete = document.getElementById("col-gal-delete");
     if (galDelete) galDelete.addEventListener("click", function () {
       var img = state.images[state.idx];
@@ -788,6 +885,37 @@
         .then(function (r) { return r.json(); })
         .then(renderGal);
     });
+    var galScoreRow = document.querySelector('#col-gal-score [data-score-for="col-gal-score-value"]');
+    if (galScoreRow) {
+      galScoreRow.querySelectorAll(".col-star-chip, .col-score-clear").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          if (state.kind !== "movie" || !state.id) return;
+          var v = chip.getAttribute("data-v") || "";
+          var input = document.getElementById("col-gal-score-value");
+          if (input) input.value = v;
+          syncScoreChips("col-gal-score-value");
+          if (galScoreMsg) galScoreMsg.textContent = "保存中…";
+          fetch(movieScoreApi.replace("__ID__", encodeURIComponent(state.id)), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ score: v })
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data.ok) {
+                if (galScoreMsg) galScoreMsg.textContent = data.error || "保存失败";
+                return;
+              }
+              var stars = data.stars || starsText(data.score);
+              applyScoreToCards(state.id, data.score || "", stars);
+              if (galScoreMsg) galScoreMsg.textContent = data.score ? ("已设为 " + data.score + " 星") : "已清除评分";
+            })
+            .catch(function () {
+              if (galScoreMsg) galScoreMsg.textContent = "保存失败";
+            });
+        });
+      });
+    }
   }
   document.getElementById("col-gal-prev").addEventListener("click", function () {
     if (!state.images.length) return;

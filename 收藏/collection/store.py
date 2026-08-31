@@ -583,31 +583,27 @@ def resolve_image(folder_id: str, filename: str) -> Optional[Path]:
     return None
 
 
-def save_uploads(folder_id: str, files) -> tuple[int, str]:
-    """本机写仓库目录；正式站写 Volume 缓存并 commit 进 GitHub。"""
+def save_image_bytes(folder_id: str, files: list[tuple[str, bytes]]) -> tuple[int, str]:
+    """将已下载的 (filename, bytes) 写入本地/Volume，并在正式站同步 GitHub。"""
     folder = pics_root() / folder_name(folder_id)
     folder.mkdir(parents=True, exist_ok=True)
     if not files:
-        return 0, "未选择文件"
+        return 0, "没有图片"
     saved = 0
     uploaded: dict[str, bytes] = {}
-    for f in files[:MAX_UPLOAD_FILES]:
-        original = getattr(f, "filename", None) or ""
-        if not original:
-            continue
-        ext = Path(original).suffix.lower()
-        if ext not in IMAGE_EXTS:
-            return saved, f"不支持的格式：{ext or original}"
-        raw = f.read()
+    stamp = int(time.time() * 1000)
+    for i, (original, raw) in enumerate(files[:MAX_UPLOAD_FILES]):
         if not raw:
             continue
         if len(raw) > MAX_UPLOAD_BYTES:
             return saved, "单张图片超过 12MB"
-        safe = re.sub(r"[^A-Za-z0-9._\u4e00-\u9fff-]+", "_", Path(original).stem)[:60] or "img"
-        out_name = f"{int(time.time() * 1000)}_{safe}{ext}"
+        ext = Path(original or "").suffix.lower()
+        if ext not in IMAGE_EXTS:
+            ext = ".jpg"
+        safe = re.sub(r"[^A-Za-z0-9._\u4e00-\u9fff-]+", "_", Path(original or "img").stem)[:60] or "img"
+        out_name = f"{stamp + i}_{safe}{ext}"
         out = folder / out_name
         out.write_bytes(raw)
-        # 本机：同步一份到 bundled 仓库目录，便于 git push
         if not (os.environ.get("BILL_DATA_DIR") or "").strip():
             bundled_dir = bundled_root() / "pics" / folder_name(folder_id)
             if bundled_dir.resolve() != folder.resolve():
@@ -637,6 +633,25 @@ def save_uploads(folder_id: str, files) -> tuple[int, str]:
     except Exception as e:
         return saved, f"已暂存到服务器，但写入 GitHub 异常：{e}"
     return saved, ""
+
+
+def save_uploads(folder_id: str, files) -> tuple[int, str]:
+    """本机写仓库目录；正式站写 Volume 缓存并 commit 进 GitHub。"""
+    if not files:
+        return 0, "未选择文件"
+    pairs: list[tuple[str, bytes]] = []
+    for f in files[:MAX_UPLOAD_FILES]:
+        original = getattr(f, "filename", None) or ""
+        if not original:
+            continue
+        ext = Path(original).suffix.lower()
+        if ext not in IMAGE_EXTS:
+            return 0, f"不支持的格式：{ext or original}"
+        raw = f.read()
+        if not raw:
+            continue
+        pairs.append((original, raw))
+    return save_image_bytes(folder_id, pairs)
 
 
 def delete_image(folder_id: str, filename: str) -> bool:
