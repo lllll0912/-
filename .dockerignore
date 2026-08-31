@@ -14,3 +14,9 @@ legacy/
 *.docx
 .git
 tunnel_*.log
+
+# 大图不进 Fly 镜像（真相在 GitHub；正式站按需拉缓存）
+收藏/数据/pics/
+医疗/数据/**
+!医疗/数据/_meta/
+!医疗/数据/_meta/**

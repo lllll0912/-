@@ -92,7 +92,7 @@ def load_catalog() -> dict[str, Any]:
     return empty_catalog()
 
 
-def save_catalog(catalog: dict[str, Any]) -> None:
+def save_catalog(catalog: dict[str, Any], *, sync_github: bool = True) -> None:
     path = catalog_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     catalog["version"] = max(int(catalog.get("version") or 2), 2)
@@ -100,6 +100,19 @@ def save_catalog(catalog: dict[str, Any]) -> None:
         json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    # 本机：同时写回仓库 bundled 目录，便于 git push
+    bundled = _bundled_catalog()
+    if path.resolve() != bundled.resolve() and not (os.environ.get("BILL_DATA_DIR") or "").strip():
+        bundled.parent.mkdir(parents=True, exist_ok=True)
+        bundled.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+    if sync_github:
+        try:
+            from .github_sync import github_sync_enabled, sync_catalog_to_github
+
+            if github_sync_enabled():
+                sync_catalog_to_github(catalog, reason="update catalog")
+        except Exception:
+            pass
 
 
 def _folder_mtime_date(folder_id: str) -> str:
@@ -154,18 +167,33 @@ def backfill_catalog_dates() -> int:
     if changed:
         catalog["movies"] = movies
         catalog["people"] = people
-        save_catalog(catalog)
+        save_catalog(catalog, sync_github=False)
     return changed
 
 
 def list_images(folder_id: str) -> list[dict[str, Any]]:
     folder = pics_root() / folder_name(folder_id)
-    if not folder.is_dir():
-        return []
     out = []
-    for p in sorted(folder.iterdir()):
-        if p.is_file() and p.suffix.lower() in IMAGE_EXTS:
-            out.append({"name": p.name, "size": p.stat().st_size})
+    if folder.is_dir():
+        for p in sorted(folder.iterdir()):
+            if p.is_file() and p.suffix.lower() in IMAGE_EXTS:
+                out.append({"name": p.name, "size": p.stat().st_size})
+    if out:
+        return out
+    # 正式站 Volume 缓存空时，从 GitHub 列目录（不整库拉图）
+    try:
+        from .github_sync import github_sync_enabled, list_github_pics
+
+        if github_sync_enabled():
+            return list_github_pics(folder_name(folder_id))
+    except Exception:
+        pass
+    # 本机：再查 bundled
+    bundled = bundled_root() / "pics" / folder_name(folder_id)
+    if bundled.is_dir() and bundled.resolve() != folder.resolve():
+        for p in sorted(bundled.iterdir()):
+            if p.is_file() and p.suffix.lower() in IMAGE_EXTS:
+                out.append({"name": p.name, "size": p.stat().st_size})
     return out
 
 
@@ -490,30 +518,47 @@ def resolve_image(folder_id: str, filename: str) -> Optional[Path]:
     name = Path(filename or "").name
     if not name or name != filename or ".." in name:
         return None
-    path = (pics_root() / folder_name(folder_id) / name).resolve()
+    fid = folder_name(folder_id)
+    path = (pics_root() / fid / name).resolve()
     root = pics_root().resolve()
     try:
         path.relative_to(root)
     except ValueError:
         return None
-    if not path.is_file():
-        bundled = (bundled_root() / "pics" / folder_name(folder_id) / name).resolve()
-        try:
-            bundled.relative_to((bundled_root() / "pics").resolve())
-        except ValueError:
-            return None
+    if path.is_file():
+        return path
+
+    bundled = (bundled_root() / "pics" / fid / name).resolve()
+    try:
+        bundled.relative_to((bundled_root() / "pics").resolve())
         if bundled.is_file():
             return bundled
-        return None
-    return path
+    except ValueError:
+        pass
+
+    # 正式站缓存未命中：从 GitHub 拉一份落到 Volume 再返回
+    try:
+        from .github_sync import fetch_github_file, github_sync_enabled, repo_pic_path
+
+        if github_sync_enabled():
+            raw = fetch_github_file(repo_pic_path(fid, name))
+            if raw:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(raw)
+                return path
+    except Exception:
+        pass
+    return None
 
 
 def save_uploads(folder_id: str, files) -> tuple[int, str]:
+    """本机写仓库目录；正式站写 Volume 缓存并 commit 进 GitHub。"""
     folder = pics_root() / folder_name(folder_id)
     folder.mkdir(parents=True, exist_ok=True)
     if not files:
         return 0, "未选择文件"
     saved = 0
+    uploaded: dict[str, bytes] = {}
     for f in files[:MAX_UPLOAD_FILES]:
         original = getattr(f, "filename", None) or ""
         if not original:
@@ -527,24 +572,66 @@ def save_uploads(folder_id: str, files) -> tuple[int, str]:
         if len(raw) > MAX_UPLOAD_BYTES:
             return saved, "单张图片超过 12MB"
         safe = re.sub(r"[^A-Za-z0-9._\u4e00-\u9fff-]+", "_", Path(original).stem)[:60] or "img"
-        out = folder / f"{int(time.time() * 1000)}_{safe}{ext}"
+        out_name = f"{int(time.time() * 1000)}_{safe}{ext}"
+        out = folder / out_name
         out.write_bytes(raw)
+        # 本机：同步一份到 bundled 仓库目录，便于 git push
+        if not (os.environ.get("BILL_DATA_DIR") or "").strip():
+            bundled_dir = bundled_root() / "pics" / folder_name(folder_id)
+            if bundled_dir.resolve() != folder.resolve():
+                bundled_dir.mkdir(parents=True, exist_ok=True)
+                (bundled_dir / out_name).write_bytes(raw)
+        try:
+            from .github_sync import repo_pic_path
+
+            uploaded[repo_pic_path(folder_name(folder_id), out_name)] = raw
+        except Exception:
+            pass
         saved += 1
     if saved == 0:
         return 0, "没有成功保存的文件"
+
+    try:
+        from .github_sync import github_sync_enabled, sync_uploads_to_github
+
+        if github_sync_enabled() and uploaded:
+            ok, detail = sync_uploads_to_github(
+                uploads=uploaded,
+                catalog=load_catalog(),
+                label=folder_name(folder_id),
+            )
+            if not ok:
+                return saved, f"已暂存到服务器，但写入 GitHub 失败：{detail}"
+    except Exception as e:
+        return saved, f"已暂存到服务器，但写入 GitHub 异常：{e}"
     return saved, ""
 
 
 def delete_image(folder_id: str, filename: str) -> bool:
-    path = resolve_image(folder_id, filename)
-    if not path or not path.is_file():
+    name = Path(filename or "").name
+    if not name or name != filename or ".." in name:
         return False
+    fid = folder_name(folder_id)
+    deleted_local = False
+    for root in (pics_root(), bundled_root() / "pics"):
+        path = (root / fid / name).resolve()
+        try:
+            path.relative_to(root.resolve())
+        except ValueError:
+            continue
+        if path.is_file():
+            path.unlink(missing_ok=True)
+            deleted_local = True
+
     try:
-        path.relative_to(pics_root().resolve())
-    except ValueError:
-        return False
-    path.unlink(missing_ok=True)
-    return True
+        from .github_sync import github_sync_enabled, sync_delete_pic_to_github
+
+        if github_sync_enabled():
+            ok, _ = sync_delete_pic_to_github(fid, name)
+            return deleted_local or ok
+    except Exception:
+        pass
+    return deleted_local
 
 
 def random_movies(limit: int = 6) -> list[dict[str, Any]]:

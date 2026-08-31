@@ -8,7 +8,7 @@
 |--|--|
 | **正式站** | https://bill-private-lllll0912.fly.dev |
 | **本机** | 双击 `脚本/启动网站.bat` → http://127.0.0.1:8501 |
-| **上线** | `git push origin main`（自动部署；推代码不抹云端 Volume 数据） |
+| **上线** | `git push origin main` → GitHub Actions 自动部署（勿本机 `fly deploy` 大图；改密码用 `fly secrets`） |
 
 打开网站先选：**所有者**（密码）或 **游客**（只读诗词/笔记）。
 
@@ -17,4 +17,4 @@
 - `医疗/` `喝水/` `诗词/` `日志/` `账单/` `收藏/` `脚本/`
 - `README.md` `需求记录.md` `目录与配置.md` `VERSION.md`
 
-细节见 [目录与配置.md](目录与配置.md)。需求变更记在 [需求记录.md](需求记录.md)。当前网站版本见 [VERSION.md](VERSION.md)（**r28**）。
+细节见 [目录与配置.md](目录与配置.md)。需求变更记在 [需求记录.md](需求记录.md)。当前网站版本见 [VERSION.md](VERSION.md)（**r31**）。
