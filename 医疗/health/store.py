@@ -6,6 +6,7 @@ import calendar as cal_mod
 import json
 import os
 import re
+import shutil
 from collections import OrderedDict
 from datetime import date
 from pathlib import Path
@@ -127,6 +128,9 @@ def normalize_result_status(value: Any) -> str:
 def enrich_record(r: dict[str, Any]) -> dict[str, Any]:
     row = dict(r)
     row["result_status"] = normalize_result_status(row.get("result_status"))
+    pid = (row.get("person") or "self").strip() or "self"
+    row["person"] = pid
+    row["person_label"] = person_label(pid)
     cats = row.get("categories")
     if not isinstance(cats, list) or not cats:
         primary = (row.get("category") or "").strip()
@@ -148,6 +152,13 @@ def list_records(
     q: str = "",
     include_empty_purpose: bool = True,
 ) -> list[dict[str, Any]]:
+    """
+    person:
+      - "self"：仅本人（默认）
+      - "family"：全部非本人（家人视图）
+      - 其它 id：精确匹配（如 zhangyue）
+      - "" / "all"：不过滤人物
+    """
     rows = load_catalog().get("records") or []
     needle = (q or "").strip().lower()
     wanted: set[str] = set()
@@ -155,10 +166,16 @@ def list_records(
         wanted = {c.strip() for c in categories if c and str(c).strip()}
     elif category:
         wanted = {category.strip()}
+    person_key = (person or "").strip()
     out = []
     for r in rows:
-        if person and r.get("person") != person:
-            continue
+        pid = (r.get("person") or "self").strip() or "self"
+        if person_key == "family":
+            if pid == "self":
+                continue
+        elif person_key and person_key not in ("all", "*"):
+            if pid != person_key:
+                continue
         enriched = enrich_record(r)
         if wanted:
             rec_cats = set(enriched.get("categories") or [])
@@ -180,6 +197,7 @@ def list_records(
                     str(enriched.get("hospital") or ""),
                     str(enriched.get("category_label") or ""),
                     str(enriched.get("file_name") or ""),
+                    person_label(pid),
                 ]
             ).lower()
             if needle not in blob:
@@ -187,6 +205,104 @@ def list_records(
         out.append(enriched)
     out.sort(key=lambda x: (x.get("exam_date") or "", x.get("exam_name") or ""), reverse=True)
     return out
+
+
+def person_label(person_id: str) -> str:
+    pid = (person_id or "self").strip() or "self"
+    for p in load_patients():
+        if p["id"] == pid:
+            return p["label"]
+    if pid == "self":
+        return "本人"
+    if pid == "zhangyue":
+        return "张悦"
+    return pid
+
+
+def load_patients() -> list[dict[str, str]]:
+    """患者字典：本人 + 预置/配置的家人 + catalog 里出现过的人物。"""
+    preset = [
+        {"id": "self", "label": "本人", "folder": ""},
+        {"id": "zhangyue", "label": "张悦", "folder": "04_张悦_医疗"},
+    ]
+    seen: dict[str, dict[str, str]] = {p["id"]: dict(p) for p in preset}
+    for path in (meta_root() / "patients.json", _bundled_meta_file("patients.json")):
+        if not path.is_file():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            for r in data.get("patients") or []:
+                pid = str(r.get("id") or "").strip()
+                if not pid or pid == "family":
+                    continue
+                seen[pid] = {
+                    "id": pid,
+                    "label": str(r.get("label") or pid).strip() or pid,
+                    "folder": str(r.get("folder") or "").strip(),
+                }
+            break
+        except (json.JSONDecodeError, OSError):
+            continue
+    for r in load_catalog().get("records") or []:
+        pid = (r.get("person") or "self").strip() or "self"
+        if pid not in seen:
+            seen[pid] = {
+                "id": pid,
+                "label": "张悦" if pid == "zhangyue" else pid,
+                "folder": "",
+            }
+    others = [v for k, v in seen.items() if k != "self"]
+    others.sort(key=lambda x: x["label"])
+    return [seen["self"]] + others if "self" in seen else others
+
+
+def patient_folder(person_id: str, fallback_category_folder: str) -> str:
+    pid = (person_id or "self").strip() or "self"
+    if pid == "self":
+        return fallback_category_folder
+    for p in load_patients():
+        if p["id"] == pid and p.get("folder"):
+            return p["folder"]
+    return f"04_家人_{pid}"
+
+
+def normalize_patient_scope(raw: str) -> str:
+    """视图：self / 具体患者 id（如 zhangyue）/ family（全部非本人，兼容旧链接）。"""
+    s = (raw or "").strip()
+    if not s:
+        return "self"
+    low = s.lower()
+    if low in ("family", "other", "others", "家人", "非本人"):
+        return "family"
+    if low in ("self", "me", "本人"):
+        return "self"
+    for p in load_patients():
+        if p["id"] == s or p["id"].lower() == low or p["label"] == s:
+            return p["id"]
+    if re.fullmatch(r"[A-Za-z0-9_-]+", s):
+        return low
+    return "self"
+
+
+def build_patient_tabs() -> list[dict[str, Any]]:
+    """顶栏患者切换：本人 + 每位家人姓名，附材料份数。"""
+    counts: dict[str, int] = {}
+    for r in load_catalog().get("records") or []:
+        pid = (r.get("person") or "self").strip() or "self"
+        counts[pid] = counts.get(pid, 0) + 1
+    tabs = []
+    for p in load_patients():
+        if p["id"] == "family":
+            continue
+        tabs.append(
+            {
+                "id": p["id"],
+                "label": p["label"],
+                "count": counts.get(p["id"], 0),
+                "is_self": p["id"] == "self",
+            }
+        )
+    return tabs
 
 
 def get_record(record_id: str) -> Optional[dict[str, Any]]:
@@ -289,6 +405,8 @@ def build_year_calendar(year: int, records: list[dict[str, Any]]) -> dict[str, A
         weeks_out = []
         month_count = 0
         month_abn = 0
+        exam_items: list[dict[str, str]] = []  # 按日期顺序的本月诊查清单
+        seen_exam_keys: set[str] = set()
         for week in weeks:
             days_out = []
             for day in week:
@@ -302,6 +420,19 @@ def build_year_calendar(year: int, records: list[dict[str, Any]]) -> dict[str, A
                     month_count += len(day_recs)
                     if status == RESULT_ABNORMAL:
                         month_abn += 1
+                    for x in day_recs:
+                        name = (x.get("exam_name") or "").strip() or "未命名"
+                        ek = f"{key}|{name}"
+                        if ek in seen_exam_keys:
+                            continue
+                        seen_exam_keys.add(ek)
+                        exam_items.append(
+                            {
+                                "date": key,
+                                "day": f"{day}日",
+                                "name": name,
+                            }
+                        )
                 days_out.append(
                     {
                         "empty": False,
@@ -329,18 +460,34 @@ def build_year_calendar(year: int, records: list[dict[str, Any]]) -> dict[str, A
                                 "result_status": normalize_result_status(x.get("result_status")),
                                 "file_relpath": x.get("file_relpath") or "",
                                 "file_name": x.get("file_name") or "",
+                                "person": x.get("person") or "self",
+                                "person_label": x.get("person_label")
+                                or person_label(str(x.get("person") or "self")),
                             }
                             for x in day_recs
                         ],
                     }
                 )
             weeks_out.append(days_out)
+        # 去重名称列表（保留时间顺序，同名多次则带次数）
+        name_order: list[str] = []
+        name_counts: dict[str, int] = {}
+        for it in exam_items:
+            n = it["name"]
+            name_counts[n] = name_counts.get(n, 0) + 1
+            if n not in name_order:
+                name_order.append(n)
+        exam_names = [
+            {"name": n, "count": name_counts[n], "label": n if name_counts[n] == 1 else f"{n}×{name_counts[n]}"}
+            for n in name_order
+        ]
         month_summaries.append(
             {
                 "month": month,
                 "count": month_count,
                 "abnormal_days": month_abn,
                 "has_records": month_count > 0,
+                "exam_names": exam_names,
             }
         )
         months_out.append(
@@ -350,6 +497,8 @@ def build_year_calendar(year: int, records: list[dict[str, Any]]) -> dict[str, A
                 "weeks": weeks_out,
                 "count": month_count,
                 "abnormal_days": month_abn,
+                "exam_items": exam_items,
+                "exam_names": exam_names,
             }
         )
 
@@ -431,6 +580,7 @@ def add_uploaded_record(
     purpose: str = "",
     purpose_note: str = "",
     hospital: str = "",
+    person: str = "self",
 ) -> tuple[Optional[dict[str, Any]], str]:
     """
     保存上传文件并写入 catalog。
@@ -439,6 +589,15 @@ def add_uploaded_record(
     exam_date = (exam_date or "").strip()
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", exam_date):
         return None, "请填写正确日期（YYYY-MM-DD）"
+
+    person_id = (person or "self").strip() or "self"
+    known = {p["id"] for p in load_patients()}
+    if person_id not in known and person_id != "self":
+        # 允许新家人 id（字母数字下划线）
+        if not re.fullmatch(r"[A-Za-z0-9_\u4e00-\u9fff-]{1,32}", person_id):
+            return None, "患者标识无效"
+    if person_id in ("family", "all"):
+        return None, "请选择具体患者"
 
     valid_ids = {c["id"] for c in load_doc_categories()}
     cats = [c.strip() for c in (categories or []) if c and str(c).strip()]
@@ -465,7 +624,7 @@ def add_uploaded_record(
 
     name = (exam_name or "").strip() or Path(original).stem
     hospital_s = (hospital or "").strip() or "未注医院"
-    folder = category_folder(primary)
+    folder = patient_folder(person_id, category_folder(primary))
     # 统一命名：YYYY-MM-DD_检查名_医院.ext
     file_name = f"{exam_date}_{_safe_stem(name)}_{_safe_stem(hospital_s)}{ext}"
 
@@ -484,12 +643,12 @@ def add_uploaded_record(
 
     dest.write_bytes(raw)
 
-    record_id = _make_record_id(primary, exam_date, name)
-    event_id = f"evt-self-{exam_date}"
+    record_id = _make_record_id(primary if person_id == "self" else f"{person_id}-{primary}", exam_date, name)
+    event_id = f"evt-{person_id}-{exam_date}"
     github_path = f"医疗/数据/{rel}"
     rec = {
         "id": record_id,
-        "person": "self",
+        "person": person_id,
         "category": primary,
         "categories": cats,
         "exam_date": exam_date,
@@ -557,34 +716,76 @@ def update_record_meta(
     categories: list[str] | None = None,
     notes: str | None = None,
     exam_name: str | None = None,
+    person: str | None = None,
 ) -> bool:
     catalog = load_catalog()
     found = False
     valid_ids = {c["id"] for c in load_doc_categories()}
+    known_patients = {p["id"] for p in load_patients()}
     for r in catalog.get("records") or []:
-        if r.get("id") == record_id:
-            if purpose is not None:
-                r["purpose"] = (purpose or "").strip()
-            if purpose_note is not None:
-                r["purpose_note"] = (purpose_note or "").strip()
-            if result_status is not None:
-                r["result_status"] = normalize_result_status(result_status)
-            if categories is not None:
-                cats = [c for c in categories if c in valid_ids]
-                if cats:
-                    r["categories"] = cats
-                    r["category"] = cats[0]
-            elif category is not None:
-                cid = (category or "").strip()
-                if cid in valid_ids:
-                    r["category"] = cid
-                    r["categories"] = [cid]
-            if notes is not None:
-                r["notes"] = (notes or "").strip()
-            if exam_name is not None:
-                r["exam_name"] = (exam_name or "").strip()
-            found = True
-            break
+        if r.get("id") != record_id:
+            continue
+        if purpose is not None:
+            r["purpose"] = (purpose or "").strip()
+        if purpose_note is not None:
+            r["purpose_note"] = (purpose_note or "").strip()
+        if result_status is not None:
+            r["result_status"] = normalize_result_status(result_status)
+        if categories is not None:
+            cats = [c for c in categories if c in valid_ids]
+            if cats:
+                r["categories"] = cats
+                r["category"] = cats[0]
+        elif category is not None:
+            cid = (category or "").strip()
+            if cid in valid_ids:
+                r["category"] = cid
+                r["categories"] = [cid]
+        if notes is not None:
+            r["notes"] = (notes or "").strip()
+        if exam_name is not None:
+            r["exam_name"] = (exam_name or "").strip()
+        if person is not None:
+            new_person = (person or "self").strip() or "self"
+            if new_person in ("family", "all"):
+                return False
+            if new_person not in known_patients and new_person != "self":
+                if not re.fullmatch(r"[A-Za-z0-9_\u4e00-\u9fff-]{1,32}", new_person):
+                    return False
+            old_person = (r.get("person") or "self").strip() or "self"
+            if new_person != old_person:
+                r["person"] = new_person
+                exam_date = (r.get("exam_date") or "").strip()
+                if exam_date:
+                    r["event_id"] = f"evt-{new_person}-{exam_date}"
+                old_rel = (r.get("file_relpath") or "").strip()
+                if old_rel:
+                    primary = r.get("category") or (
+                        (r.get("categories") or [""])[0] if r.get("categories") else ""
+                    )
+                    new_folder = patient_folder(new_person, category_folder(str(primary)))
+                    new_rel = f"{new_folder}/{Path(old_rel).name}".replace("\\", "/")
+                    if new_rel != old_rel:
+                        root = data_write_root()
+                        old_path = root / old_rel
+                        new_path = root / new_rel
+                        if old_path.is_file():
+                            new_path.parent.mkdir(parents=True, exist_ok=True)
+                            if new_path.exists() and new_path.resolve() != old_path.resolve():
+                                stem = new_path.stem
+                                ext = new_path.suffix
+                                n = 2
+                                while new_path.exists():
+                                    new_path = new_path.parent / f"{stem}_{n}{ext}"
+                                    n += 1
+                            shutil.move(str(old_path), str(new_path))
+                            r["file_relpath"] = str(new_path.relative_to(root)).replace("\\", "/")
+                            r["file_name"] = new_path.name
+                        else:
+                            r["file_relpath"] = new_rel
+                            r["file_name"] = Path(new_rel).name
+        found = True
+        break
     if found:
         save_catalog(catalog)
         from .github_sync import github_sync_enabled, sync_catalog_to_github

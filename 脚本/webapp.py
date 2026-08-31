@@ -24,6 +24,7 @@ for _p in (
     BASE_DIR / "喝水",
     BASE_DIR / "医疗",
     BASE_DIR / "日志",
+    BASE_DIR / "收藏",
 ):
     s = str(_p)
     if s not in sys.path:
@@ -33,10 +34,18 @@ from auth import (
     auth_bp,
     auth_enabled,
     guest_can_access,
+    has_module_access,
     has_site_access,
     is_guest,
     is_logged_in,
     is_owner,
+    is_share,
+    request_module,
+    share_can_access,
+    share_home_url,
+    share_modules,
+    share_profile_name,
+    can_write,
 )
 from db.backup import (
     create_backup_bundle,
@@ -182,6 +191,10 @@ def _load_dotenv() -> None:
 
 _load_dotenv()
 
+from site_auth import sync_env_password_hash
+
+sync_env_password_hash()
+
 app = Flask(
     __name__,
     template_folder=str(SCRIPT_DIR / "site" / "templates"),
@@ -200,12 +213,14 @@ from notes import notes_bp
 from health import health_bp
 from bills import bills_bp
 from poems import poems_bp
+from collection import collection_bp
 
 app.register_blueprint(water_bp)
 app.register_blueprint(notes_bp)
 app.register_blueprint(health_bp)
 app.register_blueprint(bills_bp)
 app.register_blueprint(poems_bp)
+app.register_blueprint(collection_bp)
 
 TOOLS_DIR = SCRIPT_DIR / "工具"
 if str(TOOLS_DIR) not in sys.path:
@@ -237,6 +252,16 @@ def _require_access():
         flash("游客模式仅可查看诗词与笔记专栏", "error")
         return redirect(url_for("poems_page"))
 
+    # 分享访问：按模块白名单
+    if is_share():
+        if not share_can_access(endpoint, request.path):
+            flash("您的分享权限不包含此页面", "error")
+            return redirect(share_home_url())
+        if request.method not in ("GET", "HEAD") and not is_owner():
+            flash("分享访问仅可浏览，不可修改", "error")
+            return redirect(request.referrer or share_home_url())
+        return None
+
     # 所有者放行
     return None
 
@@ -258,7 +283,16 @@ def _inject_auth():
         "is_logged_in": is_logged_in(),
         "is_owner": is_owner(),
         "is_guest": is_guest(),
-        "access_role": "guest" if is_guest() else ("owner" if is_owner() else None),
+        "is_share": is_share(),
+        "can_write": can_write(),
+        "has_module_access": has_module_access,
+        "share_modules": share_modules(),
+        "share_profile_name": share_profile_name(),
+        "access_role": (
+            "guest"
+            if is_guest()
+            else ("share" if is_share() else ("owner" if is_owner() else None))
+        ),
         "sync_local_backup": bool(getattr(g, "sync_local_backup", False)),
     }
 
@@ -1631,4 +1665,6 @@ if __name__ == "__main__":
     ensure_db()
     port = int(os.environ.get("PORT", "8501"))
     host = os.environ.get("HOST", "0.0.0.0")
-    app.run(host=host, port=port, debug=False, use_reloader=False)
+    debug = os.environ.get("FLASK_DEBUG", "").strip().lower() in ("1", "true", "yes")
+    app.jinja_env.auto_reload = True
+    app.run(host=host, port=port, debug=debug, use_reloader=False)

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}个人网站{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r27" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r30" />
   </head>
   <body>
     <div class="app-shell">
@@ -13,12 +13,12 @@
           <div class="brand-mark">我</div>
           <div class="brand-text">
             <div class="brand-title">个人网站</div>
-            <div class="brand-sub">{% if is_guest %}游客只读{% else %}所有者{% endif %}</div>
+            <div class="brand-sub">{% if is_guest %}游客只读{% elif is_share %}分享 · {{ share_profile_name }}{% else %}所有者{% endif %}</div>
           </div>
         </div>
 
         <nav class="sidebar-nav">
-          {% if is_owner %}
+          {% if has_module_access('bills') %}
           <details class="nav-group" open>
             <summary class="nav-group-title">账单财务</summary>
             <div class="nav-group-links">
@@ -29,15 +29,23 @@
               <a class="nav-link{% if request.endpoint == 'travel_page' %} active{% endif %}" href="{{ url_for('travel_page') }}">旅游管理</a>
             </div>
           </details>
+          {% endif %}
 
+          {% if has_module_access('journal') or has_module_access('water') %}
           <details class="nav-group" open>
             <summary class="nav-group-title">生活日常</summary>
             <div class="nav-group-links">
+              {% if has_module_access('journal') %}
               <a class="nav-link{% if request.endpoint == 'journal_page' %} active{% endif %}" href="{{ url_for('journal_page') }}">生活日志</a>
+              {% endif %}
+              {% if has_module_access('water') %}
               <a class="nav-link{% if request.endpoint and request.endpoint.startswith('water.') %} active{% endif %}" href="{{ url_for('water.water_home') }}">喝水提醒</a>
+              {% endif %}
             </div>
           </details>
+          {% endif %}
 
+          {% if has_module_access('health') %}
           <details class="nav-group" open>
             <summary class="nav-group-title">健康</summary>
             <div class="nav-group-links">
@@ -46,24 +54,38 @@
           </details>
           {% endif %}
 
+          {% if has_module_access('collection') %}
+          <details class="nav-group" open>
+            <summary class="nav-group-title">收藏</summary>
+            <div class="nav-group-links">
+              <a class="nav-link{% if request.endpoint and request.endpoint.startswith('collection.') %} active{% endif %}" href="{{ url_for('collection.collection_home') }}">作品 / 人物</a>
+            </div>
+          </details>
+          {% endif %}
+
+          {% if has_module_access('poems') %}
           <details class="nav-group" open>
             <summary class="nav-group-title">诗意</summary>
             <div class="nav-group-links">
               <a class="nav-link{% if request.endpoint in ('poems_page', 'poem_admin_page', 'poem_create_page', 'poem_create_form_page', 'poem_recommend_page', 'poem_lookup_page', 'poem_edit_page') %} active{% endif %}" href="{{ url_for('poems_page') }}">每日诗词</a>
             </div>
           </details>
+          {% endif %}
 
+          {% if has_module_access('notes') %}
           <details class="nav-group" open>
             <summary class="nav-group-title">笔记</summary>
             <div class="nav-group-links">
               <a class="nav-link{% if request.endpoint and request.endpoint.startswith('notes.') %} active{% endif %}" href="{{ url_for('notes.notes_list') }}">笔记专栏</a>
             </div>
           </details>
+          {% endif %}
 
           <details class="nav-group" open>
             <summary class="nav-group-title">账户</summary>
             <div class="nav-group-links">
               {% if is_owner %}
+              <a class="nav-link{% if request.endpoint in ('auth.access_settings', 'auth.sharing_settings') %} active{% endif %}" href="{{ url_for('auth.access_settings') }}">权限管理</a>
               <a class="nav-link" href="{{ url_for('download_backup_zip') }}" id="export-local-backup">导出备份</a>
               <button type="button" class="nav-link" id="bind-local-backup" style="width:100%;text-align:left;border:0;background:transparent;cursor:pointer;font:inherit;color:inherit;padding:inherit;">绑定本机 backup</button>
               <div class="muted" id="local-backup-status" style="padding:0 12px 6px;font-size:12px;">未绑定</div>
@@ -74,7 +96,7 @@
         </nav>
 
         <div class="sidebar-foot">
-          <span class="ver-badge">r27</span>
+          <span class="ver-badge">r30</span>
         </div>
       </aside>
 

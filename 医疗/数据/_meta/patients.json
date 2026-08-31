@@ -1,0 +1,6 @@
+{
+  "patients": [
+    {"id": "self", "label": "本人", "folder": ""},
+    {"id": "zhangyue", "label": "张悦", "folder": "04_张悦_医疗"}
+  ]
+}

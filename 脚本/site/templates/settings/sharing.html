@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+{% block title %}分享权限{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>分享权限管理</h2>
+  <p class="muted">为不同朋友创建独立访问配置：每人只能看到你勾选的模块，且<strong>只读</strong>（不能改数据）。</p>
+
+  {% if created_password %}
+  <div class="flash success" style="margin-top:12px;">
+    访问密码（请复制发给对方，关闭本页后不再显示）：<strong>{{ created_password }}</strong>
+  </div>
+  {% endif %}
+
+  <form method="post" class="card" style="margin-top:16px;padding:16px;">
+    <input type="hidden" name="action" value="create" />
+    <h3 style="margin-top:0;">新建分享</h3>
+    <label class="field-label">对象名称（如：小明）</label>
+    <input type="text" name="name" required placeholder="朋友称呼，会显示在侧栏" />
+
+    <label class="field-label" style="margin-top:12px;">访问密码（留空则自动生成）</label>
+    <input type="text" name="password" autocomplete="new-password" placeholder="可选，建议设置好记密码" />
+
+    <p class="field-label" style="margin-top:12px;">可访问模块</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;">
+      {% for key, spec in modules.items() %}
+      <label class="chip" style="justify-content:flex-start;">
+        <input type="checkbox" name="modules" value="{{ key }}" {% if key == 'collection' %}checked{% endif %} />
+        {{ spec.label }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <button type="submit" style="margin-top:16px;">创建分享</button>
+  </form>
+
+  {% if profiles %}
+  <h3 style="margin-top:24px;">已创建的分享</h3>
+  <table class="table" style="margin-top:8px;">
+    <thead>
+      <tr>
+        <th>对象</th>
+        <th>模块</th>
+        <th>专属链接</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in profiles %}
+      <tr>
+        <td><strong>{{ p.name }}</strong><br /><span class="muted">{{ p.created_at }}</span></td>
+        <td>{{ p.module_labels | join('、') }}</td>
+        <td>
+          <input type="text" readonly value="{{ p.share_url }}" style="width:100%;font-size:12px;" onclick="this.select()" />
+          <span class="muted" style="font-size:12px;">发链接给对方，点开即进入（无需再输密码）</span>
+        </td>
+        <td>
+          <form method="post" onsubmit="return confirm('确定删除「{{ p.name }}」的分享？链接与密码将立即失效。');">
+            <input type="hidden" name="action" value="delete" />
+            <input type="hidden" name="profile_id" value="{{ p.id }}" />
+            <button type="submit" class="btn-secondary">删除</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="margin-top:20px;">还没有分享配置。例如：只勾选「作品 / 人物」，把链接发给朋友即可。</p>
+  {% endif %}
+</section>
+{% endblock %}

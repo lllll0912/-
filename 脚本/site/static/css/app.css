@@ -344,6 +344,7 @@ body::before {
   box-shadow: var(--card-shadow);
   backdrop-filter: blur(8px);
   min-width: 0;
+  color: var(--text);
 }
 
 .card h2 {
@@ -354,6 +355,7 @@ body::before {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--text);
 }
 
 .card h2::before {

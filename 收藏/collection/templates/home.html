@@ -1,0 +1,768 @@
+{% extends "layout.html" %}
+{% block title %}收藏{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('collection.static', filename='collection.css') }}?v=4" />
+
+<section class="col-head card">
+  <div class="col-head-row">
+    <div>
+      <p class="eyebrow">Private Collection</p>
+      <h2 class="col-title">收藏</h2>
+      <p class="muted">作品 {{ movie_count }} · 人物 {{ people_count }}</p>
+    </div>
+    <div class="col-actions">
+      {% if can_edit %}<button type="button" class="col-btn col-btn-primary" id="col-btn-new">新增</button>{% endif %}
+    </div>
+  </div>
+
+  <div class="col-toolbar">
+    <div class="col-toolbar-left">
+      <div class="col-tabs" role="tablist">
+        <a class="col-tab{% if tab == 'movies' %} is-active{% endif %}" href="{{ url_for('collection.collection_home', tab='movies', view=view, filter=filter_mode, sort=sort, q=q, year=year) }}">作品</a>
+        <a class="col-tab{% if tab == 'people' %} is-active{% endif %}" href="{{ url_for('collection.collection_home', tab='people', filter=filter_mode, sort=sort, q=q) }}">人物</a>
+      </div>
+      {% if tab == 'movies' %}
+      <div class="col-view-tabs" role="tablist" aria-label="作品视图">
+        <a class="col-tab{% if view != 'calendar' %} is-active{% endif %}" href="{{ url_for('collection.collection_home', tab='movies', view='grid', filter=filter_mode, sort=sort, q=q) }}">浏览</a>
+        <a class="col-tab{% if view == 'calendar' %} is-active{% endif %}" href="{{ url_for('collection.collection_home', tab='movies', view='calendar', filter=filter_mode, sort=sort, q=q, year=year) }}">日历</a>
+      </div>
+      {% endif %}
+    </div>
+    <form class="col-search" method="get" action="{{ url_for('collection.collection_home') }}">
+      <input type="hidden" name="tab" value="{{ tab }}" />
+      {% if tab == 'movies' %}<input type="hidden" name="view" value="{{ view }}" />{% endif %}
+      {% if tab == 'movies' and view == 'calendar' %}<input type="hidden" name="year" value="{{ year }}" />{% endif %}
+      <select name="filter" aria-label="筛选">
+        <option value="all" {% if filter_mode == 'all' %}selected{% endif %}>全部</option>
+        <option value="incomplete" {% if filter_mode == 'incomplete' %}selected{% endif %}>待补录（缺评分或说明）</option>
+        <option value="unscored" {% if filter_mode == 'unscored' %}selected{% endif %}>未评分</option>
+        <option value="scored" {% if filter_mode == 'scored' %}selected{% endif %}>已评分</option>
+      </select>
+      <select name="sort" aria-label="排序">
+        <option value="added_desc" {% if sort == 'added_desc' %}selected{% endif %}>添加日 · 新→旧</option>
+        <option value="added_asc" {% if sort == 'added_asc' %}selected{% endif %}>添加日 · 旧→新</option>
+        <option value="score_desc" {% if sort == 'score_desc' %}selected{% endif %}>评分 · 高→低</option>
+        {% if tab == 'movies' %}
+        <option value="id_asc" {% if sort == 'id_asc' %}selected{% endif %}>番号</option>
+        {% else %}
+        <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>名称</option>
+        {% endif %}
+      </select>
+      <input type="search" name="q" value="{{ q }}" placeholder="搜索番号 / 标题 / 说明 / 人物…" />
+      <button type="submit" class="col-btn">应用</button>
+      {% if q or filter_mode != 'all' %}<a class="col-btn" href="{% if tab == 'movies' %}{{ url_for('collection.collection_home', tab=tab, view=view, year=year if view == 'calendar' else none) }}{% else %}{{ url_for('collection.collection_home', tab=tab) }}{% endif %}">重置</a>{% endif %}
+    </form>
+  </div>
+</section>
+
+{% if tab == 'movies' and view == 'calendar' and timeline %}
+<section class="col-timeline-bar card">
+  <div class="col-year-nav">
+    <a class="col-btn" href="{{ url_for('collection.collection_home', tab='movies', year=year - 1, filter=filter_mode, sort=sort, q=q) }}" title="上一年">‹</a>
+    <label class="col-year-label">
+      <span class="muted">收藏年份</span>
+      <select id="col-year-select" aria-label="选择年份">
+        {% for y in years %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <a class="col-btn" href="{{ url_for('collection.collection_home', tab='movies', year=year + 1, filter=filter_mode, sort=sort, q=q) }}" title="下一年">›</a>
+  </div>
+  <div class="col-year-strip">
+    {% for m in timeline.month_summaries %}
+    <a class="col-strip-cell{% if m.has_items %} has{% endif %}" href="#col-month-{{ m.month }}">
+      <em>{{ m.month }}月</em>
+      {% if m.has_items %}<strong>{{ m.count }}</strong>{% else %}<span>—</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  <p class="muted col-statline">{{ year }} 年 · 共收藏 {{ timeline.item_count }} 部 · {{ timeline.days_with_items }} 个收藏日</p>
+</section>
+
+<div class="col-layout col-layout-calendar">
+  <div class="col-calendar-main">
+    <div class="col-months">
+  {% for month in timeline.months %}
+  <section class="col-month card" id="col-month-{{ month.month }}">
+    <header class="col-month-hd">
+      <div class="col-month-hd-top">
+        <h3>{{ month.label }}</h3>
+        {% if month.count %}
+        <span class="col-month-meta">{{ month.count }} 部</span>
+        {% else %}
+        <span class="col-month-meta muted">无收藏</span>
+        {% endif %}
+      </div>
+      {% if month.works %}
+      <div class="col-month-items" aria-label="本月收藏">
+        <span class="col-month-items-label">本月收藏</span>
+        <ul class="col-item-list">
+          {% for it in month.works %}
+          <li>
+            <button type="button" class="col-item-chip col-open-movie" data-id="{{ it.id }}" title="{{ it.id }}{% if it.person %} · {{ it.person }}{% endif %}">
+              <em>{{ it.day }}</em>{{ it.id }}{% if it.person %} · {{ it.person }}{% endif %}{% if it.score %} · ★{{ it.score }}{% endif %}
+            </button>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </header>
+    <div class="col-weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+    <div class="col-grid-cal">
+      {% for week in month.weeks %}
+        {% for day in week %}
+          {% if day.empty %}
+          <div class="col-day is-pad"></div>
+          {% elif day.count %}
+          <button type="button" class="col-day has-item" data-date="{{ day.date }}" title="{{ day.date }} · {{ day.count }} 部">
+            <span class="col-day-n">{{ day.day }}</span>
+            <span class="col-day-mark"></span>
+            {% if day.count > 1 %}<span class="col-day-cnt">{{ day.count }}</span>{% endif %}
+          </button>
+          {% else %}
+          <div class="col-day"><span class="col-day-n">{{ day.day }}</span></div>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+    </div>
+  </div>
+
+  <aside class="col-day-side card" id="col-day-side">
+    <h3 class="col-side-title" id="col-day-side-title">当日收藏</h3>
+    <p class="muted col-side-hint" id="col-day-side-hint">点击日历中有标记的日期，这里会显示封面与番号。</p>
+    <div class="col-day-pics" id="col-day-pics"></div>
+  </aside>
+</div>
+
+<div hidden aria-hidden="true" id="col-movie-store">
+  {% for m in movies %}
+  <article class="col-card" data-kind="movie" data-id="{{ m.id }}"
+    data-title="{{ m.title or '' }}" data-description="{{ m.description or '' }}"
+    data-person="{{ m.person or '' }}" data-score="{{ m.score or '' }}"
+    data-tags="{{ m.tags or '' }}" data-added="{{ m.added_date or today }}"
+    data-folder="{{ m.pic_folder }}" data-cover="{{ m.cover or '' }}"
+    data-date="{{ m.added_date or '' }}"></article>
+  {% endfor %}
+</div>
+{% elif tab == 'movies' %}
+<div class="col-layout">
+  <section class="col-main card">
+    <div class="col-grid" id="col-movie-grid">
+      {% for m in movies %}
+      <article class="col-card" data-kind="movie" data-id="{{ m.id }}"
+        data-title="{{ m.title or '' }}" data-description="{{ m.description or '' }}"
+        data-person="{{ m.person or '' }}" data-score="{{ m.score or '' }}"
+        data-tags="{{ m.tags or '' }}" data-added="{{ m.added_date or today }}"
+        data-folder="{{ m.pic_folder }}" data-cover="{{ m.cover or '' }}"
+        data-date="{{ m.added_date or '' }}">
+        <button type="button" class="col-card-media col-open-gallery">
+          {% if m.cover %}
+          <img src="{{ url_for('collection.serve_pic', folder_id=m.pic_folder, filename=m.cover) }}" alt="" loading="lazy" />
+          {% else %}
+          <span class="col-card-empty">无图</span>
+          {% endif %}
+          {% if m.image_count %}<span class="col-badge">{{ m.image_count }}</span>{% endif %}
+        </button>
+        <div class="col-card-body">
+          <strong>{{ m.id }}</strong>
+          <span class="muted">{{ m.title or '未填标题' }}{% if m.person %} · {{ m.person }}{% endif %}</span>
+          <div class="col-card-meta">
+            {% if m.score %}<em>★ {{ m.score }}</em>{% else %}<em class="muted">未评分</em>{% endif %}
+            <span class="col-date">{{ m.added_date or '—' }}</span>
+          </div>
+          <div class="col-card-actions">
+            {% if can_edit %}<button type="button" class="col-link col-edit">编辑</button>{% endif %}
+            <button type="button" class="col-link col-open-gallery">看图</button>
+          </div>
+        </div>
+      </article>
+      {% else %}
+      <p class="muted col-empty">暂无作品。点「新增」开始。</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="col-side card">
+    <h3 class="col-side-title">随机推荐</h3>
+    <p class="muted col-side-hint">点条目看图；也可一键编辑补评分和说明。</p>
+    <div class="col-reco">
+      {% for m in recommends %}
+      <button type="button" class="col-reco-item col-open-gallery"
+        data-kind="movie" data-id="{{ m.id }}" data-folder="{{ m.pic_folder }}">
+        {% if m.cover %}
+        <img src="{{ url_for('collection.serve_pic', folder_id=m.pic_folder, filename=m.cover) }}" alt="" loading="lazy" />
+        {% endif %}
+        <span>
+          <strong>{{ m.id }}</strong>
+          <em class="muted">{% if m.person %}{{ m.person }} · {% endif %}{% if m.score %}★ {{ m.score }}{% else %}未评分{% endif %}</em>
+        </span>
+      </button>
+      {% else %}
+      <p class="muted">还没有可推荐的作品</p>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+{% else %}
+<section class="col-main card">
+  <div class="col-grid" id="col-people-grid">
+    {% for p in people %}
+    <article class="col-card" data-kind="person" data-id="{{ p.name }}"
+      data-description="{{ p.description or '' }}" data-classic="{{ p.classic or '' }}"
+      data-kind-label="{{ p.kind or '' }}" data-score="{{ p.score or '' }}"
+      data-tags="{{ p.tags or '' }}" data-added="{{ p.added_date or today }}"
+      data-folder="{{ p.pic_folder }}" data-cover="{{ p.cover or '' }}">
+      <button type="button" class="col-card-media col-open-gallery">
+        {% if p.cover %}
+        <img src="{{ url_for('collection.serve_pic', folder_id=p.pic_folder, filename=p.cover) }}" alt="" loading="lazy" />
+        {% else %}
+        <span class="col-card-empty">无图</span>
+        {% endif %}
+        {% if p.image_count %}<span class="col-badge">{{ p.image_count }}</span>{% endif %}
+      </button>
+      <div class="col-card-body">
+        <strong>{{ p.name }}</strong>
+        <span class="muted">{{ p.kind or '未分类' }}{% if p.classic %} · {{ p.classic }}{% endif %}</span>
+        <div class="col-card-meta">
+          {% if p.score %}<em>★ {{ p.score }}</em>{% else %}<em class="muted">未评分</em>{% endif %}
+          <span class="col-date">{{ p.added_date or '—' }}</span>
+        </div>
+        <div class="col-card-actions">
+          {% if can_edit %}<button type="button" class="col-link col-edit">编辑</button>{% endif %}
+          <button type="button" class="col-link col-open-gallery">看图</button>
+        </div>
+      </div>
+    </article>
+    {% else %}
+    <p class="muted col-empty">暂无人物。可在此新增并补评分、说明。</p>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if can_edit %}
+<div id="col-mask" hidden></div>
+<div id="col-drawer" hidden aria-hidden="true">
+  <div class="col-drawer-hd">
+    <div>
+      <p class="eyebrow" id="col-drawer-eyebrow">资料</p>
+      <h3 id="col-drawer-title">编辑</h3>
+    </div>
+    <button type="button" class="col-btn" id="col-drawer-close">关闭</button>
+  </div>
+  <div id="col-day-list" class="col-day-list" hidden></div>
+
+  <form id="col-form-movie" class="col-form" method="post" enctype="multipart/form-data" action="{{ url_for('collection.movie_save') }}" hidden>
+    <input type="hidden" name="old_id" id="mf-old-id" />
+    <input type="hidden" name="next_filter" value="{{ filter_mode }}" />
+    <input type="hidden" name="next_sort" value="{{ sort }}" />
+    {% if tab == 'movies' %}
+    <input type="hidden" name="next_view" value="{{ view }}" />
+    {% if view == 'calendar' %}<input type="hidden" name="next_year" value="{{ year }}" />{% endif %}
+    {% endif %}
+
+    <div class="col-form-section">
+      <p class="col-section-label">必填核心</p>
+      <label class="field-label">番号 / ID *</label>
+      <input type="text" name="id" id="mf-id" required autocomplete="off" />
+      <p class="muted col-lookup-hint" id="mf-lookup-hint">输入番号后将自动查询女优与标题，你只需补评分和说明。</p>
+
+      <label class="field-label">评分（0–10，点选或手填）</label>
+      <div class="col-score-row" data-score-for="mf-score">
+        {% for n in range(1, 11) %}
+        <button type="button" class="col-score-chip" data-v="{{ n }}">{{ n }}</button>
+        {% endfor %}
+        <button type="button" class="col-score-chip col-score-clear" data-v="">清</button>
+      </div>
+      <input type="number" name="score" id="mf-score" min="0" max="10" step="0.5" placeholder="如 8 或 8.5" inputmode="decimal" />
+
+      <label class="field-label">作品说明</label>
+      <textarea name="description" id="mf-description" rows="4" placeholder="观感、看点、备忘…"></textarea>
+    </div>
+
+    <div class="col-form-section">
+      <p class="col-section-label">自动补全 / 其它</p>
+      <label class="field-label">标题</label>
+      <input type="text" name="title" id="mf-title" />
+      <label class="field-label">关联人物（女优）</label>
+      <input type="text" name="person" id="mf-person" list="col-person-suggest" />
+      <label class="field-label">添加日期</label>
+      <input type="date" name="added_date" id="mf-added" value="{{ today }}" />
+      <label class="field-label">标签</label>
+      <input type="text" name="tags" id="mf-tags" placeholder="空格或逗号分隔，可选" />
+      <label class="field-label">追加图片</label>
+      <input type="file" name="files" id="mf-files" accept="image/*" multiple />
+    </div>
+
+    <div class="col-form-actions">
+      <button type="submit" class="col-btn col-btn-primary">保存</button>
+    </div>
+  </form>
+
+  <form id="col-form-person" class="col-form" method="post" enctype="multipart/form-data" action="{{ url_for('collection.person_save') }}" hidden>
+    <input type="hidden" name="old_name" id="pf-old-name" />
+    <input type="hidden" name="next_filter" value="{{ filter_mode }}" />
+    <input type="hidden" name="next_sort" value="{{ sort }}" />
+    {% if tab == 'movies' %}
+    <input type="hidden" name="next_view" value="{{ view }}" />
+    {% if view == 'calendar' %}<input type="hidden" name="next_year" value="{{ year }}" />{% endif %}
+    {% endif %}
+
+    <div class="col-form-section">
+      <p class="col-section-label">必填核心</p>
+      <label class="field-label">名称 *</label>
+      <input type="text" name="name" id="pf-name" required />
+      <label class="field-label">评分（0–10）</label>
+      <div class="col-score-row" data-score-for="pf-score">
+        {% for n in range(1, 11) %}
+        <button type="button" class="col-score-chip" data-v="{{ n }}">{{ n }}</button>
+        {% endfor %}
+        <button type="button" class="col-score-chip col-score-clear" data-v="">清</button>
+      </div>
+      <input type="number" name="score" id="pf-score" min="0" max="10" step="0.5" inputmode="decimal" />
+      <label class="field-label">人物说明</label>
+      <textarea name="description" id="pf-description" rows="4" placeholder="印象、特点…"></textarea>
+    </div>
+
+    <div class="col-form-section">
+      <p class="col-section-label">其它</p>
+      <label class="field-label">添加日期</label>
+      <input type="date" name="added_date" id="pf-added" value="{{ today }}" />
+      <label class="field-label">类型</label>
+      <input type="text" name="kind" id="pf-kind" />
+      <label class="field-label">代表作</label>
+      <input type="text" name="classic" id="pf-classic" />
+      <label class="field-label">标签</label>
+      <input type="text" name="tags" id="pf-tags" />
+      <label class="field-label">追加图片</label>
+      <input type="file" name="files" id="pf-files" accept="image/*" multiple />
+    </div>
+
+    <div class="col-form-actions">
+      <button type="submit" class="col-btn col-btn-primary">保存</button>
+    </div>
+  </form>
+
+  <datalist id="col-person-suggest">
+    {% for p in people %}
+    <option value="{{ p.name }}"></option>
+    {% endfor %}
+  </datalist>
+
+  <form id="col-form-delete" method="post" class="col-delete-form" hidden>
+    <label class="col-check"><input type="checkbox" name="remove_pics" value="1" /> 同时删除图片文件夹</label>
+    <button type="submit" class="col-btn col-btn-danger">删除此条</button>
+  </form>
+</div>
+{% endif %}
+
+<div id="col-gallery" hidden>
+  <div class="col-gallery-inner">
+    <div class="col-gallery-hd">
+      <div>
+        <p class="eyebrow" id="col-gal-id">—</p>
+        <h3 id="col-gal-stat">图片</h3>
+      </div>
+      <div class="col-gallery-hd-actions">
+        {% if can_edit %}<button type="button" class="col-btn" id="col-gal-edit">编辑资料</button>{% endif %}
+        <button type="button" class="col-btn" id="col-gal-close">关闭</button>
+      </div>
+    </div>
+    <div class="col-gallery-stage">
+      <button type="button" class="col-nav" id="col-gal-prev">‹</button>
+      <img id="col-gal-main" alt="" />
+      <button type="button" class="col-nav" id="col-gal-next">›</button>
+    </div>
+    <div class="col-thumbs" id="col-gal-thumbs"></div>
+    {% if can_edit %}
+    <div class="col-gallery-tools">
+      <input type="file" id="col-gal-files" accept="image/*" multiple />
+      <button type="button" class="col-btn col-btn-primary" id="col-gal-upload">上传</button>
+      <button type="button" class="col-btn col-btn-danger" id="col-gal-delete">删除当前图</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function () {
+  var canEdit = {{ can_edit|tojson }};
+  var tab = {{ tab|tojson }};
+  var today = {{ today|tojson }};
+  var picBase = {{ url_for('collection.serve_pic', folder_id='__F__', filename='__N__')|tojson }};
+  var lookupApi = {{ url_for('collection.api_movie_lookup')|tojson }};
+  var movieImgApi = {{ url_for('collection.api_movie_images', mov_id='__ID__')|tojson }};
+  var personImgApi = {{ url_for('collection.api_person_images', name='__ID__')|tojson }};
+  var movieDelApi = {{ url_for('collection.api_movie_delete_image', mov_id='__ID__', filename='__N__')|tojson }};
+  var personDelApi = {{ url_for('collection.api_person_delete_image', name='__ID__', filename='__N__')|tojson }};
+  var movieDelForm = {{ url_for('collection.movie_delete', mov_id='__ID__')|tojson }};
+  var personDelForm = {{ url_for('collection.person_delete', name='__ID__')|tojson }};
+  var homeBase = {{ url_for('collection.collection_home', tab='movies')|tojson }};
+
+  function picUrl(folder, name) {
+    return picBase.replace("__F__", encodeURIComponent(folder)).replace("__N__", encodeURIComponent(name)) + "?t=" + Date.now();
+  }
+  function apiList(kind, id) {
+    return (kind === "person" ? personImgApi : movieImgApi).replace("__ID__", encodeURIComponent(id));
+  }
+  function apiDel(kind, id, name) {
+    return (kind === "person" ? personDelApi : movieDelApi)
+      .replace("__ID__", encodeURIComponent(id))
+      .replace("__N__", encodeURIComponent(name));
+  }
+  function findMovieCard(id) {
+    var store = document.getElementById("col-movie-store");
+    if (!store) return document.querySelector('.col-card[data-id="' + CSS.escape(id) + '"]');
+    return store.querySelector('.col-card[data-id="' + CSS.escape(id) + '"]')
+      || document.querySelector('.col-card[data-id="' + CSS.escape(id) + '"]');
+  }
+
+  var mask = document.getElementById("col-mask");
+  var drawer = document.getElementById("col-drawer");
+  var formMovie = document.getElementById("col-form-movie");
+  var formPerson = document.getElementById("col-form-person");
+  var formDelete = document.getElementById("col-form-delete");
+  var dayList = document.getElementById("col-day-list");
+  var lookupTimer = null;
+
+  function syncScoreChips(inputId) {
+    var input = document.getElementById(inputId);
+    var row = document.querySelector('[data-score-for="' + inputId + '"]');
+    if (!input || !row) return;
+    var v = String(input.value || "");
+    row.querySelectorAll(".col-score-chip").forEach(function (chip) {
+      var cv = chip.getAttribute("data-v");
+      chip.classList.toggle("is-on", cv !== "" && (v === cv || Number(v) === Number(cv)));
+    });
+  }
+
+  document.querySelectorAll(".col-score-row").forEach(function (row) {
+    var target = row.getAttribute("data-score-for");
+    row.querySelectorAll(".col-score-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        var input = document.getElementById(target);
+        if (!input) return;
+        input.value = chip.getAttribute("data-v") || "";
+        syncScoreChips(target);
+        if (input.value) document.getElementById(target === "mf-score" ? "mf-description" : "pf-description").focus();
+      });
+    });
+    var input = document.getElementById(target);
+    if (input) input.addEventListener("input", function () { syncScoreChips(target); });
+  });
+
+  function setLookupHint(text, ok) {
+    var el = document.getElementById("mf-lookup-hint");
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle("is-ok", !!ok);
+    el.classList.toggle("is-err", ok === false);
+  }
+
+  function lookupMovieMeta(code) {
+    var idInput = document.getElementById("mf-id");
+    if (!idInput || formMovie.hidden) return;
+    var c = (code || idInput.value || "").trim();
+    if (!c) return;
+    setLookupHint("正在查询番号资料…", null);
+    fetch(lookupApi + "?code=" + encodeURIComponent(c))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.ok) {
+          setLookupHint("未查到该番号，可手动填写女优名。", false);
+          return;
+        }
+        if (!(document.getElementById("mf-person").value || "").trim() && data.person) {
+          document.getElementById("mf-person").value = data.person;
+        }
+        if (!(document.getElementById("mf-title").value || "").trim() && data.title) {
+          document.getElementById("mf-title").value = data.title;
+        }
+        setLookupHint("已自动补全：" + (data.person || "—") + (data.cached ? "（缓存）" : ""), true);
+      })
+      .catch(function () { setLookupHint("查询失败，请稍后重试或手动填写。", false); });
+  }
+
+  var mfId = document.getElementById("mf-id");
+  if (mfId) {
+    mfId.addEventListener("input", function () {
+      clearTimeout(lookupTimer);
+      lookupTimer = setTimeout(function () { lookupMovieMeta(mfId.value); }, 450);
+    });
+    mfId.addEventListener("blur", function () { lookupMovieMeta(mfId.value); });
+  }
+
+  function cardsForDate(date) {
+    var cards = [];
+    document.querySelectorAll("#col-movie-store .col-card, #col-movie-grid .col-card").forEach(function (card) {
+      if ((card.getAttribute("data-date") || "").slice(0, 10) === date) cards.push(card);
+    });
+    return cards;
+  }
+
+  function renderDaySide(date, cards) {
+    var side = document.getElementById("col-day-pics");
+    var title = document.getElementById("col-day-side-title");
+    var hint = document.getElementById("col-day-side-hint");
+    if (!side || !title) return;
+    title.textContent = date || "当日收藏";
+    if (hint) hint.textContent = cards.length ? cards.length + " 部 · 点封面看图" : "点击日历中有标记的日期";
+    side.innerHTML = "";
+    cards.forEach(function (card) {
+      var id = card.getAttribute("data-id");
+      var folder = card.getAttribute("data-folder") || id;
+      var cover = card.getAttribute("data-cover");
+      var person = card.getAttribute("data-person") || "";
+      var wrap = document.createElement("div");
+      wrap.className = "col-day-pic-item";
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "col-day-pic-cover";
+      btn.setAttribute("data-kind", "movie");
+      btn.setAttribute("data-id", id);
+      btn.setAttribute("data-folder", folder);
+      if (cover) {
+        btn.innerHTML = '<img src="' + picUrl(folder, cover) + '" alt="" loading="lazy" />';
+      } else {
+        btn.innerHTML = '<span class="col-day-pic-empty">无封面</span>';
+      }
+      btn.addEventListener("click", function () { openGallery("movie", id, folder); });
+      var meta = document.createElement("div");
+      meta.className = "col-day-pic-meta";
+      meta.innerHTML = "<strong>" + id + "</strong>" + (person ? '<span class="muted">' + person + "</span>" : "");
+      wrap.appendChild(btn);
+      wrap.appendChild(meta);
+      if (canEdit) {
+        var actions = document.createElement("div");
+        actions.className = "col-day-pic-actions";
+        var edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "col-link";
+        edit.textContent = "编辑";
+        edit.addEventListener("click", function () { openDrawer("movie", card, false); });
+        actions.appendChild(edit);
+        wrap.appendChild(actions);
+      }
+      side.appendChild(wrap);
+    });
+    document.querySelectorAll(".col-day.has-item").forEach(function (el) {
+      el.classList.toggle("is-selected", el.getAttribute("data-date") === date);
+    });
+  }
+
+  function showDayPicker(date) {
+    var cards = cardsForDate(date);
+    if (!cards.length) return;
+    renderDaySide(date, cards);
+    if (cards.length === 1) {
+      dayList.hidden = true;
+      return;
+    }
+    dayList.hidden = true;
+  }
+
+  function openDrawer(mode, card, autoLookup) {
+    if (!canEdit || !drawer) return;
+    if (autoLookup === undefined) autoLookup = !card;
+    dayList.hidden = true;
+    formMovie.hidden = mode !== "movie";
+    formPerson.hidden = mode !== "person";
+    formDelete.hidden = !card;
+    document.getElementById("col-drawer-eyebrow").textContent = card ? "编辑" : "新增";
+    document.getElementById("col-drawer-title").textContent =
+      card ? (card.getAttribute("data-id") || "编辑") : (mode === "movie" ? "新增作品" : "新增人物");
+
+    if (mode === "movie") {
+      document.getElementById("mf-old-id").value = card ? card.getAttribute("data-id") : "";
+      document.getElementById("mf-id").value = card ? card.getAttribute("data-id") : "";
+      document.getElementById("mf-title").value = card ? card.getAttribute("data-title") : "";
+      document.getElementById("mf-person").value = card ? card.getAttribute("data-person") : "";
+      document.getElementById("mf-score").value = card ? card.getAttribute("data-score") : "";
+      document.getElementById("mf-description").value = card ? card.getAttribute("data-description") : "";
+      document.getElementById("mf-tags").value = card ? (card.getAttribute("data-tags") || "") : "";
+      document.getElementById("mf-added").value = card ? (card.getAttribute("data-added") || today) : today;
+      document.getElementById("mf-files").value = "";
+      syncScoreChips("mf-score");
+      if (card) {
+        formDelete.action = movieDelForm.replace("__ID__", encodeURIComponent(card.getAttribute("data-id")));
+        setLookupHint("可修改评分与说明；女优名已自动补全。", true);
+      } else {
+        setLookupHint("输入番号后将自动查询女优与标题。", null);
+        if (autoLookup) lookupMovieMeta(document.getElementById("mf-id").value);
+      }
+      if (card) {
+        setTimeout(function () {
+          if (!document.getElementById("mf-score").value) document.getElementById("mf-score").focus();
+          else document.getElementById("mf-description").focus();
+        }, 30);
+      }
+    } else {
+      document.getElementById("pf-old-name").value = card ? card.getAttribute("data-id") : "";
+      document.getElementById("pf-name").value = card ? card.getAttribute("data-id") : "";
+      document.getElementById("pf-kind").value = card ? (card.getAttribute("data-kind-label") || "") : "";
+      document.getElementById("pf-classic").value = card ? (card.getAttribute("data-classic") || "") : "";
+      document.getElementById("pf-score").value = card ? card.getAttribute("data-score") : "";
+      document.getElementById("pf-description").value = card ? card.getAttribute("data-description") : "";
+      document.getElementById("pf-tags").value = card ? (card.getAttribute("data-tags") || "") : "";
+      document.getElementById("pf-added").value = card ? (card.getAttribute("data-added") || today) : today;
+      document.getElementById("pf-files").value = "";
+      syncScoreChips("pf-score");
+      if (card) formDelete.action = personDelForm.replace("__ID__", encodeURIComponent(card.getAttribute("data-id")));
+    }
+    mask.hidden = false;
+    drawer.hidden = false;
+    drawer.setAttribute("aria-hidden", "false");
+  }
+  function closeDrawer() {
+    if (!drawer) return;
+    mask.hidden = true;
+    drawer.hidden = true;
+    drawer.setAttribute("aria-hidden", "true");
+    if (dayList) dayList.hidden = true;
+  }
+
+  if (canEdit) {
+    var btnNew = document.getElementById("col-btn-new");
+    if (btnNew) btnNew.addEventListener("click", function () {
+      openDrawer(tab === "people" ? "person" : "movie", null);
+    });
+    var btnClose = document.getElementById("col-drawer-close");
+    if (btnClose) btnClose.addEventListener("click", closeDrawer);
+    if (mask) mask.addEventListener("click", closeDrawer);
+    document.querySelectorAll(".col-edit").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        openDrawer(btn.closest(".col-card").getAttribute("data-kind"), btn.closest(".col-card"));
+      });
+    });
+  }
+  document.querySelectorAll(".col-open-movie").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var card = findMovieCard(btn.getAttribute("data-id"));
+      if (!card) return;
+      var date = (card.getAttribute("data-date") || "").slice(0, 10);
+      if (date) renderDaySide(date, cardsForDate(date));
+      if (card.getAttribute("data-cover")) {
+        openGallery("movie", card.getAttribute("data-id"), card.getAttribute("data-folder") || card.getAttribute("data-id"));
+      } else {
+        openDrawer("movie", card, false);
+      }
+    });
+  });
+  document.querySelectorAll(".col-day.has-item").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      showDayPicker(btn.getAttribute("data-date"));
+    });
+  });
+
+  var yearSelect = document.getElementById("col-year-select");
+  if (yearSelect) {
+    yearSelect.addEventListener("change", function () {
+      var u = new URL(homeBase, window.location.origin);
+      u.searchParams.set("year", yearSelect.value);
+      u.searchParams.set("view", "calendar");
+      {% if filter_mode != 'all' %}u.searchParams.set("filter", {{ filter_mode|tojson }});{% endif %}
+      {% if sort != 'added_desc' %}u.searchParams.set("sort", {{ sort|tojson }});{% endif %}
+      {% if q %}u.searchParams.set("q", {{ q|tojson }});{% endif %}
+      window.location = u.pathname + u.search;
+    });
+  }
+
+  var gal = document.getElementById("col-gallery");
+  var galMain = document.getElementById("col-gal-main");
+  var galThumbs = document.getElementById("col-gal-thumbs");
+  var state = { kind: "", id: "", folder: "", images: [], idx: 0 };
+
+  function showGal(i) {
+    state.idx = i;
+    var img = state.images[i];
+    if (!img) { galMain.removeAttribute("src"); galMain.alt = "无图片"; return; }
+    galMain.src = picUrl(state.folder, img.name);
+    galThumbs.querySelectorAll("button").forEach(function (b, j) {
+      b.classList.toggle("is-active", j === i);
+    });
+  }
+  function renderGal(payload) {
+    state.images = payload.images || [];
+    state.folder = payload.folder || state.folder;
+    document.getElementById("col-gal-id").textContent = state.id;
+    document.getElementById("col-gal-stat").textContent =
+      (payload.count || 0) + " 张 · " + Math.round((payload.total_bytes || 0) / 1024) + " KB";
+    galThumbs.innerHTML = "";
+    state.images.forEach(function (img, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.innerHTML = '<img src="' + picUrl(state.folder, img.name) + '" alt="" />';
+      b.addEventListener("click", function () { showGal(i); });
+      galThumbs.appendChild(b);
+    });
+    showGal(Math.min(state.idx, Math.max(0, state.images.length - 1)));
+  }
+  function openGallery(kind, id, folder) {
+    state = { kind: kind, id: id, folder: folder, images: [], idx: 0 };
+    gal.hidden = false;
+    fetch(apiList(kind, id)).then(function (r) { return r.json(); }).then(renderGal);
+  }
+  document.querySelectorAll(".col-open-gallery").forEach(function (el) {
+    el.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var card = el.closest("[data-id]") || el;
+      openGallery(
+        card.getAttribute("data-kind") || "movie",
+        card.getAttribute("data-id"),
+        card.getAttribute("data-folder") || card.getAttribute("data-id")
+      );
+    });
+  });
+  document.getElementById("col-gal-close").addEventListener("click", function () { gal.hidden = true; });
+  if (canEdit) {
+    var galEdit = document.getElementById("col-gal-edit");
+    if (galEdit) galEdit.addEventListener("click", function () {
+      var card = findMovieCard(state.id) || document.querySelector('.col-card[data-id="' + CSS.escape(state.id) + '"]');
+      if (!card) return;
+      gal.hidden = true;
+      openDrawer(state.kind, card, false);
+    });
+    var galUpload = document.getElementById("col-gal-upload");
+    if (galUpload) galUpload.addEventListener("click", function () {
+      var input = document.getElementById("col-gal-files");
+      if (!input.files || !input.files.length) { alert("请先选择图片"); return; }
+      var fd = new FormData();
+      Array.prototype.forEach.call(input.files, function (f) { fd.append("files", f); });
+      fetch(apiList(state.kind, state.id), { method: "POST", body: fd })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          input.value = "";
+          if (!data.ok) alert(data.error || "上传失败");
+          renderGal(data);
+        });
+    });
+    var galDelete = document.getElementById("col-gal-delete");
+    if (galDelete) galDelete.addEventListener("click", function () {
+      var img = state.images[state.idx];
+      if (!img) return;
+      if (!confirm("删除当前图片？")) return;
+      fetch(apiDel(state.kind, state.id, img.name), { method: "DELETE" })
+        .then(function (r) { return r.json(); })
+        .then(renderGal);
+    });
+  }
+  document.getElementById("col-gal-prev").addEventListener("click", function () {
+    if (!state.images.length) return;
+    showGal((state.idx - 1 + state.images.length) % state.images.length);
+  });
+  document.getElementById("col-gal-next").addEventListener("click", function () {
+    if (!state.images.length) return;
+    showGal((state.idx + 1) % state.images.length);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { closeDrawer(); gal.hidden = true; }
+  });
+})();
+</script>
+{% endblock %}

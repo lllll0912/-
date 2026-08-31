@@ -13,8 +13,14 @@ call "%VENV_DIR%\Scripts\activate.bat"
 echo ^>^>^> 安装/检查依赖
 pip install -q -r "脚本\requirements.txt"
 
-set "PYTHONPATH=%CD%\脚本;%CD%\账单;%CD%\账单\bills;%CD%\诗词;%CD%\诗词\poems;%CD%\喝水;%CD%\医疗;%CD%\日志"
+set "PYTHONPATH=%CD%\脚本;%CD%\账单;%CD%\账单\bills;%CD%\诗词;%CD%\诗词\poems;%CD%\喝水;%CD%\医疗;%CD%\日志;%CD%\收藏"
 if not defined BILL_COOKIE_SECURE set "BILL_COOKIE_SECURE=0"
+if not defined FLASK_DEBUG set "FLASK_DEBUG=1"
+
+echo ^>^>^> 释放 8501 端口（避免旧进程残留）
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8501" ^| findstr "LISTENING"') do (
+  taskkill /F /PID %%a >nul 2>&1
+)
 
 echo ^>^>^> 启动服务 http://127.0.0.1:8501 （Ctrl+C 停止）
 python "脚本\webapp.py"

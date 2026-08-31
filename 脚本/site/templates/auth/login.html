@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>进入 · 个人网站</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r18a" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r29" />
     <style>
       body {
         min-height: 100vh;
@@ -38,7 +38,8 @@
       .mode-card h3 { margin: 0 0 6px; font-size: 15px; }
       .mode-card p { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
       .login-card label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-      .login-card input[type="password"] {
+      .login-card input[type="password"],
+      .login-card input[type="text"] {
         width: 100%; margin-bottom: 12px; padding: 12px 14px; font-size: 15px;
       }
       .login-card button { width: 100%; padding: 11px; font-size: 14px; }
@@ -73,6 +74,17 @@
               <input id="password" name="password" type="password" autocomplete="current-password" required />
               {% endif %}
               <button type="submit">{% if auth_enabled %}输入密码进入{% else %}进入所有者模式{% endif %}</button>
+            </form>
+          </div>
+          <div class="mode-card">
+            <h3>分享访问</h3>
+            <p>朋友专用。仅可浏览对方分享给你的模块（如作品 / 人物），不可修改。</p>
+            <form method="post">
+              <input type="hidden" name="mode" value="share" />
+              <input type="hidden" name="next" value="{{ next }}" />
+              <label for="share_password">分享密码</label>
+              <input id="share_password" name="share_password" type="password" autocomplete="current-password" required />
+              <button type="submit" class="btn-secondary">进入分享浏览</button>
             </form>
           </div>
           <div class="mode-card">

@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     BILL_DATA_DIR=/data \
     PORT=8501 \
-    PYTHONPATH=/app/脚本:/app/账单:/app/账单/bills:/app/诗词:/app/诗词/poems:/app/喝水:/app/医疗:/app/日志
+    PYTHONPATH=/app/脚本:/app/账单:/app/账单/bills:/app/诗词:/app/诗词/poems:/app/喝水:/app/医疗:/app/日志:/app/收藏
 
 COPY 脚本/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

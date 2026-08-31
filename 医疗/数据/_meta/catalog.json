@@ -781,7 +781,7 @@
     {
       "id": "zy-2025-12-04_阴道超声",
       "person": "zhangyue",
-      "category": "other",
+      "category": "lab",
       "exam_date": "2025-12-04",
       "exam_name": "阴道超声",
       "hospital": "",
@@ -794,12 +794,16 @@
       "indicators_file": "",
       "purpose": "",
       "purpose_note": "非本人档案，默认不进本人时间线",
-      "event_id": "evt-zhangyue-2025-12-04"
+      "event_id": "evt-zhangyue-2025-12-04",
+      "result_status": "unknown",
+      "categories": [
+        "lab"
+      ]
     },
     {
       "id": "zy-2025-12-22_滴眼药",
       "person": "zhangyue",
-      "category": "other",
+      "category": "medication",
       "exam_date": "2025-12-22",
       "exam_name": "滴眼药",
       "hospital": "",
@@ -812,7 +816,11 @@
       "indicators_file": "",
       "purpose": "",
       "purpose_note": "非本人档案，默认不进本人时间线",
-      "event_id": "evt-zhangyue-2025-12-22"
+      "event_id": "evt-zhangyue-2025-12-22",
+      "result_status": "unknown",
+      "categories": [
+        "medication"
+      ]
     },
     {
       "id": "zy-2026-03-07_过敏性结膜炎",

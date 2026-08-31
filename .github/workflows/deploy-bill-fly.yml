@@ -9,6 +9,7 @@ on:
       - "诗词/**"
       - "日志/**"
       - "账单/**"
+      - "收藏/**"
       - "脚本/**"
       - "fly.toml"
       - ".github/workflows/deploy-bill-fly.yml"

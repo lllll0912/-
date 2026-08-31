@@ -17,15 +17,19 @@ from flask import (
     url_for,
 )
 
-from auth import is_owner
+from auth import can_write, has_module_access, is_owner
 
 from .store import (
     add_uploaded_record,
+    build_patient_tabs,
     build_year_calendar,
     get_record,
     list_records,
     load_doc_categories,
+    load_patients,
     load_purpose_tags,
+    normalize_patient_scope,
+    person_label,
     resolve_asset,
     update_record_meta,
     year_choices,
@@ -51,10 +55,11 @@ def _owner_or_403():
 def _flash_upload_ok(rec: dict) -> None:
     path = rec.get("github_path") or rec.get("file_name") or ""
     mode = sync_status_label()
+    who = person_label(str(rec.get("person") or "self"))
     if mode == "github":
-        flash(f"已上传并写入 GitHub：{path}", "success")
+        flash(f"已上传（{who}）并写入 GitHub：{path}", "success")
     elif mode == "local":
-        flash(f"已上传到本机 {path}。请 git push 同步私密仓。", "success")
+        flash(f"已上传（{who}）到本机 {path}。请 git push 同步私密仓。", "success")
     else:
         flash(
             f"已上传到服务器缓存：{path}。尚未配置 HEALTH_GITHUB_TOKEN，文件还没进 GitHub。",
@@ -66,7 +71,10 @@ def _flash_upload_ok(rec: dict) -> None:
 def _guard():
     if request.endpoint and request.endpoint.endswith(".static"):
         return None
-    _owner_or_403()
+    if not has_module_access("health"):
+        abort(403)
+    if request.method not in ("GET", "HEAD") and not is_owner():
+        abort(403)
 
 
 def _filter_args():
@@ -77,7 +85,10 @@ def _filter_args():
         one = (request.args.get("category") or "").strip()
         if one:
             cats = [one]
-    return purpose, q, cats
+    patient = normalize_patient_scope(
+        request.args.get("patient") or request.form.get("patient") or "self"
+    )
+    return purpose, q, cats, patient
 
 
 @health_bp.route("/")
@@ -90,6 +101,9 @@ def health_calendar():
     # 上传表单 POST 到本页
     if request.method == "POST" and (request.form.get("action") or "") == "upload":
         cats = [c.strip() for c in request.form.getlist("category") if c.strip()]
+        person_id = (request.form.get("person") or "self").strip() or "self"
+        if person_id == "family":
+            person_id = "zhangyue"
         rec, err = add_uploaded_record(
             file_storage=request.files.get("file"),
             exam_date=(request.form.get("exam_date") or "").strip(),
@@ -99,17 +113,21 @@ def health_calendar():
             purpose=(request.form.get("purpose") or "").strip(),
             purpose_note=(request.form.get("purpose_note") or "").strip(),
             hospital=(request.form.get("hospital") or "").strip(),
+            person=person_id,
         )
         if err:
             flash(err, "error")
-            return redirect(url_for("health.health_calendar", panel="upload"))
+            return redirect(
+                url_for("health.health_calendar", panel="upload", patient=person_id or "self")
+            )
         _flash_upload_ok(rec or {})
         y = (rec.get("exam_date") or "")[:4]
-        return redirect(url_for("health.health_calendar", year=y or None))
+        scope = normalize_patient_scope(str((rec or {}).get("person") or person_id or "self"))
+        return redirect(url_for("health.health_calendar", year=y or None, patient=scope))
 
-    purpose, q, cats = _filter_args()
-    records = list_records(person="self", purpose=purpose, categories=cats, q=q)
-    choices = year_choices(list_records(person="self"))
+    purpose, q, cats, patient = _filter_args()
+    records = list_records(person=patient, purpose=purpose, categories=cats, q=q)
+    choices = year_choices(list_records(person=patient))
     raw = (request.args.get("year") or "").strip()
     if raw.isdigit():
         year = int(raw)
@@ -132,8 +150,12 @@ def health_calendar():
         purpose_tags=load_purpose_tags(),
         doc_categories=load_doc_categories(),
         upload_categories=[c for c in load_doc_categories() if c.get("upload")],
+        patients=[p for p in load_patients() if p["id"] != "family"],
+        patient_tabs=build_patient_tabs(),
         day_data=by_date,
-        filters={"purpose": purpose, "categories": cats, "q": q},
+        filters={"purpose": purpose, "categories": cats, "q": q, "patient": patient},
+        patient=patient,
+        patient_label=person_label(patient) if patient != "family" else "家人",
         panel=panel,
         save_url_template=url_for("health.health_record_save", record_id="__ID__"),
         is_local=not bool((os.environ.get("BILL_DATA_DIR") or "").strip()),
@@ -192,6 +214,7 @@ def health_record_save(record_id: str):
         categories=cats or None,
         notes=(request.form.get("notes") or "").strip(),
         exam_name=(request.form.get("exam_name") or "").strip() or None,
+        person=(request.form.get("person") or "").strip() or None,
     ):
         flash("已保存标注", "success")
     else:

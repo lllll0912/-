@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}医疗日历 {{ year }}{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('health.static', filename='health.css') }}?v=7" />
+<link rel="stylesheet" href="{{ url_for('health.static', filename='health.css') }}?v=12" />
 <style>
   #hc-mask { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 1200; }
   #hc-mask.hc-open { display: block; }
@@ -17,10 +17,26 @@
   <div class="hc-head-row">
     <div>
       <p class="eyebrow">Medical Year Calendar</p>
-      <h2 class="hc-title">{{ year }} 年医疗日历</h2>
-      <p class="muted">点日期预览与标注；上传、搜索都在本页完成。</p>
+      <h2 class="hc-title">{{ year }} 年医疗日历 · {{ patient_label }}</h2>
+      <p class="muted">点日期预览与标注；上传、搜索都在本页。顶部「患者」按钮内按姓名切换视图。</p>
     </div>
     <div class="hc-head-actions">
+      <details class="hc-patient-picker" id="hc-patient-picker">
+        <summary class="hc-btn hc-patient-btn{% if patient != 'self' %} is-family{% endif %}" id="hc-patient-btn">
+          <span class="hc-patient-label">患者：{{ patient_label }}</span>{% for p in patient_tabs %}{% if patient == p.id and p.count %}<span class="hc-patient-count">· {{ p.count }}</span>{% endif %}{% endfor %}
+          <span class="hc-patient-caret" aria-hidden="true">▾</span>
+        </summary>
+        <div class="hc-patient-menu" id="hc-patient-menu" role="listbox" aria-label="选择患者">
+          {% for p in patient_tabs %}
+          <a class="hc-patient-option{% if patient == p.id %} is-active{% endif %}{% if not p.is_self %} is-family{% endif %}"
+             role="option"
+             href="{{ url_for('health.health_calendar', year=year, patient=p.id, q=filters.q, purpose=filters.purpose) }}">
+            <span>{{ p.label }}</span>
+            {% if p.count %}<em>{{ p.count }}</em>{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </details>
       <button type="button" class="hc-btn" id="hc-btn-upload" aria-expanded="{{ 'true' if panel == 'upload' else 'false' }}">上传</button>
       <button type="button" class="hc-btn" id="hc-btn-search" aria-expanded="{{ 'true' if panel == 'search' else 'false' }}">搜索</button>
       <div class="hc-year-nav" id="hc-year-form">
@@ -56,6 +72,14 @@
     <form method="post" enctype="multipart/form-data" class="health-upload-form" action="{{ url_for('health.health_calendar') }}">
       <input type="hidden" name="action" value="upload" />
       <div class="health-upload-grid">
+        <div>
+          <label class="field-label">患者 *</label>
+          <select name="person" required>
+            {% for p in patients %}
+            <option value="{{ p.id }}" {% if p.id == 'self' %}selected{% endif %}>{{ p.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <div>
           <label class="field-label">文件 *</label>
           <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/*" required />
@@ -105,6 +129,7 @@
     <h3 class="hc-panel-title">搜索 / 筛选</h3>
     <form method="get" class="health-upload-form" action="{{ url_for('health.health_calendar') }}">
       <input type="hidden" name="year" value="{{ year }}" />
+      <input type="hidden" name="patient" value="{{ patient }}" />
       <div class="health-upload-grid">
         <div class="health-upload-span">
           <label class="field-label">关键词</label>
@@ -125,7 +150,7 @@
       </div>
       <div class="hc-panel-actions">
         <button type="submit" class="hc-btn hc-btn-primary">应用筛选</button>
-        <a class="hc-btn" href="{{ url_for('health.health_calendar', year=year) }}">清空</a>
+        <a class="hc-btn" href="{{ url_for('health.health_calendar', year=year, patient=patient) }}">清空</a>
         <button type="button" class="hc-btn" data-close-panel="search">收起</button>
       </div>
     </form>
@@ -146,18 +171,34 @@
     </a>
     {% endfor %}
   </div>
-  <p class="muted hc-statline">本年 {{ cal.record_count }} 份材料 · {{ cal.days_with_records }} 个检查日{% if cal.abnormal_days %} · {{ cal.abnormal_days }} 天含异常{% endif %}</p>
+  <p class="muted hc-statline">{{ patient_label }} · 本年 {{ cal.record_count }} 份材料 · {{ cal.days_with_records }} 个检查日{% if cal.abnormal_days %} · {{ cal.abnormal_days }} 天含异常{% endif %}</p>
 </section>
 
 <div class="hc-months">
   {% for month in cal.months %}
   <section class="hc-month card" id="month-{{ month.month }}">
     <header class="hc-month-hd">
-      <h3>{{ month.label }}</h3>
-      {% if month.count %}
-      <span class="hc-month-meta">{{ month.count }} 份{% if month.abnormal_days %} · {{ month.abnormal_days }} 天异常{% endif %}</span>
-      {% else %}
-      <span class="hc-month-meta muted">无检查</span>
+      <div class="hc-month-hd-top">
+        <h3>{{ month.label }}</h3>
+        {% if month.count %}
+        <span class="hc-month-meta">{{ month.count }} 份{% if month.abnormal_days %} · {{ month.abnormal_days }} 天异常{% endif %}</span>
+        {% else %}
+        <span class="hc-month-meta muted">无检查</span>
+        {% endif %}
+      </div>
+      {% if month.exam_items %}
+      <div class="hc-month-exams" aria-label="本月诊查清单">
+        <span class="hc-month-exams-label">本月诊查</span>
+        <ul class="hc-exam-list">
+          {% for it in month.exam_items %}
+          <li>
+            <button type="button" class="hc-exam-chip" data-date="{{ it.date }}" title="打开 {{ it.date }}">
+              <em>{{ it.day }}</em>{{ it.name }}
+            </button>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
       {% endif %}
     </header>
     <div class="hc-weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
@@ -198,6 +239,12 @@
       <input type="hidden" name="next" id="hc-edit-next" value="" />
       <input type="hidden" name="year" value="{{ year }}" />
       <h4>编辑标注</h4>
+      <label class="field-label">患者</label>
+      <select name="person" id="hc-edit-person">
+        {% for p in patients %}
+        <option value="{{ p.id }}">{{ p.label }}</option>
+        {% endfor %}
+      </select>
       <label class="field-label">名称</label>
       <input type="text" name="exam_name" id="hc-edit-name" />
       <label class="field-label">类别（可多选）</label>
@@ -248,11 +295,13 @@
   var editNote = document.getElementById("hc-edit-note");
   var editNotes = document.getElementById("hc-edit-notes");
   var editName = document.getElementById("hc-edit-name");
+  var editPerson = document.getElementById("hc-edit-person");
   var saveTpl = {{ save_url_template|tojson }};
   var calYear = {{ year|tojson }};
   var filterQ = {{ filters.q|tojson }};
   var filterCats = {{ filters.categories|tojson }};
   var filterPurpose = {{ filters.purpose|tojson }};
+  var filterPatient = {{ patient|tojson }};
   var uploadPanel = document.getElementById("hc-upload-panel");
   var searchPanel = document.getElementById("hc-search-panel");
   var btnUpload = document.getElementById("hc-btn-upload");
@@ -275,6 +324,9 @@
   }
   function calLink(y) {
     var u = calUrl + "?year=" + encodeURIComponent(y);
+    if (filterPatient && filterPatient !== "self") {
+      u += "&patient=" + encodeURIComponent(filterPatient);
+    }
     (filterCats || []).forEach(function (c) {
       u += "&category=" + encodeURIComponent(c);
     });
@@ -350,6 +402,7 @@
     editNote.value = rec.purpose_note || "";
     if (editNotes) editNotes.value = rec.notes || "";
     if (editName) editName.value = rec.exam_name || "";
+    if (editPerson) editPerson.value = rec.person || "self";
     var selected = rec.categories && rec.categories.length ? rec.categories : (rec.category ? [rec.category] : []);
     document.querySelectorAll("#hc-edit-categories input[type=checkbox]").forEach(function (cb) {
       cb.checked = selected.indexOf(cb.value) >= 0;
@@ -370,7 +423,9 @@
       btn.className = "hc-item status-" + (rec.result_status || "unknown");
       btn.innerHTML =
         "<strong>" + (rec.exam_name || "未命名") + "</strong>" +
-        "<span class='muted'>" + (rec.category_label || rec.category || "") +
+        "<span class='muted'>" +
+        (rec.person_label && rec.person !== "self" ? (rec.person_label + " · ") : "") +
+        (rec.category_label || rec.category || "") +
         " · " + (rec.purpose || "未标目的") + " · " + statusLabel(rec.result_status) + "</span>";
       btn.addEventListener("click", function () {
         listEl.querySelectorAll(".hc-item").forEach(function (el) { el.classList.remove("active"); });
@@ -396,11 +451,22 @@
       openDrawer(date, dayData[date] || []);
     });
   });
+  document.querySelectorAll(".hc-exam-chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var date = chip.getAttribute("data-date");
+      openDrawer(date, dayData[date] || []);
+    });
+  });
 
   document.getElementById("hc-drawer-close").addEventListener("click", closeDrawer);
   mask.addEventListener("click", closeDrawer);
+
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeDrawer(e);
+    if (e.key === "Escape") {
+      var picker = document.getElementById("hc-patient-picker");
+      if (picker && picker.open) picker.open = false;
+      closeDrawer(e);
+    }
   });
 
   // 若上次异常留下遮罩，进入页面先清掉

@@ -1,0 +1,136 @@
+{% extends "layout.html" %}
+{% block title %}权限管理{% endblock %}
+{% block content %}
+<style>
+  .access-grid { display: grid; gap: 16px; }
+  @media (min-width: 900px) { .access-grid { grid-template-columns: 1fr 1.2fr; align-items: start; } }
+  .access-panel { padding: 18px; }
+  .access-panel h3 { margin: 0 0 8px; font-size: 17px; }
+  .access-panel p.muted { margin: 0 0 14px; }
+  .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .profile-card { border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: #fafbfd; }
+  .profile-card h4 { margin: 0 0 6px; }
+  .profile-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .profile-actions form { margin: 0; }
+  .copy-input { width: 100%; font-size: 12px; margin: 6px 0; }
+  .pwd-banner { margin: 12px 0; padding: 12px 14px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+</style>
+
+<section class="card">
+  <h2>权限管理</h2>
+  <p class="muted">管理所有者登录密码，以及给朋友的分享访问（每人不同模块、只读）。</p>
+
+  {% if created_password %}
+  <div class="pwd-banner">
+    分享密码（请复制发给对方，刷新后不再显示）：<strong>{{ created_password }}</strong>
+  </div>
+  {% endif %}
+
+  <div class="access-grid" style="margin-top:16px;">
+    <div class="card access-panel">
+      <h3>所有者密码</h3>
+      {% if auth_on %}
+      <p class="muted">用于登录页「所有者模式」。{% if password_from_env %}正式站若用 Fly Secrets 配置，改密后需同步更新 Secrets。{% endif %}</p>
+      <form method="post">
+        <input type="hidden" name="action" value="change_owner_password" />
+        <label class="field-label">当前密码</label>
+        <input type="password" name="current_password" autocomplete="current-password" required />
+        <label class="field-label" style="margin-top:10px;">新密码</label>
+        <input type="password" name="new_password" autocomplete="new-password" minlength="6" required />
+        <button type="submit" style="margin-top:12px;">更新所有者密码</button>
+      </form>
+      {% else %}
+      <p class="muted">当前未设置密码，任何人可进所有者模式。建议立即设置。</p>
+      <form method="post">
+        <input type="hidden" name="action" value="change_owner_password" />
+        <input type="hidden" name="current_password" value="" />
+        <label class="field-label">新密码</label>
+        <input type="password" name="new_password" autocomplete="new-password" minlength="6" required />
+        <button type="submit" style="margin-top:12px;">设置所有者密码</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="card access-panel">
+      <h3>新建分享</h3>
+      <p class="muted">朋友用专属链接或分享密码进入，只能浏览你勾选的模块。</p>
+      <form method="post">
+        <input type="hidden" name="action" value="create" />
+        <label class="field-label">对象名称</label>
+        <input type="text" name="name" required placeholder="如：小明" />
+        <label class="field-label" style="margin-top:10px;">分享密码（留空自动生成）</label>
+        <input type="text" name="password" autocomplete="new-password" placeholder="可选" />
+        <p class="field-label" style="margin-top:10px;">可访问模块</p>
+        <div class="module-grid">
+          {% for key, spec in modules.items() %}
+          <label class="chip" style="justify-content:flex-start;">
+            <input type="checkbox" name="modules" value="{{ key }}" {% if key == 'collection' %}checked{% endif %} />
+            {{ spec.label }}
+          </label>
+          {% endfor %}
+        </div>
+        <button type="submit" style="margin-top:14px;">创建分享</button>
+      </form>
+    </div>
+  </div>
+
+  <h3 style="margin-top:24px;">已创建的分享</h3>
+  {% if profiles %}
+    {% for p in profiles %}
+    <div class="profile-card">
+      <h4>{{ p.name }}</h4>
+      <span class="muted">创建于 {{ p.created_at }}</span>
+      <div style="margin-top:10px;">
+        <label class="field-label">专属链接</label>
+        <input class="copy-input" type="text" readonly value="{{ p.share_url }}" onclick="this.select()" />
+      </div>
+      <form method="post" style="margin-top:12px;">
+        <input type="hidden" name="action" value="update" />
+        <input type="hidden" name="profile_id" value="{{ p.id }}" />
+        <label class="field-label">名称</label>
+        <input type="text" name="name" value="{{ p.name }}" required />
+        <p class="field-label" style="margin-top:10px;">模块权限</p>
+        <div class="module-grid">
+          {% for key, spec in modules.items() %}
+          <label class="chip" style="justify-content:flex-start;">
+            <input type="checkbox" name="modules" value="{{ key }}" {% if key in p.modules %}checked{% endif %} />
+            {{ spec.label }}
+          </label>
+          {% endfor %}
+        </div>
+        <button type="submit" style="margin-top:10px;">保存修改</button>
+      </form>
+      <div class="profile-actions">
+        <form method="post">
+          <input type="hidden" name="action" value="reset_password" />
+          <input type="hidden" name="profile_id" value="{{ p.id }}" />
+          <button type="submit" class="btn-secondary">重置分享密码</button>
+        </form>
+        <form method="post" onsubmit="return confirm('旧链接将失效，确定重新生成？');">
+          <input type="hidden" name="action" value="regenerate_link" />
+          <input type="hidden" name="profile_id" value="{{ p.id }}" />
+          <button type="submit" class="btn-secondary">重新生成链接</button>
+        </form>
+        <form method="post" onsubmit="return confirm('确定删除「{{ p.name }}」的分享？');">
+          <input type="hidden" name="action" value="delete" />
+          <input type="hidden" name="profile_id" value="{{ p.id }}" />
+          <button type="submit" class="btn-secondary">删除</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">暂无分享。创建后把链接或密码发给朋友即可测试。</p>
+  {% endif %}
+
+  <div class="card access-panel" style="margin-top:20px;">
+    <h3>测试步骤</h3>
+    <ol class="muted" style="margin:0;padding-left:18px;line-height:1.8;">
+      <li>上方新建分享，只勾选「作品 / 人物」</li>
+      <li>复制专属链接，用无痕窗口打开</li>
+      <li>应只看到收藏模块，且无「新增 / 编辑」按钮</li>
+      <li>侧栏点「退出」后可再用分享密码从登录页进入</li>
+    </ol>
+  </div>
+</section>
+{% endblock %}
