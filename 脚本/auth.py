@@ -409,11 +409,16 @@ def access_settings():
     rows = []
     for p in profiles:
         mods = p.get("modules") or []
+        token = p.get("token") or ""
+        if os.environ.get("BILL_COOKIE_SECURE", "").strip() in ("1", "true", "yes"):
+            share_url = url_for("auth.share_enter", token=token, _external=True, _scheme="https")
+        else:
+            share_url = url_for("auth.share_enter", token=token, _external=True)
         rows.append(
             {
                 **p,
                 "module_labels": [SITE_MODULES[m]["label"] for m in mods if m in SITE_MODULES],
-                "share_url": url_for("auth.share_enter", token=p.get("token") or "", _external=True),
+                "share_url": share_url,
             }
         )
     created_password = session.pop("share_created_password", "")

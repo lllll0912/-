@@ -189,6 +189,8 @@ def _load_dotenv() -> None:
         return
 
 
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 _load_dotenv()
 
 from site_auth import sync_env_password_hash
@@ -206,6 +208,10 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 # 公网 HTTPS 部署时设 BILL_COOKIE_SECURE=1，本机 HTTP 调试不要开
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("BILL_COOKIE_SECURE", "").strip() in ("1", "true", "yes")
+# Fly / 反向代理：识别 X-Forwarded-*，否则 _external 链接会生成 http://
+if app.config["SESSION_COOKIE_SECURE"]:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    app.config["PREFERRED_URL_SCHEME"] = "https"
 app.register_blueprint(auth_bp)
 
 from water import water_bp

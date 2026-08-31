@@ -9,6 +9,8 @@ from __future__ import annotations
 import base64
 import json
 import os
+import time
+from pathlib import Path
 from typing import Any, Optional
 
 import requests
@@ -168,7 +170,10 @@ def sync_uploads_to_github(
     files = dict(uploads)
     files[REPO_CATALOG_PATH] = catalog_bytes
     name = (label or "upload").strip() or "upload"
-    return commit_collection_files(files=files, message=f"collection: upload {name}")
+    ok, detail = commit_collection_files(files=files, message=f"collection: upload {name}")
+    if ok:
+        invalidate_pics_index()
+    return ok, detail
 
 
 def sync_catalog_to_github(catalog: dict[str, Any], *, reason: str = "update catalog") -> tuple[bool, str]:
@@ -181,11 +186,14 @@ def sync_catalog_to_github(catalog: dict[str, Any], *, reason: str = "update cat
 
 def sync_delete_pic_to_github(folder: str, filename: str) -> tuple[bool, str]:
     path = repo_pic_path(folder, filename)
-    return commit_collection_files(
+    ok, detail = commit_collection_files(
         files={},
         delete_paths=[path],
         message=f"collection: delete {folder}/{filename}",
     )
+    if ok:
+        invalidate_pics_index()
+    return ok, detail
 
 
 def fetch_github_file(repo_path: str) -> Optional[bytes]:
@@ -216,36 +224,94 @@ def fetch_github_file(repo_path: str) -> Optional[bytes]:
 
 
 def list_github_pics(folder: str) -> list[dict[str, Any]]:
-    """列出 GitHub 上某收藏目录下的图片。"""
+    """从本地缓存的 pics 索引取目录；必要时刷新一次整树索引。"""
+    index = _load_pics_index(refresh_if_stale=True)
+    folder = (folder or "").replace("\\", "/").strip("/")
+    return list(index.get(folder) or [])
+
+
+def _pics_index_path() -> Path:
+    data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
+    if data_dir:
+        return Path(data_dir) / "collection" / "_meta" / "pics_index.json"
+    return Path(__file__).resolve().parents[1] / "数据" / "_meta" / "pics_index.json"
+
+
+def _load_pics_index(*, refresh_if_stale: bool = False) -> dict[str, list[dict[str, Any]]]:
+    path = _pics_index_path()
+    stale = True
+    data: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            ts = float(data.get("fetched_at") or 0)
+            stale = (time.time() - ts) > 600  # 10 分钟
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            data = {}
+            stale = True
+    if refresh_if_stale and (stale or not data.get("folders")):
+        refreshed = refresh_pics_index()
+        if refreshed:
+            return refreshed
+    folders = data.get("folders") if isinstance(data, dict) else None
+    return folders if isinstance(folders, dict) else {}
+
+
+def refresh_pics_index() -> dict[str, list[dict[str, Any]]]:
+    """一次递归拉取 GitHub 上 收藏/数据/pics 目录树，写入缓存。避免每个作品单独打 API。"""
     if not _token():
-        return []
+        return {}
     repo = _repo()
     branch = _branch()
-    folder = (folder or "").replace("\\", "/").strip("/")
-    path = f"{REPO_PICS_PREFIX}/{folder}"
     try:
-        r = _api(
+        ref = _api("GET", f"/repos/{repo}/git/ref/heads/{branch}")
+        if ref.status_code != 200:
+            return {}
+        commit_sha = ref.json()["object"]["sha"]
+        commit = _api("GET", f"/repos/{repo}/git/commits/{commit_sha}")
+        if commit.status_code != 200:
+            return {}
+        tree_sha = commit.json()["tree"]["sha"]
+        tree = _api(
             "GET",
-            f"/repos/{repo}/contents/{path}",
-            params={"ref": branch},
+            f"/repos/{repo}/git/trees/{tree_sha}",
+            params={"recursive": "1"},
         )
-        if r.status_code != 200:
-            return []
-        items = r.json()
-        if not isinstance(items, list):
-            return []
-        out = []
-        for it in items:
-            if not isinstance(it, dict) or it.get("type") != "file":
+        if tree.status_code != 200:
+            return {}
+        prefix = f"{REPO_PICS_PREFIX}/"
+        folders: dict[str, list[dict[str, Any]]] = {}
+        for item in tree.json().get("tree") or []:
+            if not isinstance(item, dict) or item.get("type") != "blob":
                 continue
-            name = it.get("name") or ""
+            path = (item.get("path") or "").replace("\\", "/")
+            if not path.startswith(prefix):
+                continue
+            rel = path[len(prefix) :]
+            if "/" not in rel:
+                continue
+            folder, name = rel.split("/", 1)
+            if "/" in name:
+                continue
             ext = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
             if ext not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
                 continue
-            out.append({"name": name, "size": int(it.get("size") or 0)})
-        return sorted(out, key=lambda x: x["name"])
-    except (requests.RequestException, ValueError, TypeError):
-        return []
+            folders.setdefault(folder, []).append(
+                {"name": name, "size": int(item.get("size") or 0)}
+            )
+        for folder in folders:
+            folders[folder] = sorted(folders[folder], key=lambda x: x["name"])
+        out_path = _pics_index_path()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"fetched_at": time.time(), "folders": folders}
+        out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return folders
+    except (requests.RequestException, ValueError, TypeError, KeyError):
+        return {}
+
+
+def invalidate_pics_index() -> None:
+    _pics_index_path().unlink(missing_ok=True)
 
 
 def sync_status_label() -> Optional[str]:
