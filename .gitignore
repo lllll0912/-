@@ -32,13 +32,25 @@ Desktop.ini
 脚本/部署/fly/_token_once.txt
 脚本/部署/fly/*token*
 
-# 私密仓：各功能「数据」目录要进 Git，与本地一致
-# （仍忽略密钥 .env）
-
 node_modules/
 脚本/旧项目/飞猪MCP/node_modules/
 
-# 收藏运行态：正式站经 GitHub API 写入；本地仅开发测试，勿 push（避免覆盖线上新数据）
+# ── 运行态数据：正式站 Volume 为真相，每日备份到 backups/；本地勿 push ──
+# （照片/视频等大文件由正式站写入 GitHub，本机落后数据不得覆盖）
+
+账单/数据/**
+!账单/数据/.gitkeep
+
+喝水/数据/**
+!喝水/数据/.gitkeep
+
+日志/数据/**
+!日志/数据/.gitkeep
+
+诗词/数据/**
+!诗词/数据/.gitkeep
+!诗词/数据/README.md
+
 收藏/数据/pics/**
 !收藏/数据/pics/.gitkeep
 收藏/数据/_meta/catalog.json
@@ -47,3 +59,9 @@ node_modules/
 !收藏/数据/_meta/.gitkeep
 !收藏/数据/_meta/catalog.empty.json
 
+# 医疗：检验单原件在 GitHub（正式站上传）；本地整树勿覆盖
+医疗/数据/**
+!医疗/数据/**/.gitkeep
+!医疗/数据/说明.md
+!医疗/数据/_meta/*.md
+!医疗/数据/_meta/schema.md

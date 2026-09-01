@@ -39,12 +39,14 @@ jobs:
             sleep 8
           fi
 
-          # 在机器内打包（缺文件不失败）
+          # 打包 Volume 全量运行态（文字真相）；缺目录不失败
+          # health = 医疗 meta（标注等）；collection = 收藏 catalog 等
+          # 大图一般在 GitHub 仓库路径，不依赖本 tar
           flyctl ssh console -a "$APP" -C "sh -c 'cd /data && tar czf /tmp/site_data.tgz \
             bills.db bills.db-wal bills.db-shm \
             notes.db notes.db-wal notes.db-shm \
             water_data.json category_rules.json notes_md_hints.json \
-            notes_assets poems collection 2>/dev/null; \
+            notes_assets poems collection health backup 2>/dev/null; \
             test -f /tmp/site_data.tgz || tar czf /tmp/site_data.tgz -C /data .'"
 
           flyctl ssh sftp get /tmp/site_data.tgz "${OUT}/site_data.tgz" -a "$APP"
@@ -56,8 +58,10 @@ jobs:
           h = hashlib.sha256(tgz.read_bytes()).hexdigest()
           (out / "SHA256.txt").write_text(h + "  site_data.tgz\n", encoding="utf-8")
           (out / "README.txt").write_text(
-              "Fly volume snapshot\n"
-              "Contains bills.db / notes.db(+assets) / poems / water_data.json / category_rules.json / collection when present.\n"
+              "Fly volume snapshot (runtime text/db truth)\n"
+              "Includes when present: bills.db, notes.db(+assets), poems, water_data.json,\n"
+              "category_rules.json, collection/, health/, backup/\n"
+              "Large images/videos live in repo paths (e.g. 收藏/数据/pics, 医疗/数据/*) via app sync.\n"
               f"sha256: {h}\n",
               encoding="utf-8",
           )

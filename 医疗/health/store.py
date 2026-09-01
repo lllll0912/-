@@ -788,10 +788,7 @@ def update_record_meta(
         break
     if found:
         save_catalog(catalog)
-        from .github_sync import github_sync_enabled, sync_catalog_to_github
-
-        if github_sync_enabled():
-            sync_catalog_to_github(catalog, reason=f"annotate {record_id}")
+        # 文字 meta 只写 Volume；靠每日 backups/，不实时 commit（避免刷部署）
     return found
 
 

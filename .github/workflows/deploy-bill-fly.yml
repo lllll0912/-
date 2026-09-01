@@ -14,9 +14,13 @@ on:
       - "fly.toml"
       - ".github/workflows/deploy-bill-fly.yml"
     paths-ignore:
-      # 运行态数据变更不发版（评分/图片写入 GitHub 时勿触发 fly deploy）
+      # 运行态/大图数据变更不发版（Volume 日备或 GitHub API 写入时勿触发 fly deploy）
       - "收藏/数据/**"
       - "医疗/数据/**"
+      - "账单/数据/**"
+      - "喝水/数据/**"
+      - "日志/数据/**"
+      - "诗词/数据/**"
       - "backups/**"
   workflow_dispatch:
 
