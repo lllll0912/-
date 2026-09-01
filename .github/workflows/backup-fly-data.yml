@@ -44,7 +44,7 @@ jobs:
             bills.db bills.db-wal bills.db-shm \
             notes.db notes.db-wal notes.db-shm \
             water_data.json category_rules.json notes_md_hints.json \
-            notes_assets poems 2>/dev/null; \
+            notes_assets poems collection 2>/dev/null; \
             test -f /tmp/site_data.tgz || tar czf /tmp/site_data.tgz -C /data .'"
 
           flyctl ssh sftp get /tmp/site_data.tgz "${OUT}/site_data.tgz" -a "$APP"
@@ -57,7 +57,7 @@ jobs:
           (out / "SHA256.txt").write_text(h + "  site_data.tgz\n", encoding="utf-8")
           (out / "README.txt").write_text(
               "Fly volume snapshot\n"
-              "Contains bills.db / notes.db(+assets) / poems / water_data.json / category_rules.json when present.\n"
+              "Contains bills.db / notes.db(+assets) / poems / water_data.json / category_rules.json / collection when present.\n"
               f"sha256: {h}\n",
               encoding="utf-8",
           )

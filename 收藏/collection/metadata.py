@@ -45,6 +45,61 @@ _JAVDB_COVER_RE = re.compile(
     r'https://www\.javdatabase\.com/covers/full/[^"\'\s>]+\.(?:webp|jpg|jpeg|png)',
     re.I,
 )
+_MGSTAGE_FULL_RE = re.compile(
+    r'data-image-src=["\'](https://image\.mgstage\.com/[^"\']+cap_e_\d+[^"\']+\.jpg)["\']',
+    re.I,
+)
+_DMM_THUMB_SUFFIX = re.compile(r"p[st]\.jpe?g$", re.I)
+
+
+def _is_thumb_url(url: str) -> bool:
+    """过滤 javdatabase thumb、mgstage cap_t*、DMM ps/pt 等预览小图。"""
+    u = (url or "").strip()
+    if not u:
+        return True
+    low = u.lower()
+    if "/covers/thumb/" in low or "/idolimages/thumb/" in low:
+        return True
+    if "cap_t" in low and "mgstage.com" in low:
+        return True
+    if "pics.dmm.co.jp" in low and _DMM_THUMB_SUFFIX.search(low):
+        return True
+    return False
+
+
+def _url_dedupe_key(url: str) -> str:
+    """同一帧/同一封面只保留一张（优先高清）。"""
+    u = (url or "").strip()
+    low = u.lower()
+    m = re.search(r"cap_e_(\d+)", u, re.I)
+    if m:
+        return f"shot:{m.group(1)}"
+    m = re.search(r"jp-(\d+)\.jpe?g", low)
+    if m:
+        return f"shot:{m.group(1)}"
+    if "pl.jpe" in low or "/covers/full/" in low:
+        return "cover"
+    return u
+
+
+def _filter_artwork_urls(urls: list[str], *, cover: str = "") -> list[str]:
+    """去重并去掉缩略图；封面始终排第一。"""
+    ordered: list[str] = []
+    seen_keys: set[str] = set()
+    if cover and not _is_thumb_url(cover):
+        ordered.append(cover)
+        seen_keys.add(_url_dedupe_key(cover))
+    for u in urls:
+        u = (u or "").strip()
+        if not u or _is_thumb_url(u):
+            continue
+        key = _url_dedupe_key(u)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        if u not in ordered:
+            ordered.append(u)
+    return ordered
 
 
 def lookup_cache_path() -> Path:
@@ -72,19 +127,40 @@ def _cache_key(code: str) -> str:
     return normalize_movie_id(code)
 
 
+_DISC_SUFFIX_RE = re.compile(r"^([A-Z]+)-(\d+)([A-Z])$")
+
+
+def _disc_base_code(code: str) -> str:
+    """NKKD-202C → NKKD-202（单字母碟后缀）。"""
+    norm = normalize_movie_id(code)
+    m = _DISC_SUFFIX_RE.match(norm)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}"
+    return norm
+
+
 def _slug_variants(code: str) -> list[str]:
     norm = normalize_movie_id(code)
-    m = re.match(r"^([A-Z]+)-(\d+)$", norm)
-    if not m:
-        return [norm.lower()]
-    prefix, num = m.group(1), m.group(2)
-    slugs = [f"{prefix.lower()}-{num}", f"{prefix.lower()}{num}"]
-    if len(num) < 3:
-        slugs.append(f"{prefix.lower()}-{num.zfill(3)}")
+    bases = [norm]
+    base = _disc_base_code(norm)
+    if base != norm:
+        bases.append(base)
+
     out: list[str] = []
-    for s in slugs:
-        if s not in out:
-            out.append(s)
+    for item in bases:
+        m = re.match(r"^([A-Z]+)-(\d+)$", item)
+        if not m:
+            slug = item.lower()
+            if slug not in out:
+                out.append(slug)
+            continue
+        prefix, num = m.group(1), m.group(2)
+        slugs = [f"{prefix.lower()}-{num}", f"{prefix.lower()}{num}"]
+        if len(num) < 3:
+            slugs.append(f"{prefix.lower()}-{num.zfill(3)}")
+        for s in slugs:
+            if s not in out:
+                out.append(s)
     return out
 
 
@@ -115,52 +191,62 @@ def _fetch_html(url: str) -> tuple[int, str]:
 
 
 def _parse_image_urls(html: str) -> tuple[str, list[str]]:
-    """从作品页提取封面 URL + 剧照/样图 URL 列表。"""
+    """从作品页提取封面 URL + 剧照/样图 URL 列表（仅高清，不含 thumb）。"""
     cover = ""
     for rx in (_OG_IMAGE_RE, _OG_IMAGE_RE2):
         m = rx.search(html or "")
         if m:
-            cover = m.group(1).strip()
-            break
+            u = m.group(1).strip()
+            if not _is_thumb_url(u):
+                cover = u
+                break
     if not cover:
-        covers = _JAVDB_COVER_RE.findall(html or "")
+        covers = [u for u in _JAVDB_COVER_RE.findall(html or "") if not _is_thumb_url(u)]
         if covers:
             cover = covers[0]
 
     samples: list[str] = []
-    seen = set()
-    for url in _DMM_IMG_RE.findall(html or ""):
+    seen: set[str] = set()
+
+    # mgstage 高清剧照（data-image-src 指向 cap_e_*）
+    for url in _MGSTAGE_FULL_RE.findall(html or ""):
         u = url.strip()
-        if u in seen:
+        if u in seen or _is_thumb_url(u):
             continue
         seen.add(u)
-        # 排除过小的 ps 缩略图，优先 pl / jp
-        if u.lower().endswith("ps.jpg"):
-            continue
         samples.append(u)
 
-    # 由 DMM 封面推导 jp-1..jp-12 样图
-    m = re.match(
-        r"(https://pics\.dmm\.co\.jp/digital/video/[^/]+/[^/]+?)pl\.jpe?g$",
-        cover,
-        re.I,
-    )
-    if m:
-        base = m.group(1)
-        for i in range(1, 13):
-            u = f"{base}jp-{i}.jpg"
-            if u not in seen:
-                samples.append(u)
-                seen.add(u)
+    # DMM 样图：只要 jp-N，不要 pl/ps/pt（pl 作封面）
+    for url in _DMM_IMG_RE.findall(html or ""):
+        u = url.strip()
+        if u in seen or _is_thumb_url(u):
+            continue
+        low = u.lower()
+        if low.endswith("pl.jpg") or low.endswith("pl.jpeg"):
+            if not cover:
+                cover = u
+            continue
+        if "jp-" not in low:
+            continue
+        seen.add(u)
+        samples.append(u)
 
-    # 封面放最前
-    out: list[str] = []
-    if cover:
-        out.append(cover)
-    for u in samples:
-        if u != cover and u not in out:
-            out.append(u)
-    return cover, out
+    # 无 mgstage 剧照时，由 DMM pl 封面推导 jp-1..jp-12
+    if not samples and cover:
+        m = re.match(
+            r"(https://pics\.dmm\.co\.jp/digital/video/[^/]+/[^/]+?)pl\.jpe?g$",
+            cover,
+            re.I,
+        )
+        if m:
+            base = m.group(1)
+            for i in range(1, 13):
+                u = f"{base}jp-{i}.jpg"
+                if u not in seen:
+                    samples.append(u)
+                    seen.add(u)
+
+    return cover, _filter_artwork_urls(samples, cover=cover)
 
 
 def _parse_movie_page(html: str, code: str) -> Optional[dict[str, Any]]:
@@ -248,7 +334,9 @@ def lookup_movie_metadata(code: str, *, use_cache: bool = True) -> dict[str, Any
     if use_cache and key in cache and _cache_fresh(cache[key]):
         hit = cache[key]
         if hit.get("error") == "not_found":
-            return {"ok": False, "id": mov_id, "error": "not_found", "cached": True}
+            # 碟后缀番号（如 NKKD-202C）可能对应母盘 NKKD-202，不因精确 slug 未命中而长期缓存拒绝
+            if _disc_base_code(mov_id) == mov_id:
+                return {"ok": False, "id": mov_id, "error": "not_found", "cached": True}
         return {
             "ok": True,
             "id": mov_id,
@@ -327,16 +415,19 @@ def fetch_movie_artwork(code: str, *, max_images: int = 10) -> dict[str, Any]:
             "error": meta.get("error") or "not_found",
         }
 
-    urls = list(meta.get("image_urls") or [])
-    cover = (meta.get("cover_url") or "").strip()
-    if cover and cover not in urls:
-        urls.insert(0, cover)
+    urls = _filter_artwork_urls(list(meta.get("image_urls") or []), cover=(meta.get("cover_url") or ""))
 
     files: list[tuple[str, bytes]] = []
+    seen_bytes_sig: set[tuple[int, int]] = set()
     for i, url in enumerate(urls[: max(1, max_images)]):
         raw = download_image_bytes(url)
         if not raw:
             continue
+        # 同尺寸字节签名视为重复（常见于 thumb/full 漏网）
+        sig = (len(raw), hash(raw[:512]) % (2**31))
+        if sig in seen_bytes_sig:
+            continue
+        seen_bytes_sig.add(sig)
         ext = ".jpg"
         low = url.lower()
         if ".webp" in low:

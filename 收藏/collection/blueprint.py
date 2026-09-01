@@ -38,7 +38,9 @@ from .store import (
     resolve_image,
     save_catalog,
     save_image_bytes,
+    save_artwork_files,
     save_uploads,
+    build_pics_context,
     today_str,
     upsert_movie,
     upsert_person,
@@ -90,9 +92,10 @@ def _render_collection_home():
         sort = "added_desc"
     if view not in ("grid", "calendar"):
         view = "grid"
-    movies = list_movies(q, filter_mode=filter_mode, sort=sort)
-    people = list_people(q, filter_mode=filter_mode, sort=sort if sort != "id_asc" else "name_asc")
-    stats = movie_stats()
+    pics_ctx = build_pics_context()
+    movies = list_movies(q, filter_mode=filter_mode, sort=sort, pics_ctx=pics_ctx)
+    people = list_people(q, filter_mode=filter_mode, sort=sort if sort != "id_asc" else "name_asc", pics_ctx=pics_ctx)
+    stats = movie_stats(pics_ctx=pics_ctx)
     years = collection_years(movies)
     year_raw = request.args.get("year")
     try:
@@ -103,7 +106,7 @@ def _render_collection_home():
         years = sorted(set(years) | {year}, reverse=True)
     show_calendar = tab == "movies" and view == "calendar"
     timeline = build_collection_timeline(year, movies) if show_calendar else None
-    recommends = random_movies(8) if tab == "movies" and view == "grid" else []
+    recommends = random_movies(8, movies=movies) if tab == "movies" and view == "grid" else []
     return render_template(
         "home.html",
         tab=tab if tab in ("movies", "people") else "movies",
@@ -118,7 +121,7 @@ def _render_collection_home():
         years=years,
         year=year,
         movie_count=stats["total"],
-        people_count=len(list_people()),
+        people_count=len(people),
         today=today_str(),
         can_edit=can_write(),
     )
@@ -157,7 +160,7 @@ def movie_save():
             art = fetch_movie_artwork(rec["id"], max_images=10)
             files_bytes = art.get("files") or []
             if files_bytes:
-                n, uerr = save_image_bytes(rec["id"], files_bytes)
+                n, uerr = save_artwork_files(rec["id"], files_bytes, merge=False)
                 if uerr and n == 0:
                     flash(f"已保存条目，自动抓图失败：{uerr}", "error")
                 elif n:
@@ -295,24 +298,21 @@ def api_movie_score(mov_id: str):
 
 @collection_bp.route("/api/movies/<path:mov_id>/fetch-artwork", methods=["POST"])
 def api_movie_fetch_artwork(mov_id: str):
-    """对已有作品补抓封面/剧照（仅当本地还没有图，或强制 force=1）。"""
+    """补抓封面/剧照；已有图时默认合并（刷新封面 + 追加 sample）。"""
     if not get_movie(mov_id):
         abort(404)
-    force = (request.args.get("force") or request.form.get("force") or "").strip() in ("1", "true", "yes")
-    if list_images(mov_id) and not force:
-        payload = images_payload(mov_id)
-        payload.update({"ok": True, "saved": 0, "skipped": True, "error": ""})
-        return jsonify(payload)
+    merge = (request.args.get("merge") or request.form.get("merge") or "1").strip() not in ("0", "false", "no")
+    had = bool(list_images(mov_id))
     art = fetch_movie_artwork(mov_id, max_images=10)
     files_bytes = art.get("files") or []
     if not files_bytes:
         payload = images_payload(mov_id)
         payload.update({"ok": False, "saved": 0, "error": art.get("error") or "no_images"})
         return jsonify(payload), 404
-    n, err = save_image_bytes(mov_id, files_bytes)
+    n, err = save_artwork_files(mov_id, files_bytes, merge=merge or had)
     payload = images_payload(mov_id)
-    payload.update({"ok": n > 0, "saved": n, "error": err})
-    return jsonify(payload), (200 if n else 400)
+    payload.update({"ok": n > 0 or (had and not err), "saved": n, "error": err})
+    return jsonify(payload), (200 if (n or not err) else 400)
 
 
 @collection_bp.route("/api/movies/<path:mov_id>/images")

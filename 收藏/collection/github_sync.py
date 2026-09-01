@@ -230,6 +230,11 @@ def list_github_pics(folder: str) -> list[dict[str, Any]]:
     return list(index.get(folder) or [])
 
 
+def load_all_github_pics() -> dict[str, list[dict[str, Any]]]:
+    """返回完整 pics 索引（folder -> files）。"""
+    return dict(_load_pics_index(refresh_if_stale=True))
+
+
 def _pics_index_path() -> Path:
     data_dir = (os.environ.get("BILL_DATA_DIR") or "").strip()
     if data_dir:

@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}收藏{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('collection.static', filename='collection.css') }}?v=6" />
+<link rel="stylesheet" href="{{ url_for('collection.static', filename='collection.css') }}?v=9" />
 
 <section class="col-head card">
   <div class="col-head-row">
@@ -194,10 +194,14 @@
       {% for m in recommends %}
       <button type="button" class="col-reco-item col-open-gallery"
         data-kind="movie" data-id="{{ m.id }}" data-folder="{{ m.pic_folder }}">
+        <span class="col-reco-thumb">
         {% if m.cover %}
         <img src="{{ url_for('collection.serve_pic', folder_id=m.pic_folder, filename=m.cover) }}" alt="" loading="lazy" />
+        {% else %}
+        <span class="col-reco-thumb-empty">无图</span>
         {% endif %}
-        <span>
+        </span>
+        <span class="col-reco-meta">
           <strong>{{ m.id }}</strong>
           <em class="muted">{% if m.person %}{{ m.person }} · {% endif %}{% if m.stars %}{{ m.stars }}{% else %}未评分{% endif %}</em>
         </span>
@@ -363,48 +367,65 @@
 
 <div id="col-gallery" hidden>
   <div class="col-gallery-inner">
-    <div class="col-gallery-hd">
-      <div>
-        <p class="eyebrow" id="col-gal-id">—</p>
-        <h3 id="col-gal-stat">图片</h3>
+    <header class="col-gallery-hd">
+      <div class="col-gallery-hd-main">
+        <div class="col-gal-movie-nav" id="col-gal-movie-nav">
+          <button type="button" class="col-nav col-nav-movie" id="col-gal-movie-prev" aria-label="上一作品" hidden>‹</button>
+          <div class="col-gal-movie-center">
+            <p class="eyebrow" id="col-gal-id">—</p>
+            <p class="col-gal-stat-line" id="col-gal-stat">图片</p>
+          </div>
+          <button type="button" class="col-nav col-nav-movie" id="col-gal-movie-next" aria-label="下一作品" hidden>›</button>
+        </div>
       </div>
       <div class="col-gallery-hd-actions">
-        {% if can_edit %}<button type="button" class="col-btn" id="col-gal-edit">编辑资料</button>{% endif %}
-        <button type="button" class="col-btn" id="col-gal-close">关闭</button>
+        {% if can_edit %}<button type="button" class="col-btn col-btn-ghost" id="col-gal-edit">编辑</button>{% endif %}
+        <button type="button" class="col-btn col-btn-ghost" id="col-gal-close" aria-label="关闭">✕</button>
       </div>
-    </div>
-    <div class="col-gallery-stage">
-      <button type="button" class="col-nav" id="col-gal-prev" aria-label="上一张">‹</button>
-      <div class="col-gallery-main-wrap">
-        <img id="col-gal-main" alt="" />
-        <p class="col-gal-counter" id="col-gal-counter">0 / 0</p>
+    </header>
+
+    <div class="col-gallery-body">
+      <div class="col-gallery-stage" id="col-gal-stage">
+        <div class="col-gallery-main-wrap">
+          <img id="col-gal-main" alt="" decoding="async" />
+        </div>
       </div>
-      <button type="button" class="col-nav" id="col-gal-next" aria-label="下一张">›</button>
-    </div>
-    {% if can_edit %}
-    <div class="col-gal-score" id="col-gal-score" aria-label="快速评分">
-      <p class="col-gal-score-label">快速评分</p>
-      <div class="col-score-row col-star-row" data-score-for="col-gal-score-value">
-        {% for n in range(1, 6) %}
-        <button type="button" class="col-score-chip col-star-chip" data-v="{{ n }}" title="{{ n }} 星">★</button>
-        {% endfor %}
-        <button type="button" class="col-score-chip col-score-clear" data-v="">清</button>
+
+      <div class="col-gallery-nav" id="col-gal-nav">
+        <button type="button" class="col-nav" id="col-gal-prev" aria-label="上一张">‹</button>
+        <span class="col-gal-counter" id="col-gal-counter">0 / 0</span>
+        <button type="button" class="col-nav" id="col-gal-next" aria-label="下一张">›</button>
       </div>
-      <input type="hidden" id="col-gal-score-value" value="" />
-      <p class="col-gal-score-msg" id="col-gal-score-msg"></p>
+
+      {% if can_edit %}
+      <div class="col-gal-score" id="col-gal-score" aria-label="快速评分">
+        <div class="col-score-row col-star-row" data-score-for="col-gal-score-value">
+          {% for n in range(1, 6) %}
+          <button type="button" class="col-score-chip col-star-chip" data-v="{{ n }}" title="{{ n }} 星">★</button>
+          {% endfor %}
+          <button type="button" class="col-score-chip col-score-clear" data-v="">清</button>
+        </div>
+        <input type="hidden" id="col-gal-score-value" value="" />
+        <p class="col-gal-score-msg" id="col-gal-score-msg"></p>
+      </div>
+      {% endif %}
+
+      <div class="col-thumbs-wrap">
+        <div class="col-thumbs" id="col-gal-thumbs" role="listbox" aria-label="缩略图"></div>
+      </div>
+
+      {% if can_edit %}
+      <details class="col-gallery-tools-wrap" id="col-gal-tools-wrap">
+        <summary class="col-gallery-tools-toggle">管理图片</summary>
+        <div class="col-gallery-tools">
+          <input type="file" id="col-gal-files" accept="image/*" multiple />
+          <button type="button" class="col-btn col-btn-primary" id="col-gal-upload">上传</button>
+          <button type="button" class="col-btn" id="col-gal-fetch">抓取封面/剧照</button>
+          <button type="button" class="col-btn col-btn-danger" id="col-gal-delete">删除当前图</button>
+        </div>
+      </details>
+      {% endif %}
     </div>
-    {% endif %}
-    <div class="col-thumbs-wrap">
-      <div class="col-thumbs" id="col-gal-thumbs" role="listbox" aria-label="缩略图"></div>
-    </div>
-    {% if can_edit %}
-    <div class="col-gallery-tools">
-      <input type="file" id="col-gal-files" accept="image/*" multiple />
-      <button type="button" class="col-btn col-btn-primary" id="col-gal-upload">上传</button>
-      <button type="button" class="col-btn" id="col-gal-fetch" hidden>抓取封面/剧照</button>
-      <button type="button" class="col-btn col-btn-danger" id="col-gal-delete">删除当前图</button>
-    </div>
-    {% endif %}
   </div>
 </div>
 
@@ -425,9 +446,13 @@
   var personDelForm = {{ url_for('collection.person_delete', name='__ID__')|tojson }};
   var homeBase = {{ url_for('collection.collection_home', tab='movies')|tojson }};
 
-  function picUrl(folder, name) {
-    return picBase.replace("__F__", encodeURIComponent(folder)).replace("__N__", encodeURIComponent(name)) + "?t=" + Date.now();
+  var picVer = String(Date.now());
+  function picUrl(folder, name, bust) {
+    var u = picBase.replace("__F__", encodeURIComponent(folder)).replace("__N__", encodeURIComponent(name));
+    if (bust) u += "?t=" + picVer;
+    return u;
   }
+  function bumpPicVer() { picVer = String(Date.now()); }
   function apiList(kind, id) {
     return (kind === "person" ? personImgApi : movieImgApi).replace("__ID__", encodeURIComponent(id));
   }
@@ -542,6 +567,9 @@
       var folder = card.getAttribute("data-folder") || id;
       var cover = card.getAttribute("data-cover");
       var person = card.getAttribute("data-person") || "";
+      var dayNavList = cards.map(function (c) {
+        return { id: c.getAttribute("data-id"), folder: c.getAttribute("data-folder") || c.getAttribute("data-id") };
+      });
       var wrap = document.createElement("div");
       wrap.className = "col-day-pic-item";
       var btn = document.createElement("button");
@@ -555,7 +583,7 @@
       } else {
         btn.innerHTML = '<span class="col-day-pic-empty">无封面</span>';
       }
-      btn.addEventListener("click", function () { openGallery("movie", id, folder); });
+      btn.addEventListener("click", function () { openGallery("movie", id, folder, dayNavList); });
       var meta = document.createElement("div");
       meta.className = "col-day-pic-meta";
       meta.innerHTML = "<strong>" + id + "</strong>" + (person ? '<span class="muted">' + person + "</span>" : "");
@@ -700,10 +728,93 @@
   var gal = document.getElementById("col-gallery");
   var galMain = document.getElementById("col-gal-main");
   var galThumbs = document.getElementById("col-gal-thumbs");
+  var galStage = document.getElementById("col-gal-stage");
   var galScoreBox = document.getElementById("col-gal-score");
   var galScoreMsg = document.getElementById("col-gal-score-msg");
   var galFetchBtn = document.getElementById("col-gal-fetch");
-  var state = { kind: "", id: "", folder: "", images: [], idx: 0 };
+  var galNav = document.getElementById("col-gal-nav");
+  var galMoviePrev = document.getElementById("col-gal-movie-prev");
+  var galMovieNext = document.getElementById("col-gal-movie-next");
+  var state = { kind: "", id: "", folder: "", images: [], idx: 0, loading: false, req: null, movieNavList: [] };
+  var touchX0 = null;
+  var touchY0 = null;
+
+  function movieNavEntry(card) {
+    var id = card.getAttribute("data-id");
+    if (!id) return null;
+    return { id: id, folder: card.getAttribute("data-folder") || id };
+  }
+
+  function buildMovieNavList() {
+    var grid = document.getElementById("col-movie-grid");
+    if (grid) {
+      var cards = grid.querySelectorAll(".col-card[data-id]");
+      if (cards.length) {
+        return Array.prototype.map.call(cards, movieNavEntry).filter(Boolean);
+      }
+    }
+    var store = document.getElementById("col-movie-store");
+    if (store) {
+      var stored = store.querySelectorAll(".col-card[data-id]");
+      if (stored.length) {
+        return Array.prototype.map.call(stored, movieNavEntry).filter(Boolean);
+      }
+    }
+    var seen = {};
+    var out = [];
+    document.querySelectorAll('.col-card[data-kind="movie"][data-id]').forEach(function (card) {
+      var e = movieNavEntry(card);
+      if (!e || seen[e.id]) return;
+      seen[e.id] = true;
+      out.push(e);
+    });
+    return out;
+  }
+
+  function syncGalMovieNav() {
+    if (!galMoviePrev || !galMovieNext) return;
+    var isMovie = state.kind === "movie";
+    galMoviePrev.hidden = !isMovie;
+    galMovieNext.hidden = !isMovie;
+    if (!isMovie) return;
+    if (!state.movieNavList || !state.movieNavList.length) {
+      state.movieNavList = buildMovieNavList();
+    }
+    var list = state.movieNavList;
+    var idx = list.findIndex(function (e) { return e.id === state.id; });
+    var enabled = list.length > 1 && idx >= 0;
+    galMoviePrev.disabled = !enabled || state.loading;
+    galMovieNext.disabled = !enabled || state.loading;
+  }
+
+  function stepGalMovie(delta) {
+    if (state.kind !== "movie" || state.loading) return;
+    var list = state.movieNavList && state.movieNavList.length ? state.movieNavList : buildMovieNavList();
+    if (list.length < 2) return;
+    var idx = list.findIndex(function (e) { return e.id === state.id; });
+    if (idx < 0) return;
+    var next = list[(idx + delta + list.length) % list.length];
+    openGallery("movie", next.id, next.folder, list);
+  }
+
+  function lockScroll(on) {
+    document.documentElement.classList.toggle("col-gal-open", !!on);
+    document.body.classList.toggle("col-gal-open", !!on);
+  }
+
+  function setGalLoading(on) {
+    state.loading = !!on;
+    if (galNav) galNav.querySelectorAll("button").forEach(function (b) { b.disabled = !!on; });
+    syncGalMovieNav();
+  }
+
+  function finishGalImageLoad() {
+    setGalLoading(false);
+    if (galMain) {
+      galMain.onload = null;
+      galMain.onerror = null;
+    }
+  }
 
   function starsText(score) {
     var n = parseInt(String(score || ""), 10);
@@ -743,69 +854,117 @@
     if (galScoreMsg) galScoreMsg.textContent = "";
   }
 
-  function setGalFetchVisible(show) {
+  function setGalFetchVisible() {
     if (!galFetchBtn) return;
-    galFetchBtn.hidden = !(canEdit && state.kind === "movie" && show);
+    galFetchBtn.hidden = !(canEdit && state.kind === "movie");
   }
 
-  function showGal(i) {
+  function showGal(i, bust) {
+    setGalFetchVisible();
     if (!state.images.length) {
       galMain.removeAttribute("src");
       galMain.alt = "无图片";
       document.getElementById("col-gal-counter").textContent = "0 / 0";
-      setGalFetchVisible(true);
+      if (galNav) galNav.hidden = true;
       return;
     }
-    setGalFetchVisible(false);
+    if (galNav) galNav.hidden = false;
     state.idx = ((i % state.images.length) + state.images.length) % state.images.length;
     var img = state.images[state.idx];
-    galMain.src = picUrl(state.folder, img.name);
+    var url = picUrl(state.folder, img.name, !!bust);
+    var cached = galMain.getAttribute("data-src") === url && galMain.complete && galMain.naturalWidth > 0;
+    galMain.setAttribute("data-src", url);
+    if (!cached) {
+      setGalLoading(true);
+      galMain.onload = finishGalImageLoad;
+      galMain.onerror = finishGalImageLoad;
+      galMain.src = url;
+      if (galMain.complete && galMain.naturalWidth > 0) finishGalImageLoad();
+    } else {
+      finishGalImageLoad();
+    }
     galMain.alt = img.name || "";
     document.getElementById("col-gal-counter").textContent =
       (state.idx + 1) + " / " + state.images.length;
+    document.getElementById("col-gal-stat").textContent =
+      state.images.length + " 张";
     galThumbs.querySelectorAll("button").forEach(function (b, j) {
       b.classList.toggle("is-active", j === state.idx);
+      var thumb = b.querySelector("img");
+      if (thumb && !thumb.getAttribute("src") && state.images[j]) {
+        thumb.src = picUrl(state.folder, state.images[j].name);
+      }
       if (j === state.idx) b.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
     });
   }
-  function renderGal(payload) {
+  function renderGal(payload, bust) {
     state.images = payload.images || [];
     state.folder = payload.folder || state.folder;
     document.getElementById("col-gal-id").textContent = state.id;
     document.getElementById("col-gal-stat").textContent =
-      (payload.count || state.images.length || 0) + " 张" +
-      (payload.total_bytes ? " · " + Math.round((payload.total_bytes || 0) / 1024) + " KB" : "");
+      (payload.count || state.images.length || 0) + " 张";
     galThumbs.innerHTML = "";
     state.images.forEach(function (img, i) {
       var b = document.createElement("button");
       b.type = "button";
       b.setAttribute("role", "option");
       b.title = img.name || ("图 " + (i + 1));
-      b.innerHTML = '<img src="' + picUrl(state.folder, img.name) + '" alt="" loading="lazy" />';
+      var ti = document.createElement("img");
+      ti.alt = "";
+      ti.loading = "lazy";
+      ti.decoding = "async";
+      if (i < 8 || i === state.idx) ti.src = picUrl(state.folder, img.name, !!bust);
+      b.appendChild(ti);
       b.addEventListener("click", function () { showGal(i); });
       galThumbs.appendChild(b);
     });
-    showGal(Math.min(state.idx, Math.max(0, state.images.length - 1)));
+    showGal(Math.min(state.idx, Math.max(0, state.images.length - 1)), !!bust);
     syncGalScoreUI();
-    // 若卡片无封面，刷新后尝试更新封面预览属性（下次重载页面会完整更新）
+    syncGalMovieNav();
     if (state.images.length && state.kind === "movie") {
       var coverName = state.images[0].name || "";
       document.querySelectorAll('.col-card[data-id="' + CSS.escape(state.id) + '"]').forEach(function (card) {
-        if (!(card.getAttribute("data-cover") || "") && coverName) {
-          card.setAttribute("data-cover", coverName);
-        }
+        if (coverName) card.setAttribute("data-cover", coverName);
       });
     }
   }
-  function openGallery(kind, id, folder) {
-    state = { kind: kind, id: id, folder: folder, images: [], idx: 0 };
+  function openGallery(kind, id, folder, navList) {
+    if (state.loading && state.id === id && state.kind === kind) return;
+    if (state.req) { try { state.req.abort(); } catch (e) {} state.req = null; }
+    var keepNav = kind === "movie" && navList && navList.length;
+    state = {
+      kind: kind,
+      id: id,
+      folder: folder,
+      images: [],
+      idx: 0,
+      loading: false,
+      req: null,
+      movieNavList: keepNav ? navList : (kind === "movie" ? buildMovieNavList() : []),
+    };
     gal.hidden = false;
+    lockScroll(true);
     document.getElementById("col-gal-stat").textContent = "加载中…";
+    if (galMain) {
+      galMain.removeAttribute("src");
+      galMain.removeAttribute("data-src");
+    }
     syncGalScoreUI();
-    fetch(apiList(kind, id))
+    syncGalMovieNav();
+    setGalFetchVisible();
+    setGalLoading(true);
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    state.req = ctrl;
+    fetch(apiList(kind, id), ctrl ? { signal: ctrl.signal } : {})
       .then(function (r) { return r.json(); })
-      .then(renderGal)
-      .catch(function () {
+      .then(function (data) {
+        state.req = null;
+        renderGal(data);
+      })
+      .catch(function (err) {
+        if (err && err.name === "AbortError") return;
+        state.req = null;
+        setGalLoading(false);
         document.getElementById("col-gal-stat").textContent = "加载失败";
       });
   }
@@ -832,7 +991,11 @@
       );
     });
   });
-  document.getElementById("col-gal-close").addEventListener("click", function () { gal.hidden = true; });
+  document.getElementById("col-gal-close").addEventListener("click", function () {
+    if (state.req) { try { state.req.abort(); } catch (e) {} state.req = null; }
+    gal.hidden = true;
+    lockScroll(false);
+  });
   if (canEdit) {
     var galEdit = document.getElementById("col-gal-edit");
     if (galEdit) galEdit.addEventListener("click", function () {
@@ -851,8 +1014,9 @@
         .then(function (r) { return r.json(); })
         .then(function (data) {
           input.value = "";
+          bumpPicVer();
           if (!data.ok) alert(data.error || "上传失败");
-          renderGal(data);
+          renderGal(data, true);
         });
     });
     if (galFetchBtn) {
@@ -863,12 +1027,16 @@
           .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
           .then(function (res) {
             galFetchBtn.disabled = false;
-            if (!res.data.ok && !res.data.images) {
-              alert(res.data.error || "抓取失败");
-              document.getElementById("col-gal-stat").textContent = "抓取失败";
+            if (!res.data.ok) {
+              var errMap = { not_found: "javdatabase 未收录该番号", no_images: "未找到可下载的封面/剧照" };
+              var msg = errMap[res.data.error] || res.data.error || "抓取失败";
+              alert(msg);
+              document.getElementById("col-gal-stat").textContent = msg;
+              if (res.data.images && res.data.images.length) renderGal(res.data, true);
               return;
             }
-            renderGal(res.data);
+            bumpPicVer();
+            renderGal(res.data, true);
           })
           .catch(function () {
             galFetchBtn.disabled = false;
@@ -883,7 +1051,7 @@
       if (!confirm("删除当前图片？")) return;
       fetch(apiDel(state.kind, state.id, img.name), { method: "DELETE" })
         .then(function (r) { return r.json(); })
-        .then(renderGal);
+        .then(function (data) { bumpPicVer(); renderGal(data, true); });
     });
     var galScoreRow = document.querySelector('#col-gal-score [data-score-for="col-gal-score-value"]');
     if (galScoreRow) {
@@ -918,21 +1086,58 @@
     }
   }
   document.getElementById("col-gal-prev").addEventListener("click", function () {
-    if (!state.images.length) return;
+    if (!state.images.length || state.loading) return;
     showGal(state.idx - 1);
   });
   document.getElementById("col-gal-next").addEventListener("click", function () {
-    if (!state.images.length) return;
+    if (!state.images.length || state.loading) return;
     showGal(state.idx + 1);
   });
+  if (galMoviePrev) {
+    galMoviePrev.addEventListener("click", function () { stepGalMovie(-1); });
+  }
+  if (galMovieNext) {
+    galMovieNext.addEventListener("click", function () { stepGalMovie(1); });
+  }
+  if (galStage) {
+    galStage.addEventListener("touchstart", function (e) {
+      if (!e.changedTouches || !e.changedTouches.length) return;
+      touchX0 = e.changedTouches[0].clientX;
+      touchY0 = e.changedTouches[0].clientY;
+    }, { passive: true });
+    galStage.addEventListener("touchend", function (e) {
+      if (touchX0 == null || touchY0 == null || !e.changedTouches || !e.changedTouches.length) return;
+      var dx = e.changedTouches[0].clientX - touchX0;
+      var dy = e.changedTouches[0].clientY - touchY0;
+      touchX0 = null;
+      touchY0 = null;
+      if (state.loading) return;
+      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy)) {
+        if (!state.images.length) return;
+        showGal(dx > 0 ? state.idx - 1 : state.idx + 1);
+        return;
+      }
+      if (state.kind === "movie" && Math.abs(dy) >= 50 && Math.abs(dy) > Math.abs(dx)) {
+        stepGalMovie(dy < 0 ? 1 : -1);
+      }
+    }, { passive: true });
+  }
   document.addEventListener("keydown", function (e) {
     if (gal.hidden) {
       if (e.key === "Escape") closeDrawer();
       return;
     }
-    if (e.key === "Escape") { gal.hidden = true; return; }
+    if (e.key === "Escape") {
+      document.getElementById("col-gal-close").click();
+      return;
+    }
+    if (state.loading) return;
     if (e.key === "ArrowLeft") showGal(state.idx - 1);
     if (e.key === "ArrowRight") showGal(state.idx + 1);
+    if (state.kind === "movie") {
+      if (e.key === "ArrowUp") { e.preventDefault(); stepGalMovie(-1); }
+      if (e.key === "ArrowDown") { e.preventDefault(); stepGalMovie(1); }
+    }
   });
 })();
 </script>

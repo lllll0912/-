@@ -100,7 +100,7 @@ def save_catalog(catalog: dict[str, Any], *, sync_github: bool = True) -> None:
         json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    # 本机：同时写回仓库 bundled 目录，便于 git push
+    # 本机：写 bundled 目录供本地开发（已在 .gitignore，勿 push 运行态）
     bundled = _bundled_catalog()
     if path.resolve() != bundled.resolve() and not (os.environ.get("BILL_DATA_DIR") or "").strip():
         bundled.parent.mkdir(parents=True, exist_ok=True)
@@ -171,9 +171,12 @@ def backfill_catalog_dates() -> int:
     return changed
 
 
-def list_images(folder_id: str) -> list[dict[str, Any]]:
+def list_images(folder_id: str, *, pics_ctx: Optional[dict[str, list[dict[str, Any]]]] = None) -> list[dict[str, Any]]:
     """合并本机/Volume 与 GitHub 索引，避免缓存里只有封面时丢掉其余图。"""
     fid = folder_name(folder_id)
+    if pics_ctx is not None:
+        return _sort_images(list(pics_ctx.get(fid) or []), fid)
+
     by_name: dict[str, dict[str, Any]] = {}
 
     def _add_from_dir(folder: Path) -> None:
@@ -198,7 +201,59 @@ def list_images(folder_id: str) -> list[dict[str, Any]]:
     except Exception:
         pass
 
-    return sorted(by_name.values(), key=lambda x: x["name"])
+    return _sort_images(list(by_name.values()), fid)
+
+
+def _cover_sort_key(name: str) -> tuple[int, str]:
+    low = (name or "").lower()
+    if low.startswith("cover"):
+        return (0, low)
+    if low.startswith("000_cover") or low == "cover.jpg" or low == "cover.webp":
+        return (0, low)
+    return (1, low)
+
+
+def _sort_images(items: list[dict[str, Any]], folder_id: str = "") -> list[dict[str, Any]]:
+    """封面类文件名始终排在最前，便于列表与图库默认展示。"""
+    if not items:
+        return []
+    return sorted(items, key=lambda x: (_cover_sort_key(str(x.get("name") or ""))))
+
+
+def build_pics_context() -> dict[str, list[dict[str, Any]]]:
+    """一次扫描本地 pics + GitHub 索引，供批量 enrich 复用。"""
+    ctx: dict[str, dict[str, dict[str, Any]]] = {}
+
+    def _add(folder: Path) -> None:
+        if not folder.is_dir():
+            return
+        for sub in folder.iterdir():
+            if not sub.is_dir():
+                continue
+            fid = sub.name
+            bucket = ctx.setdefault(fid, {})
+            for p in sub.iterdir():
+                if p.is_file() and p.suffix.lower() in IMAGE_EXTS:
+                    bucket[p.name] = {"name": p.name, "size": p.stat().st_size}
+
+    _add(pics_root())
+    bundled_pics = bundled_root() / "pics"
+    if bundled_pics.resolve() != pics_root().resolve():
+        _add(bundled_pics)
+
+    try:
+        from .github_sync import load_all_github_pics
+
+        for fid, items in load_all_github_pics().items():
+            bucket = ctx.setdefault(fid, {})
+            for item in items:
+                name = item.get("name") or ""
+                if name and name not in bucket:
+                    bucket[name] = {"name": name, "size": int(item.get("size") or 0)}
+    except Exception:
+        pass
+
+    return {fid: _sort_images(list(items.values()), fid) for fid, items in ctx.items()}
 
 
 def images_payload(folder_id: str) -> dict[str, Any]:
@@ -211,10 +266,10 @@ def images_payload(folder_id: str) -> dict[str, Any]:
     }
 
 
-def enrich_movie(row: dict[str, Any]) -> dict[str, Any]:
+def enrich_movie(row: dict[str, Any], *, pics_ctx: Optional[dict[str, list[dict[str, Any]]]] = None) -> dict[str, Any]:
     r = ensure_meta_defaults(row, kind="movie")
     fid = r.get("pic_folder") or r.get("id") or ""
-    imgs = list_images(str(fid))
+    imgs = list_images(str(fid), pics_ctx=pics_ctx)
     r["image_count"] = len(imgs)
     r["cover"] = imgs[0]["name"] if imgs else ""
     r["pic_folder"] = folder_name(str(fid)) if fid else ""
@@ -224,10 +279,10 @@ def enrich_movie(row: dict[str, Any]) -> dict[str, Any]:
     return r
 
 
-def enrich_person(row: dict[str, Any]) -> dict[str, Any]:
+def enrich_person(row: dict[str, Any], *, pics_ctx: Optional[dict[str, list[dict[str, Any]]]] = None) -> dict[str, Any]:
     r = ensure_meta_defaults(row, kind="person")
     fid = r.get("pic_folder") or r.get("name") or ""
-    imgs = list_images(str(fid))
+    imgs = list_images(str(fid), pics_ctx=pics_ctx)
     r["image_count"] = len(imgs)
     r["cover"] = imgs[0]["name"] if imgs else ""
     r["pic_folder"] = folder_name(str(fid)) if fid else ""
@@ -242,9 +297,11 @@ def list_movies(
     *,
     filter_mode: str = "all",
     sort: str = "added_desc",
+    pics_ctx: Optional[dict[str, list[dict[str, Any]]]] = None,
 ) -> list[dict[str, Any]]:
     qn = (q or "").strip().lower()
-    rows = [enrich_movie(m) for m in load_catalog().get("movies") or []]
+    ctx = pics_ctx if pics_ctx is not None else build_pics_context()
+    rows = [enrich_movie(m, pics_ctx=ctx) for m in load_catalog().get("movies") or []]
     if qn:
         rows = [
             m
@@ -285,9 +342,11 @@ def list_people(
     *,
     filter_mode: str = "all",
     sort: str = "added_desc",
+    pics_ctx: Optional[dict[str, list[dict[str, Any]]]] = None,
 ) -> list[dict[str, Any]]:
     qn = (q or "").strip().lower()
-    rows = [enrich_person(p) for p in load_catalog().get("people") or []]
+    ctx = pics_ctx if pics_ctx is not None else build_pics_context()
+    rows = [enrich_person(p, pics_ctx=ctx) for p in load_catalog().get("people") or []]
     if qn:
         rows = [
             p
@@ -376,8 +435,9 @@ def get_person(name: str) -> Optional[dict[str, Any]]:
     return None
 
 
-def movie_stats() -> dict[str, int]:
-    rows = [enrich_movie(m) for m in load_catalog().get("movies") or []]
+def movie_stats(*, pics_ctx: Optional[dict[str, list[dict[str, Any]]]] = None) -> dict[str, int]:
+    ctx = pics_ctx if pics_ctx is not None else build_pics_context()
+    rows = [enrich_movie(m, pics_ctx=ctx) for m in load_catalog().get("movies") or []]
     return {
         "total": len(rows),
         "incomplete": sum(1 for m in rows if m.get("incomplete")),
@@ -583,6 +643,26 @@ def resolve_image(folder_id: str, filename: str) -> Optional[Path]:
     return None
 
 
+def save_artwork_files(folder_id: str, files: list[tuple[str, bytes]], *, merge: bool = False) -> tuple[int, str]:
+    """保存抓取到的封面/剧照。merge=True 时覆盖旧 cover* 并追加新 sample。"""
+    if not files:
+        return 0, "没有图片"
+    existing = {img["name"] for img in list_images(folder_id)}
+    prepared: list[tuple[str, bytes]] = []
+    for fn, raw in files:
+        low = (fn or "").lower()
+        ext = Path(fn or "img.jpg").suffix.lower() or ".jpg"
+        if low.startswith("cover"):
+            prepared.append((f"cover{ext}", raw))
+            continue
+        if merge and fn in existing:
+            continue
+        prepared.append((fn, raw))
+    if merge and not prepared:
+        return 0, ""
+    return save_image_bytes(folder_id, prepared)
+
+
 def save_image_bytes(folder_id: str, files: list[tuple[str, bytes]]) -> tuple[int, str]:
     """将已下载的 (filename, bytes) 写入本地/Volume，并在正式站同步 GitHub。"""
     folder = pics_root() / folder_name(folder_id)
@@ -600,8 +680,13 @@ def save_image_bytes(folder_id: str, files: list[tuple[str, bytes]]) -> tuple[in
         ext = Path(original or "").suffix.lower()
         if ext not in IMAGE_EXTS:
             ext = ".jpg"
-        safe = re.sub(r"[^A-Za-z0-9._\u4e00-\u9fff-]+", "_", Path(original or "img").stem)[:60] or "img"
-        out_name = f"{stamp + i}_{safe}{ext}"
+        stem = Path(original or "img").stem
+        # 抓取封面保留 cover 前缀，便于排序置顶
+        if stem.lower().startswith("cover") and re.match(r"^cover(\.[a-z]+)?$", stem, re.I):
+            out_name = f"cover{ext}"
+        else:
+            safe = re.sub(r"[^A-Za-z0-9._\u4e00-\u9fff-]+", "_", stem)[:60] or "img"
+            out_name = f"{stamp + i}_{safe}{ext}"
         out = folder / out_name
         out.write_bytes(raw)
         if not (os.environ.get("BILL_DATA_DIR") or "").strip():
@@ -681,14 +766,14 @@ def delete_image(folder_id: str, filename: str) -> bool:
     return deleted_local
 
 
-def random_movies(limit: int = 6) -> list[dict[str, Any]]:
+def random_movies(limit: int = 6, movies: Optional[list[dict[str, Any]]] = None) -> list[dict[str, Any]]:
     import random
 
-    rows = [m for m in list_movies() if m.get("image_count")]
-    if not rows:
-        rows = list_movies()
-    random.shuffle(rows)
-    return rows[:limit]
+    rows = movies if movies is not None else list_movies()
+    with_pic = [m for m in rows if m.get("image_count")]
+    pool = with_pic or rows
+    random.shuffle(pool)
+    return pool[:limit]
 
 
 def collection_years(movies: Optional[list[dict[str, Any]]] = None) -> list[int]:

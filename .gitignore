@@ -38,3 +38,12 @@ Desktop.ini
 node_modules/
 脚本/旧项目/飞猪MCP/node_modules/
 
+# 收藏运行态：正式站经 GitHub API 写入；本地仅开发测试，勿 push（避免覆盖线上新数据）
+收藏/数据/pics/**
+!收藏/数据/pics/.gitkeep
+收藏/数据/_meta/catalog.json
+收藏/数据/_meta/lookup_cache.json
+收藏/数据/_meta/pics_index.json
+!收藏/数据/_meta/.gitkeep
+!收藏/数据/_meta/catalog.empty.json
+
