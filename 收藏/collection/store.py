@@ -92,7 +92,8 @@ def load_catalog() -> dict[str, Any]:
     return empty_catalog()
 
 
-def save_catalog(catalog: dict[str, Any], *, sync_github: bool = True) -> None:
+def save_catalog(catalog: dict[str, Any], *, sync_github: bool = False) -> None:
+    """写入 catalog。正式站只写 Volume；文字数据靠每日 backup，不实时 commit GitHub。"""
     path = catalog_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     catalog["version"] = max(int(catalog.get("version") or 2), 2)
@@ -105,6 +106,7 @@ def save_catalog(catalog: dict[str, Any], *, sync_github: bool = True) -> None:
     if path.resolve() != bundled.resolve() and not (os.environ.get("BILL_DATA_DIR") or "").strip():
         bundled.parent.mkdir(parents=True, exist_ok=True)
         bundled.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+    # sync_github 保留参数兼容旧调用，但默认关闭：避免点星触发部署
     if sync_github:
         try:
             from .github_sync import github_sync_enabled, sync_catalog_to_github
@@ -731,7 +733,6 @@ def save_image_bytes(folder_id: str, files: list[tuple[str, bytes]]) -> tuple[in
         if github_sync_enabled() and uploaded:
             ok, detail = sync_uploads_to_github(
                 uploads=uploaded,
-                catalog=load_catalog(),
                 label=folder_name(folder_id),
             )
             if not ok:

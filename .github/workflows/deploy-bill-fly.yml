@@ -13,6 +13,11 @@ on:
       - "脚本/**"
       - "fly.toml"
       - ".github/workflows/deploy-bill-fly.yml"
+    paths-ignore:
+      # 运行态数据变更不发版（评分/图片写入 GitHub 时勿触发 fly deploy）
+      - "收藏/数据/**"
+      - "医疗/数据/**"
+      - "backups/**"
   workflow_dispatch:
 
 jobs:

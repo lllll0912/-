@@ -162,13 +162,13 @@ def commit_collection_files(
 def sync_uploads_to_github(
     *,
     uploads: dict[str, bytes],
-    catalog: dict[str, Any],
+    catalog: Optional[dict[str, Any]] = None,
     label: str = "",
 ) -> tuple[bool, str]:
-    """上传多张图片 + catalog。uploads 的 key 为仓库相对路径。"""
-    catalog_bytes = (json.dumps(catalog, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
-    files = dict(uploads)
-    files[REPO_CATALOG_PATH] = catalog_bytes
+    """仅上传图片到 GitHub（文字 catalog 不实时提交，靠 Volume 日备）。"""
+    files = dict(uploads or {})
+    if not files:
+        return True, "无图片变更"
     name = (label or "upload").strip() or "upload"
     ok, detail = commit_collection_files(files=files, message=f"collection: upload {name}")
     if ok:
