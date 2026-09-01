@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}个人网站{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r35" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=r36" />
   </head>
   <body>
     <div class="app-shell">
@@ -58,7 +58,7 @@
           <details class="nav-group" open>
             <summary class="nav-group-title">收藏</summary>
             <div class="nav-group-links">
-              <a class="nav-link{% if request.endpoint and request.endpoint.startswith('collection.') %} active{% endif %}" href="{{ url_for('collection.collection_home') }}">作品 / 人物</a>
+              <a class="nav-link{% if request.endpoint and request.endpoint.startswith('collection.') %} active{% endif %}" href="{{ url_for('collection.collection_home') }}">作品收藏</a>
             </div>
           </details>
           {% endif %}
@@ -96,7 +96,7 @@
         </nav>
 
         <div class="sidebar-foot">
-          <span class="ver-badge">r35</span>
+          <span class="ver-badge">r36</span>
         </div>
       </aside>
 

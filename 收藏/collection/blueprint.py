@@ -32,9 +32,9 @@ from .store import (
     list_images,
     list_movies,
     list_people,
+    list_person_names,
     movie_stats,
     normalize_score,
-    random_movies,
     resolve_image,
     save_catalog,
     save_image_bytes,
@@ -81,8 +81,10 @@ def collection_home():
 
 def _render_collection_home():
     backfill_catalog_dates()
-    tab = (request.args.get("tab") or "movies").strip()
+    # 人物 Tab 已下线，统一走作品
+    tab = "movies"
     q = (request.args.get("q") or "").strip()
+    person = (request.args.get("person") or "").strip()
     filter_mode = (request.args.get("filter") or "all").strip()
     sort = (request.args.get("sort") or "added_desc").strip()
     view = (request.args.get("view") or "grid").strip()
@@ -93,10 +95,12 @@ def _render_collection_home():
     if view not in ("grid", "calendar"):
         view = "grid"
     pics_ctx = build_pics_context()
-    movies = list_movies(q, filter_mode=filter_mode, sort=sort, pics_ctx=pics_ctx)
-    people = list_people(q, filter_mode=filter_mode, sort=sort if sort != "id_asc" else "name_asc", pics_ctx=pics_ctx)
+    movies = list_movies(
+        q, filter_mode=filter_mode, sort=sort, person=person, pics_ctx=pics_ctx
+    )
+    person_names = list_person_names()
     stats = movie_stats(pics_ctx=pics_ctx)
-    years = collection_years(movies)
+    years = collection_years(list_movies("", pics_ctx=pics_ctx))
     year_raw = request.args.get("year")
     try:
         year = int(year_raw) if year_raw else years[0]
@@ -104,24 +108,30 @@ def _render_collection_home():
         year = years[0]
     if year not in years:
         years = sorted(set(years) | {year}, reverse=True)
-    show_calendar = tab == "movies" and view == "calendar"
-    timeline = build_collection_timeline(year, movies) if show_calendar else None
-    recommends = random_movies(8, movies=movies) if tab == "movies" and view == "grid" else []
+    show_calendar = view == "calendar"
+    calendar_movies = (
+        list_movies("", filter_mode=filter_mode, sort=sort, person=person, pics_ctx=pics_ctx)
+        if show_calendar
+        else movies
+    )
+    timeline = build_collection_timeline(year, calendar_movies) if show_calendar else None
     return render_template(
         "home.html",
-        tab=tab if tab in ("movies", "people") else "movies",
+        tab=tab,
         view=view,
         q=q,
+        person=person,
         filter_mode=filter_mode,
         sort=sort,
-        movies=movies,
-        people=people,
+        movies=movies if not show_calendar else calendar_movies,
+        people=[],
+        person_names=person_names,
         timeline=timeline,
-        recommends=recommends,
+        recommends=[],
         years=years,
         year=year,
         movie_count=stats["total"],
-        people_count=len(people),
+        people_count=0,
         today=today_str(),
         can_edit=can_write(),
     )
@@ -242,7 +252,7 @@ def person_delete(name: str):
         flash("已删除人物", "success")
     else:
         flash("未找到该人物", "error")
-    return redirect(url_for("collection.collection_home", tab="people"))
+    return redirect(url_for("collection.collection_home"))
 
 
 @collection_bp.route("/api/backfill-metadata", methods=["POST"])

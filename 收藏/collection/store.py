@@ -292,16 +292,37 @@ def enrich_person(row: dict[str, Any], *, pics_ctx: Optional[dict[str, list[dict
     return r
 
 
+def list_person_names() -> list[str]:
+    """从作品关联人物去重，供筛选与输入建议。"""
+    names: list[str] = []
+    seen: set[str] = set()
+    for m in load_catalog().get("movies") or []:
+        raw = str(m.get("person") or "").strip()
+        if not raw:
+            continue
+        for part in re.split(r"[、,/，|;]+", raw):
+            n = part.strip()
+            if n and n not in seen:
+                seen.add(n)
+                names.append(n)
+    names.sort(key=lambda s: s.lower())
+    return names
+
+
 def list_movies(
     q: str = "",
     *,
     filter_mode: str = "all",
     sort: str = "added_desc",
+    person: str = "",
     pics_ctx: Optional[dict[str, list[dict[str, Any]]]] = None,
 ) -> list[dict[str, Any]]:
     qn = (q or "").strip().lower()
+    person_q = (person or "").strip().lower()
     ctx = pics_ctx if pics_ctx is not None else build_pics_context()
     rows = [enrich_movie(m, pics_ctx=ctx) for m in load_catalog().get("movies") or []]
+    if person_q:
+        rows = [m for m in rows if person_q in str(m.get("person") or "").lower()]
     if qn:
         rows = [
             m
